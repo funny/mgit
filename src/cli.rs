@@ -1,5 +1,5 @@
 use super::commands;
-use clap::{Parser, Subcommand, ArgAction};
+use clap::{ArgAction, Parser, Subcommand};
 
 // ========================================
 // main
@@ -24,7 +24,7 @@ enum Commands {
     /// Init git repos
     Init {
         /// The init directory
-        path: Option<String>
+        path: Option<String>,
     },
 
     /// Sync git repos
@@ -52,18 +52,18 @@ pub fn main() {
     match args.command {
         Commands::Init { path } => {
             commands::init::exec(path);
-        },
+        }
 
         Commands::Sync {} => {
             commands::sync::exec();
-        },
+        }
 
         Commands::Fetch {} => {
             commands::fetch::exec();
-        },
+        }
 
         Commands::Clean { force } => {
             commands::clean::exec(force);
-        },
+        }
     };
 }
