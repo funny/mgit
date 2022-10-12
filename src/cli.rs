@@ -1,5 +1,6 @@
 use super::commands;
 use clap::{ArgAction, Parser, Subcommand};
+use git2;
 
 // ========================================
 // main
@@ -25,6 +26,10 @@ enum Commands {
     Init {
         /// The init directory
         path: Option<String>,
+
+        /// force remove git repos without prompt
+        #[arg(long, action = ArgAction::SetTrue)]
+        force: bool,
     },
 
     /// Sync git repos
@@ -48,10 +53,16 @@ enum Commands {
 pub fn main() {
     let args = Cli::parse();
 
+    // set git options
+    unsafe {
+        git2::opts::set_verify_owner_validation(false)
+            .expect("Failed to call git2::opts::set_verify_owner_validation");
+    }
+
     // handle commands
     match args.command {
-        Commands::Init { path } => {
-            commands::init::exec(path);
+        Commands::Init { path, force } => {
+            commands::init::exec(path, force);
         }
 
         Commands::Sync {} => {

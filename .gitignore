@@ -1,3 +1,5 @@
-/target
 .exvim/
 .vscode/
+
+target
+Cargo.lock
