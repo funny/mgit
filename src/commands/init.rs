@@ -107,7 +107,7 @@ pub fn exec(path: Option<String>, force: bool) {
                 commit: None,
             };
             repos.push(toml_repo);
-            println!("add {}", norm_str);
+            println!("  + {}", norm_str);
 
             // just skip go into .git/ folder and continue
             it.skip_current_dir();
@@ -117,10 +117,13 @@ pub fn exec(path: Option<String>, force: bool) {
         count += 1;
     }
 
+    println!("");
+
     toml_config.repos = Some(repos);
-    println!("{} files read!", count);
+    println!("{} files scanned", count);
 
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
     fs::write(config_file, toml_string).expect("Failed to write file .gitrepos!");
+    println!(".gitrepos update");
 }
