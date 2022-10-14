@@ -1,6 +1,7 @@
 use super::{TomlConfig, TomlRepo};
 use git2::Repository;
 use globset::GlobBuilder;
+use owo_colors::OwoColorize;
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -11,19 +12,23 @@ pub fn exec(path: Option<String>, force: bool) {
     let input = path.or(cwd_str).unwrap();
 
     // starting init repos
-    println!("init {}", input);
+    println!("init {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
     // check if input is a valid directory
     if input_path.is_dir() == false {
-        println!("Invalid input: directory {} not found!", input);
+        println!("Directory {} not found!", input.bold().magenta());
         return;
     }
 
     // check if .gitrepos exists
     let config_file = input_path.join(".gitrepos");
     if config_file.is_file() && !force {
-        println!("{} already inited, try --force instead!", input);
+        println!(
+            "{} already inited, try {} instead!",
+            input,
+            "--force".bold().magenta()
+        );
         return;
     }
     let mut toml_config = TomlConfig {
@@ -125,5 +130,5 @@ pub fn exec(path: Option<String>, force: bool) {
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
     fs::write(config_file, toml_string).expect("Failed to write file .gitrepos!");
-    println!(".gitrepos update");
+    println!("{} update", ".gitrepos".bold().magenta());
 }

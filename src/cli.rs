@@ -36,7 +36,10 @@ enum Commands {
     Sync {},
 
     /// Fetch git repos
-    Fetch {},
+    Fetch {
+        /// The init directory
+        path: Option<String>,
+    },
 
     /// Clean unused git repos
     Clean {
@@ -69,8 +72,8 @@ pub fn main() {
             commands::sync::exec();
         }
 
-        Commands::Fetch {} => {
-            commands::fetch::exec();
+        Commands::Fetch { path } => {
+            commands::fetch::exec(path);
         }
 
         Commands::Clean { force } => {

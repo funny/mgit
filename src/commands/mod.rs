@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
 use toml_edit;
 
 pub mod clean;
@@ -26,8 +28,8 @@ pub struct TomlRepo {
     commit: Option<String>,
 }
 
-// serialzie config file .gitrepos
 impl TomlConfig {
+    // serialzie config file .gitrepos
     pub fn serialize(&self) -> String {
         let toml = toml_edit::ser::to_item(self).unwrap();
         let mut out = String::new();
@@ -93,15 +95,23 @@ impl TomlConfig {
     }
 }
 
-// TODO
-// pub fn load_config(path: &Path) -> Option<TomlConfig> {
-//     let pb = path.to_path_buf();
+// deserialize config file .gitrepos
+pub fn load_config(path: &Path) -> Option<TomlConfig> {
+    let pb = path.to_path_buf();
 
-//     // check if .mgit/ exists
-//     let user_dir = pb.join(".mgit");
-//     if user_dir.is_dir() == false {
-//         return None;
-//     }
+    let config_file = pb.join(".gitrepos");
+    if config_file.is_file() {
+        let txt = fs::read_to_string(config_file).unwrap();
+        let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
 
-//     None
-// }
+        println!("{:?}", toml_config);
+    }
+
+    // check if .mgit/ exists
+    let user_dir = pb.join(".mgit");
+    if user_dir.is_dir() {
+        // do somthing
+    }
+
+    None
+}
