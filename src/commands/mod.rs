@@ -104,13 +104,13 @@ pub fn load_config(path: &Path) -> Option<TomlConfig> {
         let txt = fs::read_to_string(config_file).unwrap();
         let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
 
-        println!("{:?}", toml_config);
+        return Some(toml_config)
     }
 
     // check if .mgit/ exists
     let user_dir = pb.join(".mgit");
     if user_dir.is_dir() {
-        // do somthing
+        // TODO: override toml_config by user setup
     }
 
     None

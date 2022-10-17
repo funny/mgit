@@ -64,7 +64,7 @@ pub fn exec(path: Option<String>, force: bool) {
             let rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
 
             // try open git repo
-            let repo_result = Repository::open(pb);
+            let repo_result = Repository::open(&pb);
             if let Err(e) = repo_result {
                 println!("Failed to open repo {}, {}", rel_path.display(), e);
                 continue;
