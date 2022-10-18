@@ -8,9 +8,9 @@ mgit 是一个用 rust 编写的，git 多仓库管理工具
 
 ### cli
 
-- **mgit init ./foo/bar** 初始化项目，检索指定文件夹下的 git 仓库情况，构建 .gitrepos 文件
-- **mgit sync** 根据 .gitrepos 和 ./repos 下的情况更新仓库
-- **mgit clean --force** 根据 .gitrepos 清理不在其下的 git 仓库，如果使用 —force 则不询问直接删除
+- **mgit init ./foo/bar** 初始化项目，检索指定文件夹下的 git 仓库情况，构建 `.gitrepos` 文件
+- **mgit sync** 根据 `.gitrepos` 和 `.mgit/` 下的情况更新仓库
+- **mgit clean --force** 根据 `.gitrepos` 清理不在其下的 git 仓库，如果使用 —force 则不询问直接删除
 - **mgit fetch** 只执行 fetch 更新
 
 ### gui
