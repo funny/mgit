@@ -1,15 +1,28 @@
-use super::load_config;
-use git2::Repository;
+use super::{load_config, TomlRepo};
+use anyhow::Context;
+use atomic_counter::{AtomicCounter, RelaxedCounter};
+use console::{strip_ansi_codes, truncate_str};
+use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressStyle};
 use owo_colors::OwoColorize;
-use std::path::Path;
+use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
+use std::{
+    env,
+    io::{BufRead, BufReader},
+    path::Path,
+    process::Command,
+    process::Stdio,
+    sync::Arc,
+    thread,
+    thread::JoinHandle,
+};
 
 pub fn exec(path: Option<String>) {
-    let cwd = std::env::current_dir().unwrap();
+    let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
 
     // starting fetch repos
-    println!("fetch {}", input.bold().magenta());
+    println!("fetch repos in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
     // check if input is a valid directory
@@ -31,71 +44,196 @@ pub fn exec(path: Option<String>) {
 
     // load .gitrepos
     if let Some(toml_config) = load_config(input_path) {
-        // println!("{:?}", toml_config);
-        let input_path_buf = input_path.to_path_buf();
-
         if let Some(repos) = toml_config.repos {
-            for toml_repo in &repos {
-                println!("");
+            let repos_count = repos.len();
 
-                // open local repository
-                let repo = toml_repo.local.as_ref().and_then(|local| {
-                    println!("open repo: {}", local.bold().magenta());
-                    let repo_path = input_path_buf.join(local);
-                    let repo_result = Repository::open(&repo_path);
+            // multi_progress manages multiple progress bars from different threads
+            // use Arc to share the MultiProgress across more than 1 thread
+            let multi_progress = Arc::new(MultiProgress::new());
+            // create total progress bar and set progress style
+            let total_bar = multi_progress.add(ProgressBar::new(repos_count as u64));
 
-                    if let Err(e) = &repo_result {
-                        println!(
-                            "Failed to open repo {}, {}",
-                            repo_path.display().bold().magenta(),
-                            e
+            total_bar.set_style(
+                ProgressStyle::default_bar()
+                    .template("[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}")
+                    .progress_chars("=>·")
+                    .on_finish(ProgressFinish::Abandon),
+            );
+            total_bar.enable_steady_tick(500);
+            // user a counter
+            let counter = RelaxedCounter::new(1);
+
+            // Clone Arc<MultiProgress> and spawn a thread.
+            // call `.join()` on the `MultiProgress` to updated progress bars.
+            // need to do this in a thread as the `.map()` we do below also blocks.
+            let multi_progress_wait = multi_progress.clone();
+            let thread_handle: JoinHandle<anyhow::Result<()>> = thread::spawn(move || {
+                multi_progress_wait.join()?;
+                Ok(())
+            });
+
+            // create thread pool, and set the number of thread to use by using `.num_threads(count)`
+            let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
+                Ok(r) => r,
+                Err(e) => {
+                    println!("{}", e);
+                    return;
+                }
+            };
+
+            // pool.install means that `.par_iter()` will use the thread pool we've built above.
+            let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
+                let res = repos
+                    .par_iter()
+                    .map(|repo| {
+                        let idx = counter.inc();
+                        let prefix = format!("[{:02}/{:02}]", idx, repos_count);
+
+                        // create progress bar for each repo
+                        let progress_bar = multi_progress.insert(idx, ProgressBar::new_spinner());
+                        progress_bar.set_message("waiting...");
+                        progress_bar.enable_steady_tick(500);
+                        progress_bar.set_style(
+                            ProgressStyle::default_spinner()
+                                .template("{spinner:.green.dim.bold} {msg} "),
                         );
-                    }
 
-                    repo_result.ok()
-                });
-
-                // find remote
-                if let Some(repo) = repo {
-                    // try to fetch remote by url
-                    let remote = toml_repo.remote.as_ref().and_then(|remote_url| {
-                        println!("connect remote: {}", remote_url.bold().magenta());
-                        let remote_result = repo.remote_anonymous(&remote_url);
-
-                        match remote_result {
-                            Err(_) => {
-                                let url = toml_config
-                                    .default_remote
-                                    .as_ref()
-                                    .map(|def_remote| format!("{}/{}", def_remote, remote_url))
-                                    .unwrap();
-                                let remote_result2 = repo.remote_anonymous(&url);
-
-                                if let Err(e2) = &remote_result2 {
-                                    println!(
-                                        "Failed to fetch remote {}, {}",
-                                        remote_url.bold().magenta(),
-                                        e2
-                                    );
+                        // excute fetch command with progress
+                        let result =
+                            match excute_with_progress(&prefix, input_path, repo, &progress_bar) {
+                                Ok(_) => {
+                                    progress_bar.finish_with_message(format!(
+                                        "{} {} {}",
+                                        "✓".bold().green(),
+                                        &prefix,
+                                        repo.local.as_ref().unwrap().bold().magenta()
+                                    ));
+                                    Ok(())
                                 }
+                                Err(e) => {
+                                    progress_bar.finish_with_message(format!(
+                                        "{} {} {}",
+                                        "x".bold().red(),
+                                        &prefix,
+                                        repo.local.as_ref().unwrap().bold().magenta()
+                                    ));
+                                    Err((repo, e))
+                                }
+                            };
 
-                                remote_result2.ok()
-                            }
+                        // update total progress bar
+                        total_bar.inc(1);
 
-                            Ok(r) => Some(r),
-                        }
-                    });
+                        result
+                    })
+                    // catch erroring repo
+                    .filter_map(Result::err)
+                    // collect the results into Vec
+                    .collect();
 
-                    // fetch remote
-                    if let Some(mut remote) = remote {
-                        if let Err(e) = remote.fetch(&["master"], None, None) {
-                            println!("Failed to fetch branch: {}, {}", "main", e);
-                        } else {
-                            println!("{} fetched!", remote.url().unwrap());
-                        }
-                    }
+                total_bar.finish();
+
+                res
+            });
+
+            // wait for the thread to finish
+            let _ = thread_handle.join();
+
+            println!(
+                "{} repositories fecth successfully.",
+                repos_count - errors.len()
+            );
+
+            // print out each repo that failed to fetch
+            if !errors.is_empty() {
+                eprintln!("{} repositories failed:", errors.len());
+                eprintln!("");
+
+                for (repo, error) in errors {
+                    eprintln!("{} errors:", repo.local.as_ref().unwrap().bold().magenta());
+                    error
+                        .chain()
+                        .for_each(|cause| eprintln!("  {}", cause.bold().red()));
+                    eprintln!("");
                 }
             }
         }
     }
+}
+
+fn excute_with_progress(
+    prefix: &str,
+    input_path: &Path,
+    repo: &TomlRepo,
+    progress_bar: &ProgressBar,
+) -> anyhow::Result<()> {
+    let args = vec![
+        "fetch",
+        "--all",
+        "--prune",
+        "--recurse-submodules=on-demand",
+        "--progress",
+    ];
+    let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+
+    let local_path = repo.local.as_ref().unwrap();
+    progress_bar.set_message(format!(
+        "{:9} {} : starting",
+        prefix,
+        local_path.clone().bold().magenta()
+    ));
+
+    let mut command = Command::new("git".to_string());
+    let full_command = command
+        .args(args)
+        .current_dir(input_path.clone().join(local_path.clone()));
+
+    let mut spawned = full_command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("Error starting command {:?}", full_command))?;
+
+    let mut last_line = format!(
+        "{:>9} {}: running...",
+        prefix,
+        local_path.clone().bold().magenta()
+    );
+    progress_bar.set_message(last_line.clone());
+
+    // get message from stderr with "--progress" option
+    if let Some(ref mut stderr) = spawned.stderr {
+        let lines = BufReader::new(stderr).split(b'\r');
+        for line in lines {
+            let output = line.unwrap();
+            if output.is_empty() {
+                continue;
+            }
+            let line = std::str::from_utf8(&output).unwrap();
+            let plain_line = strip_ansi_codes(line).replace('\n', " ");
+            let truncated_line = truncate_str(plain_line.trim(), 70, "...");
+            progress_bar.set_message(format!(
+                "{:>9} {}: {}",
+                prefix,
+                local_path.clone().bold().magenta(),
+                truncated_line.clone()
+            ));
+            last_line = plain_line.clone();
+        }
+    }
+
+    let exit_code = spawned
+        .wait()
+        .context("Error waiting for process to finish")?;
+
+    if !exit_code.success() {
+        return Err(anyhow::anyhow!(
+            "Git exited with code {}: {}",
+            exit_code.code().unwrap(),
+            last_line
+        ));
+    }
+
+    Ok(())
 }
