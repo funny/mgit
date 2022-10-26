@@ -249,7 +249,7 @@ fn execute_sync_with_progress(
 //         .into_string()
 //         .unwrap()
 //         .replace("\\", "/");
-
+//
 //     let args = vec![
 //         "clone",
 //         repo.remote.as_ref().unwrap(),
