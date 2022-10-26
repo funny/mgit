@@ -103,12 +103,5 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
 
         return Some(toml_config);
     }
-
-    // check if .mgit/ exists
-    // let user_dir = config_file.parent().unwrap().join(".mgit");
-    // if user_dir.is_dir() {
-    //     // TODO: override toml_config by user setup
-    // }
-
     None
 }
