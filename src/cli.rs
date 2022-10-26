@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::commands;
 use clap::{ArgAction, Parser, Subcommand};
 use git2;
@@ -37,6 +39,10 @@ enum Commands {
         /// The sync directory
         path: Option<String>,
 
+        /// use custom config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
         /// discard local changes after fetched
         #[arg(long, action = ArgAction::SetTrue)]
         force: bool,
@@ -46,6 +52,10 @@ enum Commands {
     Fetch {
         /// The init directory
         path: Option<String>,
+
+        /// use custom config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
     },
 
     /// Clean unused git repos
@@ -75,12 +85,16 @@ pub fn main() {
             commands::init::exec(path, force);
         }
 
-        Commands::Sync { path, force } => {
-            commands::sync::exec(path, force);
+        Commands::Sync {
+            path,
+            config,
+            force,
+        } => {
+            commands::sync::exec(path, config, force);
         }
 
-        Commands::Fetch { path } => {
-            commands::fetch::exec(path);
+        Commands::Fetch { path, config } => {
+            commands::fetch::exec(path, config);
         }
 
         Commands::Clean { force } => {

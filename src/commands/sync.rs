@@ -9,7 +9,7 @@ use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
     env,
     io::{BufRead, BufReader},
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
     process::Stdio,
     sync::Arc,
@@ -17,7 +17,7 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>, force: bool) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -32,8 +32,13 @@ pub fn exec(path: Option<String>, force: bool) {
         return;
     }
 
+    // set config file path
+    let config_file = match config {
+        Some(r) => cwd.join(r),
+        _ => input_path.join(".gitrepos"),
+    };
+
     // check if .gitrepos exists
-    let config_file = input_path.join(".gitrepos");
     if config_file.is_file() == false {
         println!(
             "{} not found, try {} instead!",
@@ -44,7 +49,7 @@ pub fn exec(path: Option<String>, force: bool) {
     }
 
     // load .gitrepos
-    if let Some(toml_config) = load_config(input_path) {
+    if let Some(toml_config) = load_config(&config_file) {
         let default_branch = toml_config.default_branch;
 
         // handle sync
@@ -159,7 +164,7 @@ pub fn exec(path: Option<String>, force: bool) {
 
             // print out each repo when failed
             if !errors.is_empty() {
-                eprintln!("{} repositories failed:", errors.len());
+                eprintln!("{} repositories failed.", errors.len());
                 eprintln!("");
 
                 for (toml_repo, error) in errors {
@@ -174,6 +179,11 @@ pub fn exec(path: Option<String>, force: bool) {
                 }
             }
         }
+    } else {
+        println!(
+            "load config file failed. err : {}",
+            config_file.to_str().unwrap()
+        );
     }
 }
 

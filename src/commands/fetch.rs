@@ -8,7 +8,7 @@ use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
     env,
     io::{BufRead, BufReader},
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
     process::Stdio,
     sync::Arc,
@@ -16,7 +16,7 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -31,8 +31,13 @@ pub fn exec(path: Option<String>) {
         return;
     }
 
+    // set config file path
+    let config_file = match config {
+        Some(r) => cwd.join(r),
+        _ => input_path.join(".gitrepos"),
+    };
+
     // check if .gitrepos exists
-    let config_file = input_path.join(".gitrepos");
     if config_file.is_file() == false {
         println!(
             "{} not found, try {} instead!",
@@ -43,9 +48,9 @@ pub fn exec(path: Option<String>) {
     }
 
     // load .gitrepos
-    if let Some(toml_config) = load_config(input_path) {
-        if let Some(repos) = toml_config.repos {
-            let repos_count = repos.len();
+    if let Some(toml_config) = load_config(&config_file) {
+        if let Some(toml_repos) = toml_config.repos {
+            let repos_count = toml_repos.len();
 
             // multi_progress manages multiple progress bars from different threads
             // use Arc to share the MultiProgress across more than 1 thread
@@ -83,9 +88,9 @@ pub fn exec(path: Option<String>) {
 
             // pool.install means that `.par_iter()` will use the thread pool we've built above.
             let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
-                let res = repos
+                let res = toml_repos
                     .par_iter()
-                    .map(|repo| {
+                    .map(|toml_repo| {
                         let idx = counter.inc();
                         let prefix = format!("[{:02}/{:02}]", idx, repos_count);
 
@@ -99,27 +104,30 @@ pub fn exec(path: Option<String>) {
                         );
 
                         // execute fetch command with progress
-                        let result =
-                            match execute_with_progress(input_path, repo, &prefix, &progress_bar) {
-                                Ok(_) => {
-                                    progress_bar.finish_with_message(format!(
-                                        "{} {} {}",
-                                        "✓".bold().green(),
-                                        &prefix,
-                                        repo.local.as_ref().unwrap().bold().magenta()
-                                    ));
-                                    Ok(())
-                                }
-                                Err(e) => {
-                                    progress_bar.finish_with_message(format!(
-                                        "{} {} {}",
-                                        "x".bold().red(),
-                                        &prefix,
-                                        repo.local.as_ref().unwrap().bold().magenta()
-                                    ));
-                                    Err((repo, e))
-                                }
-                            };
+                        let execute_result =
+                            execute_with_progress(input_path, toml_repo, &prefix, &progress_bar);
+
+                        // handle result
+                        let result = match execute_result {
+                            Ok(_) => {
+                                progress_bar.finish_with_message(format!(
+                                    "{} {} {}",
+                                    "✓".bold().green(),
+                                    &prefix,
+                                    toml_repo.local.as_ref().unwrap().bold().magenta()
+                                ));
+                                Ok(())
+                            }
+                            Err(e) => {
+                                progress_bar.finish_with_message(format!(
+                                    "{} {} {}",
+                                    "x".bold().red(),
+                                    &prefix,
+                                    toml_repo.local.as_ref().unwrap().bold().magenta()
+                                ));
+                                Err((toml_repo, e))
+                            }
+                        };
 
                         // update total progress bar
                         total_bar.inc(1);
@@ -146,11 +154,14 @@ pub fn exec(path: Option<String>) {
 
             // print out each repo that failed to fetch
             if !errors.is_empty() {
-                eprintln!("{} repositories failed:", errors.len());
+                eprintln!("{} repositories failed.", errors.len());
                 eprintln!("");
 
-                for (repo, error) in errors {
-                    eprintln!("{} errors:", repo.local.as_ref().unwrap().bold().magenta());
+                for (toml_repo, error) in errors {
+                    eprintln!(
+                        "{} errors:",
+                        toml_repo.local.as_ref().unwrap().bold().magenta()
+                    );
                     error
                         .chain()
                         .for_each(|cause| eprintln!("  {}", cause.bold().red()));
@@ -163,7 +174,7 @@ pub fn exec(path: Option<String>) {
 
 fn execute_with_progress(
     input_path: &Path,
-    repo: &TomlRepo,
+    toml_repo: &TomlRepo,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
@@ -176,7 +187,7 @@ fn execute_with_progress(
     ];
     let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
 
-    let local_path = repo.local.as_ref().unwrap();
+    let local_path = toml_repo.local.as_ref().unwrap();
     progress_bar.set_message(format!(
         "{:9} {} : starting",
         prefix,

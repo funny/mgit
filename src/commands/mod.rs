@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 use toml_edit;
 
 pub mod clean;
@@ -95,23 +95,20 @@ impl TomlConfig {
     }
 }
 
-// deserialize config file .gitrepos
-pub fn load_config(path: &Path) -> Option<TomlConfig> {
-    let pb = path.to_path_buf();
-
-    let config_file = pb.join(".gitrepos");
+// deserialize config file (.gitrepos) with full file path
+pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     if config_file.is_file() {
         let txt = fs::read_to_string(config_file).unwrap();
         let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
 
-        return Some(toml_config)
+        return Some(toml_config);
     }
 
     // check if .mgit/ exists
-    let user_dir = pb.join(".mgit");
-    if user_dir.is_dir() {
-        // TODO: override toml_config by user setup
-    }
+    // let user_dir = config_file.parent().unwrap().join(".mgit");
+    // if user_dir.is_dir() {
+    //     // TODO: override toml_config by user setup
+    // }
 
     None
 }
