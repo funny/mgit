@@ -16,8 +16,8 @@ fn cli_init_with_path_only() {
     create_repos_tree1(&path);
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
-    // excute cli init function with path
-    excute_cargo_cmd("mgit", &["init", &input_path]);
+    // execute cli init function with path
+    execute_cargo_cmd("mgit", &["init", &input_path]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "\\.gitrepos").unwrap();
@@ -59,8 +59,8 @@ fn cli_init_with_path_force1() {
     create_repos_tree1(&path);
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
-    // excute cli init function with path
-    excute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
+    // execute cli init function with path
+    execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "\\.gitrepos").unwrap();
@@ -103,8 +103,8 @@ fn cli_init_with_path_force2() {
     create_repos_tree2(&path);
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
-    // excute cli init function with path
-    excute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
+    // execute cli init function with path
+    execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "\\.gitrepos").unwrap();
@@ -160,8 +160,8 @@ fn cli_init_with_path_force3() {
     create_repos_tree3(&path);
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
-    // excute cli init function with path
-    excute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
+    // execute cli init function with path
+    execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "\\.gitrepos").unwrap();
@@ -226,7 +226,7 @@ remote = "https://github.com/console-rs/indicatif.git"
     assert_eq!(real_result.trim(), expect_result.trim());
 }
 
-pub fn excute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) {
+pub fn execute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) {
     std::process::Command::new(cmd)
         .current_dir(path.to_path_buf())
         .args(args)
@@ -238,7 +238,7 @@ pub fn excute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) {
         .unwrap();
 }
 
-pub fn excute_cargo_cmd(cmd: &str, args: &[&str]) {
+pub fn execute_cargo_cmd(cmd: &str, args: &[&str]) {
     Command::cargo_bin(cmd)
         .unwrap()
         .args(args)
@@ -267,10 +267,10 @@ pub fn create_repos_tree1(path: &PathBuf) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        excute_cmd(&dir, "git", &["init"]);
+        execute_cmd(&dir, "git", &["init"]);
 
         // add remote
-        excute_cmd(&dir, "git", &["remote", "add", "origin", remotes[idx]]);
+        execute_cmd(&dir, "git", &["remote", "add", "origin", remotes[idx]]);
     }
 }
 
@@ -278,9 +278,9 @@ pub fn create_repos_tree2(path: &PathBuf) {
     create_repos_tree1(path);
 
     // set root git init
-    excute_cmd(path, "git", &["init"]);
+    execute_cmd(path, "git", &["init"]);
     let root_remote = "https://github.com/rust-lang/git2-rs.git";
-    excute_cmd(path, "git", &["remote", "add", "origin", root_remote]);
+    execute_cmd(path, "git", &["remote", "add", "origin", root_remote]);
 }
 
 pub fn create_repos_tree3(path: &PathBuf) {
@@ -313,10 +313,10 @@ pub fn create_repos_tree3(path: &PathBuf) {
             println!("{:?}", dir);
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
             // create local git repositoris
-            excute_cmd(&dir, "git", &["init"]);
+            execute_cmd(&dir, "git", &["init"]);
 
             // add remote
-            excute_cmd(&dir, "git", &["remote", "add", "origin", remotes[idx]]);
+            execute_cmd(&dir, "git", &["remote", "add", "origin", remotes[idx]]);
         }
     }
 }

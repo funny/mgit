@@ -98,9 +98,9 @@ pub fn exec(path: Option<String>) {
                                 .template("{spinner:.green.dim.bold} {msg} "),
                         );
 
-                        // excute fetch command with progress
+                        // execute fetch command with progress
                         let result =
-                            match excute_with_progress(&prefix, input_path, repo, &progress_bar) {
+                            match execute_with_progress(input_path, repo, &prefix, &progress_bar) {
                                 Ok(_) => {
                                     progress_bar.finish_with_message(format!(
                                         "{} {} {}",
@@ -161,10 +161,10 @@ pub fn exec(path: Option<String>) {
     }
 }
 
-fn excute_with_progress(
-    prefix: &str,
+fn execute_with_progress(
     input_path: &Path,
     repo: &TomlRepo,
+    prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let args = vec![

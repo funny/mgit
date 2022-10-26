@@ -33,7 +33,14 @@ enum Commands {
     },
 
     /// Sync git repos
-    Sync {},
+    Sync {
+        /// The sync directory
+        path: Option<String>,
+
+        /// discard local changes after fetched
+        #[arg(long, action = ArgAction::SetTrue)]
+        force: bool,
+    },
 
     /// Fetch git repos
     Fetch {
@@ -68,8 +75,8 @@ pub fn main() {
             commands::init::exec(path, force);
         }
 
-        Commands::Sync {} => {
-            commands::sync::exec();
+        Commands::Sync { path, force } => {
+            commands::sync::exec(path, force);
         }
 
         Commands::Fetch { path } => {
