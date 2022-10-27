@@ -78,15 +78,18 @@ pub fn exec(path: Option<String>, force: bool) {
             };
 
             // get branch
-            let branch = match repo.head() {
-                Ok(r) => {
-                    if r.is_branch() {
-                        r.shorthand().map(|s| String::from(s))
-                    } else {
-                        None
+            let mut branch: Option<String> = None;
+
+            if let Ok(head) = repo.head() {
+                if let Some(refname) = head.name() {
+                    if let Ok(buf) = repo.branch_upstream_name(refname) {
+                        branch = buf
+                            .as_str()
+                            .map(|str| str.split("refs/remotes/origin/").last())
+                            .unwrap_or(None)
+                            .map(str::to_string)
                     }
                 }
-                _ => None,
             };
 
             // normalize path if needed
