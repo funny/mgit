@@ -26,12 +26,6 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
     println!("sync repos in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
-    // check if input is a valid directory
-    if input_path.is_dir() == false {
-        println!("Directory {} not found!", input.bold().magenta());
-        return;
-    }
-
     // set config file path
     let config_file = match config {
         Some(r) => cwd.join(r),
@@ -199,7 +193,7 @@ fn execute_sync_with_progress(
     let full_path = &input_path.join(rel_path);
 
     // make repo directory and skip clone the repository
-    std::fs::create_dir_all(full_path).unwrap();
+    std::fs::create_dir_all(full_path)?;
 
     let toml_repo = &mut toml_repo.clone();
 
