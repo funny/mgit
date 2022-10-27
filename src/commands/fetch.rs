@@ -1,7 +1,8 @@
-use super::{load_config, TomlRepo};
+use super::{find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
+use git2::Repository;
 use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
@@ -96,23 +97,28 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
 
                         // create progress bar for each repo
                         let progress_bar = multi_progress.insert(idx, ProgressBar::new_spinner());
-                        progress_bar.set_message("waiting...");
-                        progress_bar.enable_steady_tick(500);
                         progress_bar.set_style(
                             ProgressStyle::default_spinner()
-                                .template("{spinner:.green.dim.bold} {msg} "),
+                                .template("{spinner:.green.dim.bold} {wide_msg} ")
+                                .tick_chars("/-\\| "),
                         );
+                        progress_bar.enable_steady_tick(500);
+                        progress_bar.set_message(format!("{:>9} waiting...", &prefix));
 
                         // execute fetch command with progress
-                        let execute_result =
-                            execute_with_progress(input_path, toml_repo, &prefix, &progress_bar);
+                        let execute_result = execute_fetch_with_progress(
+                            input_path,
+                            toml_repo,
+                            &prefix,
+                            &progress_bar,
+                        );
 
                         // handle result
                         let result = match execute_result {
                             Ok(_) => {
                                 progress_bar.finish_with_message(format!(
                                     "{} {} {}",
-                                    "✓".bold().green(),
+                                    "√".bold().green(),
                                     &prefix,
                                     toml_repo.local.as_ref().unwrap().bold().magenta()
                                 ));
@@ -172,24 +178,37 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     }
 }
 
-fn execute_with_progress(
+fn execute_fetch_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = &input_path.join(rel_path);
+
+    // try open git repo
+    let repo = Repository::open(full_path)?;
+    // get remote name from url
+    let remote_url = toml_repo
+        .remote
+        .as_ref()
+        .with_context(|| "remote url is null.")?;
+    let remote_name = find_remote_name_by_url(&repo, remote_url)?;
+
     let args = vec![
         "fetch",
-        "--all",
+        &remote_name,
         "--prune",
         "--recurse-submodules=on-demand",
         "--progress",
     ];
+
     let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
 
     let local_path = toml_repo.local.as_ref().unwrap();
     progress_bar.set_message(format!(
-        "{:9} {} : starting",
+        "{:>9} {} : starting",
         prefix,
         local_path.clone().bold().magenta()
     ));

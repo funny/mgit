@@ -1,4 +1,4 @@
-use super::{load_config, TomlRepo};
+use super::{find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -94,12 +94,13 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
 
                         // create progress bar for each repo
                         let progress_bar = multi_progress.insert(idx, ProgressBar::new_spinner());
-                        progress_bar.set_message("waiting...");
-                        progress_bar.enable_steady_tick(500);
                         progress_bar.set_style(
                             ProgressStyle::default_spinner()
-                                .template("{spinner:.green.dim.bold} {msg} "),
+                                .template("{spinner:.green.dim.bold} {wide_msg} ")
+                                .tick_chars("/-\\| "),
                         );
+                        progress_bar.enable_steady_tick(500);
+                        progress_bar.set_message(format!("{:>9} waiting...", &prefix));
 
                         // execute command according each repo status
                         let execute_result = execute_sync_with_progress(
@@ -116,7 +117,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
                             Ok(_) => {
                                 progress_bar.finish_with_message(format!(
                                     "{} {} {}",
-                                    "✓".bold().green(),
+                                    "√".bold().green(),
                                     &prefix,
                                     toml_repo.local.as_ref().unwrap().bold().magenta()
                                 ));
@@ -272,18 +273,27 @@ fn execute_fetch_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path.clone());
+    let full_path = input_path.join(rel_path.clone());
+
+    // try open git repo
+    let repo = Repository::open(&full_path)?;
+    // get remote name from url
+    let remote_url = toml_repo
+        .remote
+        .as_ref()
+        .with_context(|| "remote url is null.")?;
+    let remote_name = find_remote_name_by_url(&repo, remote_url)?;
 
     let args = vec![
         "fetch",
-        "--all",
+        &remote_name,
         "--prune",
         "--recurse-submodules=on-demand",
         "--progress",
     ];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -295,12 +305,12 @@ fn execute_init_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["init"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -312,7 +322,7 @@ fn execute_add_remote_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     // git remote add origin {url}
     let args = vec![
@@ -323,7 +333,7 @@ fn execute_add_remote_with_progress(
     ];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -335,12 +345,12 @@ fn execute_stash_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["stash", "--include-untracked"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -352,12 +362,12 @@ fn execute_clean_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["clean", "-fd"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -369,7 +379,7 @@ fn execute_reset_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     // branch/default_branch
     let mut repo_head: String;
@@ -388,7 +398,7 @@ fn execute_reset_with_progress(
     let args = vec!["reset", "--hard", &repo_head];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -400,7 +410,7 @@ fn execute_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     progress_bar.set_message(format!(
-        "{:9} {} : starting",
+        "{:>9} {} : starting",
         prefix,
         rel_path.bold().magenta()
     ));

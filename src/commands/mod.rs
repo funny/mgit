@@ -1,3 +1,4 @@
+use git2::Repository;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -104,4 +105,22 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
         return Some(toml_config);
     }
     None
+}
+
+fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
+    let remotes: Vec<String> = repo
+        .remotes()
+        .map_err(|error| error)?
+        .iter()
+        .map(|name| name.expect("Remote name is invalid utf-8"))
+        .map(|name| name.to_owned())
+        .collect();
+
+    for remote_name in remotes {
+        let remote = repo.find_remote(&remote_name)?;
+        if remote.url().unwrap() == url {
+            return Ok(remote_name);
+        }
+    }
+    Err(anyhow::anyhow!("remote {} not found.", url))
 }
