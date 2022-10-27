@@ -1,26 +1,74 @@
-mgit 是一个用 rust 编写的，git 多仓库管理工具
+mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能有：
 
-- 提供 cli 和 gui 界面
-- 提供批量 fetch，update 功能
-- 提供一键清理仓库功能
-- 通过解析 toml 文件获取仓库本地与远程地址
-- 通过 .repo/ 存储用户自定义配置（包括分支名，版本 tag 等）
+- 一键生成当前文件夹下所有仓库的管理配置文件
+- 根据配置文件内容，更新指定仓库的 branch，tag 或 commit 
+- 根据配置文件内容，清理文件夹下的无用仓库
+- 提供 cli 工具和 gui 工具
 
-### cli
+## 命令行工具 (CLI)
 
-- **mgit init ./foo/bar** 初始化项目，检索指定文件夹下的 git 仓库情况，构建 `.gitrepos` 文件
-- **mgit sync** 根据 `.gitrepos` 和 `.mgit/` 下的情况更新仓库
-- **mgit clean --force** 根据 `.gitrepos` 清理不在其下的 git 仓库，如果使用 —force 则不询问直接删除
-- **mgit fetch** 只执行 fetch 更新
+```shell
+Usage: mgit.exe <COMMAND>
 
-### gui
+Commands:
+  init   Init git repos
+  sync   Sync git repos
+  fetch  Fetch git repos
+  clean  Clean unused git repos
+  help   Print this message or the help of the given subcommand(s)
 
-- 提供勾选界面
-- 提供新增 和 删除 界面
-- 提供批量提交界面
-- 提供批量打 tag 界面
+Options:
+  -h, --help     Print help information
+  -V, --version  Print version information
+```
 
-### 参考
+### init 
 
-- [https://docs.rs/git2/latest/git2/](https://docs.rs/git2/latest/git2/)
-- [https://docs.rs/clap/latest/clap/](https://docs.rs/clap/latest/clap/)
+```shell
+mgit init [OPTIONS] [PATH]
+```
+
+初始化指定目录，扫描目录夹下的 git 仓库，并生成配置文件 `.gitrepos`
+
+- **--force** 强制执行并覆盖已有的 `.gitrepos`
+
+### fetch 
+
+```shell
+mgit fetch [OPTIONS] [PATH]
+```
+
+对指定目录执行 `git fetch` 指令
+
+- **--config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
+
+### sync 
+
+```shell
+mgit sync [OPTIONS] [PATH]
+```
+
+通过配置文件，拉取更新仓库。
+
+- **--config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--force** 清理已存在的修改，并强制设置仓库为配置中的指定版本
+
+### clean 
+
+TODO
+
+## 图形界面工具 (GUI)
+
+- 正在开发
+  - 提供勾选界面
+  - 提供新增 和 删除 界面
+  - 提供批量提交界面
+  - 提供批量打 tag 界面
+
+## 参考
+
+- [git2](https://github.com/rust-lang/git2-rs)
+- [clap](https://github.com/clap-rs/clap)
+- [git-workspace](https://github.com/orf/git-workspace)
+- [git-repo-manager](https://github.com/hakoerber/git-repo-manager)
+

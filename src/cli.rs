@@ -40,7 +40,7 @@ enum Commands {
         path: Option<String>,
 
         /// use custom config file
-        #[arg(long, value_name = "FILE")]
+        #[arg(short, long, value_name = "FILE")]
         config: Option<PathBuf>,
 
         /// discard local changes after fetched
