@@ -86,8 +86,8 @@ pub fn exec(path: Option<String>, force: bool) {
                         branch = buf
                             .as_str()
                             .map(|str| str.split("refs/remotes/origin/").last())
-                            .map(|str| str.map(str::to_string))
-                            .unwrap_or(None);
+                            .unwrap_or(None)
+                            .map(str::to_string)
                     }
                 }
             };
