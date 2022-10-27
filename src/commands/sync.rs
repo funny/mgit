@@ -1,4 +1,4 @@
-use super::{load_config, TomlRepo};
+use super::{find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -273,10 +273,10 @@ fn execute_fetch_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path.clone());
+    let full_path = input_path.join(rel_path.clone());
 
     // try open git repo
-    let repo = Repository::open(&input_path)?;
+    let repo = Repository::open(&full_path)?;
     // get remote name from url
     let remote_url = toml_repo
         .remote
@@ -293,7 +293,7 @@ fn execute_fetch_with_progress(
     ];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -305,12 +305,12 @@ fn execute_init_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["init"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -322,7 +322,7 @@ fn execute_add_remote_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     // git remote add origin {url}
     let args = vec![
@@ -333,7 +333,7 @@ fn execute_add_remote_with_progress(
     ];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -345,12 +345,12 @@ fn execute_stash_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["stash", "--include-untracked"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -362,12 +362,12 @@ fn execute_clean_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     let args = vec!["clean", "-fd"];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -379,7 +379,7 @@ fn execute_reset_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let input_path = input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
     // branch/default_branch
     let mut repo_head: String;
@@ -398,7 +398,7 @@ fn execute_reset_with_progress(
     let args = vec!["reset", "--hard", &repo_head];
 
     let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(input_path);
+    let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
@@ -460,22 +460,4 @@ fn execute_with_progress(
     }
 
     Ok(())
-}
-
-fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
-    let remotes: Vec<String> = repo
-        .remotes()
-        .map_err(|error| error)?
-        .iter()
-        .map(|name| name.expect("Remote name is invalid utf-8"))
-        .map(|name| name.to_owned())
-        .collect();
-
-    for remote_name in remotes {
-        let remote = repo.find_remote(&remote_name)?;
-        if remote.url().unwrap() == url {
-            return Ok(remote_name);
-        }
-    }
-    Err(anyhow::anyhow!("not find remote name."))
 }

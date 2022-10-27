@@ -1,4 +1,4 @@
-use super::{load_config, TomlRepo};
+use super::{find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -106,8 +106,12 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                         progress_bar.set_message(format!("{:>9} waiting...", &prefix));
 
                         // execute fetch command with progress
-                        let execute_result =
-                            execute_with_progress(input_path, toml_repo, &prefix, &progress_bar);
+                        let execute_result = execute_fetch_with_progress(
+                            input_path,
+                            toml_repo,
+                            &prefix,
+                            &progress_bar,
+                        );
 
                         // handle result
                         let result = match execute_result {
@@ -174,25 +178,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     }
 }
 
-fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
-    let remotes: Vec<String> = repo
-        .remotes()
-        .map_err(|error| error)?
-        .iter()
-        .map(|name| name.expect("Remote name is invalid utf-8"))
-        .map(|name| name.to_owned())
-        .collect();
-
-    for remote_name in remotes {
-        let remote = repo.find_remote(&remote_name)?;
-        if remote.url().unwrap() == url {
-            return Ok(remote_name);
-        }
-    }
-    Err(anyhow::anyhow!("not find remote name."))
-}
-
-fn execute_with_progress(
+fn execute_fetch_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
     prefix: &str,
