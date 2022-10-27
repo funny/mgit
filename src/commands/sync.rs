@@ -94,12 +94,13 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
 
                         // create progress bar for each repo
                         let progress_bar = multi_progress.insert(idx, ProgressBar::new_spinner());
-                        progress_bar.set_message("waiting...");
-                        progress_bar.enable_steady_tick(500);
                         progress_bar.set_style(
                             ProgressStyle::default_spinner()
-                                .template("{spinner:.green.dim.bold} {msg} "),
+                                .template("{spinner:.green.dim.bold} {wide_msg} ")
+                                .tick_chars("/-\\| "),
                         );
+                        progress_bar.enable_steady_tick(500);
+                        progress_bar.set_message(format!("{:>9} waiting...", &prefix));
 
                         // execute command according each repo status
                         let execute_result = execute_sync_with_progress(
@@ -116,7 +117,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
                             Ok(_) => {
                                 progress_bar.finish_with_message(format!(
                                     "{} {} {}",
-                                    "✓".bold().green(),
+                                    "√".bold().green(),
                                     &prefix,
                                     toml_repo.local.as_ref().unwrap().bold().magenta()
                                 ));
@@ -274,9 +275,18 @@ fn execute_fetch_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let input_path = input_path.join(rel_path.clone());
 
+    // try open git repo
+    let repo = Repository::open(&input_path)?;
+    // get remote name from url
+    let remote_url = toml_repo
+        .remote
+        .as_ref()
+        .with_context(|| "remote url is null.")?;
+    let remote_name = find_remote_name_by_url(&repo, remote_url)?;
+
     let args = vec![
         "fetch",
-        "--all",
+        &remote_name,
         "--prune",
         "--recurse-submodules=on-demand",
         "--progress",
@@ -400,7 +410,7 @@ fn execute_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     progress_bar.set_message(format!(
-        "{:9} {} : starting",
+        "{:>9} {} : starting",
         prefix,
         rel_path.bold().magenta()
     ));
@@ -450,4 +460,22 @@ fn execute_with_progress(
     }
 
     Ok(())
+}
+
+fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
+    let remotes: Vec<String> = repo
+        .remotes()
+        .map_err(|error| error)?
+        .iter()
+        .map(|name| name.expect("Remote name is invalid utf-8"))
+        .map(|name| name.to_owned())
+        .collect();
+
+    for remote_name in remotes {
+        let remote = repo.find_remote(&remote_name)?;
+        if remote.url().unwrap() == url {
+            return Ok(remote_name);
+        }
+    }
+    Err(anyhow::anyhow!("not find remote name."))
 }
