@@ -51,6 +51,10 @@ enum Commands {
         /// discard local changes after sync
         #[arg(long, action = ArgAction::SetTrue)]
         hard: bool,
+
+        /// sets the number of threads to be used
+        #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
+        thread: usize,
     },
 
     /// Fetch git repos
@@ -61,13 +65,20 @@ enum Commands {
         /// use custom config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
+
+        /// sets the number of threads to be used
+        #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
+        thread: usize,
     },
 
     /// Clean unused git repos
     Clean {
-        /// force remove git repos without prompt
-        #[arg(long, action = ArgAction::SetTrue)]
-        force: bool,
+        /// The init directory
+        path: Option<String>,
+
+        /// use custom config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
     },
 }
 
@@ -95,6 +106,7 @@ pub fn main() {
             config,
             stash,
             hard,
+            thread,
         } => {
             let stash_mode = match (stash, hard) {
                 (false, false) => commands::StashMode::Normal,
@@ -109,15 +121,19 @@ pub fn main() {
                     .exit();
                 }
             };
-            commands::sync::exec(path, config, stash_mode);
+            commands::sync::exec(path, config, stash_mode, thread);
         }
 
-        Commands::Fetch { path, config } => {
-            commands::fetch::exec(path, config);
+        Commands::Fetch {
+            path,
+            config,
+            thread,
+        } => {
+            commands::fetch::exec(path, config, thread);
         }
 
-        Commands::Clean { force } => {
-            commands::clean::exec(force);
+        Commands::Clean { path, config } => {
+            commands::clean::exec(path, config);
         }
     };
 }

@@ -127,6 +127,14 @@ pub fn exec(path: Option<String>, force: bool) {
 
     println!("");
 
+    // keep list sort same on different device
+    repos.sort_by(|a, b| {
+        a.local
+            .as_ref()
+            .unwrap()
+            .to_lowercase()
+            .cmp(&b.local.as_ref().unwrap().to_lowercase())
+    });
     toml_config.repos = Some(repos);
     println!("{} files scanned", count);
 

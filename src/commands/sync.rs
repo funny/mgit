@@ -17,7 +17,12 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode) {
+pub fn exec(
+    path: Option<String>,
+    config: Option<PathBuf>,
+    stash_mode: StashMode,
+    num_threads: usize,
+) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -76,7 +81,10 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode
             });
 
             // create thread pool, and set the number of thread to use by using `.num_threads(count)`
-            let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
+            let thread_pool = match rayon::ThreadPoolBuilder::new()
+                .num_threads(num_threads)
+                .build()
+            {
                 Ok(r) => r,
                 Err(e) => {
                     println!("{}", e);
