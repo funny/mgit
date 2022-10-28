@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::commands;
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{error::ErrorKind, ArgAction, CommandFactory, Parser, Subcommand};
 use git2;
 
 // ========================================
@@ -17,12 +17,13 @@ use git2;
     propagate_version = true,
     arg_required_else_help(true)
 )]
+
 struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 }
-
 #[derive(Subcommand)]
+
 enum Commands {
     /// Init git repos
     Init {
@@ -43,9 +44,13 @@ enum Commands {
         #[arg(short, long, value_name = "FILE")]
         config: Option<PathBuf>,
 
-        /// discard local changes after fetched
+        /// stash local changes after sync
         #[arg(long, action = ArgAction::SetTrue)]
-        force: bool,
+        stash: bool,
+
+        /// discard local changes after sync
+        #[arg(long, action = ArgAction::SetTrue)]
+        hard: bool,
     },
 
     /// Fetch git repos
@@ -88,9 +93,23 @@ pub fn main() {
         Commands::Sync {
             path,
             config,
-            force,
+            stash,
+            hard,
         } => {
-            commands::sync::exec(path, config, force);
+            let stash_mode = match (stash, hard) {
+                (false, false) => commands::StashMode::Normal,
+                (true, false) => commands::StashMode::Stash,
+                (false, true) => commands::StashMode::Hard,
+                _ => {
+                    let mut cmd = Cli::command();
+                    cmd.error(
+                        ErrorKind::ArgumentConflict,
+                        "'--stash' and '--hard' can't be used together.",
+                    )
+                    .exit();
+                }
+            };
+            commands::sync::exec(path, config, stash_mode);
         }
 
         Commands::Fetch { path, config } => {
