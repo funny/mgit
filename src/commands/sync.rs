@@ -1,4 +1,4 @@
-use super::{find_remote_name_by_url, load_config, TomlRepo};
+use super::{find_remote_name_by_url, load_config, StashMode, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -17,7 +17,7 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -106,7 +106,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
                         let execute_result = execute_sync_with_progress(
                             input_path,
                             toml_repo,
-                            force,
+                            &stash_mode,
                             &default_branch,
                             &prefix,
                             &progress_bar,
@@ -185,7 +185,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, force: bool) {
 fn execute_sync_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
-    force: bool,
+    stash_mode: &StashMode,
     default_branch: &Option<String>,
     prefix: &str,
     progress_bar: &ProgressBar,
@@ -214,30 +214,44 @@ fn execute_sync_with_progress(
         toml_repo.branch = default_branch.to_owned();
     }
 
-    // fetch
+    // fetch sssssssssssss
     execute_fetch_with_progress(input_path, toml_repo, prefix, progress_bar)?;
 
-    if !force {
-        // stash without `--force` option, maybe return error first without any commit
-        match execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar).with_context(
-            || {
-                format!(
-                    "With branch : {}.",
-                    toml_repo.branch.as_ref().unwrap().to_string()
-                )
-            },
-        ) {
-            _ => {
-                // reset
-                execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
-            }
-        }
-    } else {
-        // clean
-        execute_clean_with_progress(input_path, toml_repo, prefix, progress_bar)?;
+    match stash_mode {
+        StashMode::Normal => {
+            // stash with `--stash` option, maybe return error firstly without any commit
+            let stash_result = execute_stash(input_path, toml_repo);
+            let stash_message = stash_result.unwrap_or("stash failed.".to_string());
+            // TODO: tooltip of stash content
 
-        // reset
-        execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
+            // reset
+            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
+                .with_context(|| stash_message.clone())?;
+
+            // stash reapply
+            if stash_message.contains("Saved working directory and index state WIP") {
+                // TODO: tooltip of conflict
+                execute_stash_pop(input_path, toml_repo).unwrap_or_default();
+            }
+
+            Ok(())
+        }
+        StashMode::Stash => {
+            let stash_result = execute_stash(input_path, toml_repo);
+
+            // reset
+            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
+                .with_context(|| stash_result.unwrap_or("stash failed.".to_string()))
+        }
+        StashMode::Hard => {
+            // TODO: mgit clean
+
+            // clean
+            execute_clean_with_progress(input_path, toml_repo, prefix, progress_bar)?;
+
+            // reset
+            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
+        } // stash without `--force` option, maybe return error first without any commit
     }
 }
 
@@ -338,23 +352,6 @@ fn execute_add_remote_with_progress(
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
 }
 
-fn execute_stash_with_progress(
-    input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    progress_bar: &ProgressBar,
-) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
-
-    let args = vec!["stash", "--include-untracked"];
-
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
-}
-
 fn execute_clean_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
@@ -401,6 +398,36 @@ fn execute_reset_with_progress(
     let full_command = command.args(args).current_dir(full_path);
 
     execute_with_progress(rel_path, full_command, prefix, progress_bar)
+}
+
+fn execute_stash(input_path: &Path, toml_repo: &TomlRepo) -> Result<String, anyhow::Error> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = input_path.join(rel_path);
+
+    let args = vec!["stash", "--include-untracked"];
+
+    execute_cmd(&full_path, "git", &args)
+}
+
+fn execute_stash_pop(input_path: &Path, toml_repo: &TomlRepo) -> Result<String, anyhow::Error> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = input_path.join(rel_path);
+
+    let args = vec!["stash", "pop"];
+
+    execute_cmd(&full_path, "git", &args)
+}
+
+pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
+    let output = std::process::Command::new(cmd)
+        .current_dir(path.to_path_buf())
+        .args(args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output()?;
+
+    let res = String::from_utf8(output.stdout)?;
+    Ok(res)
 }
 
 fn execute_with_progress(
