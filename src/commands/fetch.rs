@@ -34,7 +34,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
 
     // set config file path
     let config_file = match config {
-        Some(r) => cwd.join(r),
+        Some(r) => r,
         _ => input_path.join(".gitrepos"),
     };
 

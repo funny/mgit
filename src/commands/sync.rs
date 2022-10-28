@@ -28,7 +28,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode
 
     // set config file path
     let config_file = match config {
-        Some(r) => cwd.join(r),
+        Some(r) => r,
         _ => input_path.join(".gitrepos"),
     };
 
@@ -214,7 +214,7 @@ fn execute_sync_with_progress(
         toml_repo.branch = default_branch.to_owned();
     }
 
-    // fetch sssssssssssss
+    // fetch
     execute_fetch_with_progress(input_path, toml_repo, prefix, progress_bar)?;
 
     match stash_mode {
@@ -231,6 +231,9 @@ fn execute_sync_with_progress(
             // stash reapply
             if stash_message.contains("Saved working directory and index state WIP") {
                 // TODO: tooltip of conflict
+                // git diff --name-only --diff-filter=U --relative
+                // or
+                // git diff --check
                 execute_stash_pop(input_path, toml_repo).unwrap_or_default();
             }
 
