@@ -3,7 +3,7 @@ use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
 use git2::Repository;
-use indicatif::{MultiProgress, ProgressBar, ProgressFinish, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
@@ -13,8 +13,6 @@ use std::{
     process::Command,
     process::Stdio,
     sync::Arc,
-    thread,
-    thread::JoinHandle,
 };
 
 pub fn exec(
@@ -58,27 +56,24 @@ pub fn exec(
             // multi_progress manages multiple progress bars from different threads
             // use Arc to share the MultiProgress across more than 1 thread
             let multi_progress = Arc::new(MultiProgress::new());
+
             // create total progress bar and set progress style
             let total_bar = multi_progress.add(ProgressBar::new(repos_count as u64));
-
             total_bar.set_style(
-                ProgressStyle::default_bar()
-                    .template("[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}")
-                    .progress_chars("=>·")
-                    .on_finish(ProgressFinish::Abandon),
+                ProgressStyle::with_template(
+                    "[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}",
+                )
+                .unwrap()
+                .progress_chars("=>·"),
             );
-            total_bar.enable_steady_tick(500);
+            total_bar.enable_steady_tick(std::time::Duration::from_millis(500));
+
             // user a counter
             let counter = RelaxedCounter::new(1);
 
             // Clone Arc<MultiProgress> and spawn a thread.
-            // call `.join()` on the `MultiProgress` to updated progress bars.
             // need to do this in a thread as the `.map()` we do below also blocks.
             let multi_progress_wait = multi_progress.clone();
-            let thread_handle: JoinHandle<anyhow::Result<()>> = thread::spawn(move || {
-                multi_progress_wait.join()?;
-                Ok(())
-            });
 
             // create thread pool, and set the number of thread to use by using `.num_threads(count)`
             let thread_pool = match rayon::ThreadPoolBuilder::new()
@@ -101,13 +96,14 @@ pub fn exec(
                         let prefix = format!("[{:02}/{:02}]", idx, repos_count);
 
                         // create progress bar for each repo
-                        let progress_bar = multi_progress.insert(idx, ProgressBar::new_spinner());
+                        let progress_bar =
+                            multi_progress_wait.insert(idx, ProgressBar::new_spinner());
                         progress_bar.set_style(
-                            ProgressStyle::default_spinner()
-                                .template("{spinner:.green.dim.bold} {wide_msg} ")
+                            ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
+                                .unwrap()
                                 .tick_chars("/-\\| "),
                         );
-                        progress_bar.enable_steady_tick(500);
+                        progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
                         progress_bar.set_message(format!("{:>9} waiting...", &prefix));
 
                         // execute command according each repo status
@@ -156,9 +152,6 @@ pub fn exec(
 
                 res
             });
-
-            // wait for the thread to finish
-            let _ = thread_handle.join();
 
             println!(
                 "{} repositories sync update successfully.",
@@ -473,7 +466,7 @@ fn execute_with_progress(
             }
             let line = std::str::from_utf8(&output).unwrap();
             let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let truncated_line = truncate_str(plain_line.trim(), 70, "...");
+            let truncated_line = truncate_str(plain_line.trim(), 50, "...");
             progress_bar.set_message(format!(
                 "{:>9} {}: {}",
                 prefix,
