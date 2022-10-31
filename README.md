@@ -55,7 +55,13 @@ mgit sync [OPTIONS] [PATH]
 
 ### clean 
 
-TODO
+```shell
+mgit clean [OPTIONS] [PATH]
+```
+
+根据配置文件的仓库路径和指定路径的仓库之间的比对结果，清理不在配置文件中的仓库。
+
+- **--config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
 
 ## 图形界面工具 (GUI)
 
