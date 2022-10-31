@@ -17,7 +17,7 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -34,7 +34,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
 
     // set config file path
     let config_file = match config {
-        Some(r) => cwd.join(r),
+        Some(r) => r,
         _ => input_path.join(".gitrepos"),
     };
 
@@ -79,7 +79,10 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
             });
 
             // create thread pool, and set the number of thread to use by using `.num_threads(count)`
-            let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
+            let thread_pool = match rayon::ThreadPoolBuilder::new()
+                .num_threads(num_threads)
+                .build()
+            {
                 Ok(r) => r,
                 Err(e) => {
                     println!("{}", e);

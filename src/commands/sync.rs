@@ -17,7 +17,12 @@ use std::{
     thread::JoinHandle,
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode) {
+pub fn exec(
+    path: Option<String>,
+    config: Option<PathBuf>,
+    stash_mode: StashMode,
+    num_threads: usize,
+) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -28,7 +33,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode
 
     // set config file path
     let config_file = match config {
-        Some(r) => cwd.join(r),
+        Some(r) => r,
         _ => input_path.join(".gitrepos"),
     };
 
@@ -76,7 +81,10 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, stash_mode: StashMode
             });
 
             // create thread pool, and set the number of thread to use by using `.num_threads(count)`
-            let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
+            let thread_pool = match rayon::ThreadPoolBuilder::new()
+                .num_threads(num_threads)
+                .build()
+            {
                 Ok(r) => r,
                 Err(e) => {
                     println!("{}", e);
@@ -214,7 +222,7 @@ fn execute_sync_with_progress(
         toml_repo.branch = default_branch.to_owned();
     }
 
-    // fetch sssssssssssss
+    // fetch
     execute_fetch_with_progress(input_path, toml_repo, prefix, progress_bar)?;
 
     match stash_mode {
@@ -231,6 +239,9 @@ fn execute_sync_with_progress(
             // stash reapply
             if stash_message.contains("Saved working directory and index state WIP") {
                 // TODO: tooltip of conflict
+                // git diff --name-only --diff-filter=U --relative
+                // or
+                // git diff --check
                 execute_stash_pop(input_path, toml_repo).unwrap_or_default();
             }
 
