@@ -30,7 +30,21 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// force remove git repos without prompt
+        /// Force remove git repos without prompt
+        #[arg(long, action = ArgAction::SetTrue)]
+        force: bool,
+    },
+
+    /// Snapshot git repos
+    Snapshot {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use custom config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
+        /// Force remove git repos without prompt
         #[arg(long, action = ArgAction::SetTrue)]
         force: bool,
     },
@@ -40,19 +54,19 @@ enum Commands {
         /// The sync directory
         path: Option<String>,
 
-        /// use custom config file
+        /// Use custom config file
         #[arg(short, long, value_name = "FILE")]
         config: Option<PathBuf>,
 
-        /// stash local changes after sync
+        /// Stash local changes after sync
         #[arg(long, action = ArgAction::SetTrue)]
         stash: bool,
 
-        /// discard local changes after sync
+        /// Discard local changes after sync
         #[arg(long, action = ArgAction::SetTrue)]
         hard: bool,
 
-        /// sets the number of threads to be used
+        /// Sets the number of threads to be used
         #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
         thread: usize,
     },
@@ -62,11 +76,11 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// use custom config file
+        /// Use custom config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
 
-        /// sets the number of threads to be used
+        /// Sets the number of threads to be used
         #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
         thread: usize,
     },
@@ -76,7 +90,7 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// use custom config file
+        /// Use custom config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
     },
@@ -98,7 +112,15 @@ pub fn main() {
     // handle commands
     match args.command {
         Commands::Init { path, force } => {
-            commands::init::exec(path, force);
+            commands::snapshot::exec(path, None, true, force);
+        }
+
+        Commands::Snapshot {
+            path,
+            config,
+            force,
+        } => {
+            commands::snapshot::exec(path, config, false, force);
         }
 
         Commands::Sync {

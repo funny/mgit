@@ -3,10 +3,10 @@ use git2::Repository;
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub fn exec(path: Option<String>, force: bool) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>, init: bool, force: bool) {
     let cwd = std::env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -21,8 +21,13 @@ pub fn exec(path: Option<String>, force: bool) {
         return;
     }
 
+    // set config file path
+    let config_file = match config {
+        Some(r) => r,
+        _ => input_path.join(".gitrepos"),
+    };
+
     // check if .gitrepos exists
-    let config_file = input_path.join(".gitrepos");
     if config_file.is_file() && !force {
         println!(
             "{} already inited, try {} instead!",
@@ -31,6 +36,7 @@ pub fn exec(path: Option<String>, force: bool) {
         );
         return;
     }
+
     let mut toml_config = TomlConfig {
         version: None,
         default_branch: Some(String::from("develop")),
@@ -77,20 +83,29 @@ pub fn exec(path: Option<String>, force: bool) {
                 _ => None,
             };
 
-            // get branch
+            let mut commit: Option<String> = None;
             let mut branch: Option<String> = None;
 
+            // set branch or commit-id with '--init' option
             if let Ok(head) = repo.head() {
                 if let Some(refname) = head.name() {
-                    if let Ok(buf) = repo.branch_upstream_name(refname) {
-                        branch = buf
-                            .as_str()
-                            .map(|str| str.split("refs/remotes/origin/").last())
-                            .unwrap_or(None)
-                            .map(str::to_string)
+                    if init {
+                        // get tracking brach
+                        if let Ok(buf) = repo.branch_upstream_name(refname) {
+                            branch = buf
+                                .as_str()
+                                .map(|str| str.split("refs/remotes/origin/").last())
+                                .unwrap_or(None)
+                                .map(str::to_string)
+                        }
+                    } else {
+                        // get local head commit id
+                        if let Ok(oid) = repo.refname_to_id(refname) {
+                            commit = Some(oid.to_string());
+                        }
                     }
                 }
-            };
+            }
 
             // normalize path if needed
             let norm_path = rel_path
@@ -112,7 +127,7 @@ pub fn exec(path: Option<String>, force: bool) {
                 remote,
                 branch,
                 tag: None,
-                commit: None,
+                commit,
             };
             repos.push(toml_repo);
             println!("  + {}", norm_str);

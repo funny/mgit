@@ -6,7 +6,7 @@ use toml_edit;
 
 pub mod clean;
 pub mod fetch;
-pub mod init;
+pub mod snapshot;
 pub mod sync;
 
 /// this type is used to deserialize `.gitrepos` files.
