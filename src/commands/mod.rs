@@ -125,6 +125,7 @@ fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyho
     Err(anyhow::anyhow!("remote {} not found.", url))
 }
 
+#[derive(PartialEq)]
 pub enum StashMode {
     Normal,
     Stash,

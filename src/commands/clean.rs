@@ -12,8 +12,8 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
 
-    // starting sync repos
-    println!("sync repos in {}", input.bold().magenta());
+    // starting clean repos
+    println!("start cleaning repos in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
     // set config file path
@@ -49,7 +49,6 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                 .unwrap()
                 .compile_matcher();
 
-            println!("search and clean git repos:");
             let mut it = WalkDir::new(input_path).into_iter();
             let mut unused_paths: Vec<PathBuf> = Vec::new();
             loop {
@@ -111,11 +110,17 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
 
             // show statistics info
             if count == 0 {
-                println!("no repository removed.");
+                println!("finish clean: no repository removed.\n");
             } else if count == 1 {
-                println!("{} repository removed.", count.to_string().red());
+                println!(
+                    "finish clean: {} repository removed.\n",
+                    count.to_string().bold().magenta()
+                );
             } else {
-                println!("{} repositories removed.", count.to_string().red());
+                println!(
+                    "finish clean: {} repositories removed.\n",
+                    count.to_string().bold().magenta()
+                );
             }
         }
     }
