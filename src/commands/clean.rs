@@ -103,7 +103,10 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                     let _ = std::fs::remove_dir_all(input_path.join(&unused_path));
                 }
                 count += 1;
-                println!("\tremove {} repository.", unused_path.display());
+                println!(
+                    "  remove unused repository: {} ",
+                    unused_path.display().magenta()
+                );
             }
 
             // show statistics info
