@@ -33,7 +33,7 @@ mgit init [OPTIONS] [PATH]
 
 Options
 
-- **force** 强制执行并覆盖已有的 `.gitrepos`
+- **--force** 强制执行并覆盖已有的 `.gitrepos`
 
 ### snapshot 
 
@@ -45,8 +45,8 @@ mgit snapshot [OPTIONS] [PATH]
 
 Options
 
-- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
-- **force** 强制执行并覆盖已有的配置文件
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--force** 强制执行并覆盖已有的配置文件
 
 ### fetch 
 
@@ -58,7 +58,8 @@ mgit fetch [OPTIONS] [PATH]
 
 Options
 
-- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
 
 ### sync 
 
@@ -70,8 +71,10 @@ mgit sync [OPTIONS] [PATH]
 
 Options
 
-- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
-- **force** 清理已存在的修改，并强制设置仓库为配置中的指定版本
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
+- **--stash** 在 sync 前暂存本地改动
+- **--hard** 在 sync 前忽略所有本地改动
 
 ### clean 
 
@@ -83,7 +86,7 @@ mgit clean [OPTIONS] [PATH]
 
 Options
 
-- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 
 ## 图形界面工具 (GUI)
 
