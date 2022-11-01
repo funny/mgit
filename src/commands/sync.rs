@@ -221,7 +221,8 @@ fn execute_sync_with_progress(
     match stash_mode {
         StashMode::Normal => {
             // stash with `--stash` option, maybe return error firstly without any commit
-            let stash_result = execute_stash(input_path, toml_repo);
+            let stash_result =
+                execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar);
             let stash_message = stash_result.unwrap_or("stash failed.".to_string());
             // TODO: tooltip of stash content
 
@@ -232,16 +233,15 @@ fn execute_sync_with_progress(
             // stash reapply
             if stash_message.contains("Saved working directory and index state WIP") {
                 // TODO: tooltip of conflict
-                // git diff --name-only --diff-filter=U --relative
-                // or
-                // git diff --check
-                execute_stash_pop(input_path, toml_repo).unwrap_or_default();
+                let _ =
+                    execute_stash_pop_with_progress(input_path, toml_repo, prefix, progress_bar);
             }
 
             Ok(())
         }
         StashMode::Stash => {
-            let stash_result = execute_stash(input_path, toml_repo);
+            let stash_result =
+                execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar);
 
             // reset
             execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
@@ -291,7 +291,7 @@ fn execute_fetch_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path.clone());
+    let full_path = input_path.join(rel_path);
 
     // try open git repo
     let repo = Repository::open(&full_path)?;
@@ -325,12 +325,18 @@ fn execute_init_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
+    progress_bar.set_message(format!(
+        "{:>9} {} : initializing...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
+
     let args = vec!["init"];
 
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
+    match execute_cmd(&full_path, "git", &args) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
+    }
 }
 
 fn execute_add_remote_with_progress(
@@ -342,6 +348,12 @@ fn execute_add_remote_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
+    progress_bar.set_message(format!(
+        "{:>9} {} : addding remote...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
+
     // git remote add origin {url}
     let args = vec![
         "remote",
@@ -350,10 +362,10 @@ fn execute_add_remote_with_progress(
         toml_repo.remote.as_ref().unwrap(),
     ];
 
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
+    match execute_cmd(&full_path, "git", &args) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
+    }
 }
 
 fn execute_clean_with_progress(
@@ -365,12 +377,18 @@ fn execute_clean_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
+    progress_bar.set_message(format!(
+        "{:>9} {} : cleaning...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
+
     let args = vec!["clean", "-fd"];
 
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
+    match execute_cmd(&full_path, "git", &args) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
+    }
 }
 
 fn execute_reset_with_progress(
@@ -381,6 +399,12 @@ fn execute_reset_with_progress(
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
+
+    progress_bar.set_message(format!(
+        "{:>9} {} : resetting...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
 
     // branch/default_branch
     let mut repo_head: String;
@@ -398,24 +422,46 @@ fn execute_reset_with_progress(
 
     let args = vec!["reset", "--hard", &repo_head];
 
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
+    match execute_cmd(&full_path, "git", &args) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
+    }
 }
 
-fn execute_stash(input_path: &Path, toml_repo: &TomlRepo) -> Result<String, anyhow::Error> {
+fn execute_stash_with_progress(
+    input_path: &Path,
+    toml_repo: &TomlRepo,
+    prefix: &str,
+    progress_bar: &ProgressBar,
+) -> Result<String, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
+
+    progress_bar.set_message(format!(
+        "{:>9} {} : stashing...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
 
     let args = vec!["stash", "--include-untracked"];
 
     execute_cmd(&full_path, "git", &args)
 }
 
-fn execute_stash_pop(input_path: &Path, toml_repo: &TomlRepo) -> Result<String, anyhow::Error> {
+fn execute_stash_pop_with_progress(
+    input_path: &Path,
+    toml_repo: &TomlRepo,
+    prefix: &str,
+    progress_bar: &ProgressBar,
+) -> Result<String, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
+
+    progress_bar.set_message(format!(
+        "{:>9} {} : pop stash...",
+        prefix,
+        rel_path.bold().magenta()
+    ));
 
     let args = vec!["stash", "pop"];
 
@@ -423,12 +469,14 @@ fn execute_stash_pop(input_path: &Path, toml_repo: &TomlRepo) -> Result<String, 
 }
 
 pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
-    let output = std::process::Command::new(cmd)
-        .current_dir(path.to_path_buf())
-        .args(args)
+    let mut command = std::process::Command::new(cmd);
+    let full_command = command.current_dir(path.to_path_buf()).args(args);
+
+    let output = full_command
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
-        .output()?;
+        .output()
+        .with_context(|| format!("Error starting command: {:?}", full_command))?;
 
     let res = String::from_utf8(output.stdout)?;
     Ok(res)
@@ -440,12 +488,6 @@ fn execute_with_progress(
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
-    progress_bar.set_message(format!(
-        "{:>9} {} : starting",
-        prefix,
-        rel_path.bold().magenta()
-    ));
-
     let mut spawned = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -466,13 +508,14 @@ fn execute_with_progress(
             }
             let line = std::str::from_utf8(&output).unwrap();
             let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let truncated_line = truncate_str(plain_line.trim(), 50, "...");
-            progress_bar.set_message(format!(
+            let full_line = format!(
                 "{:>9} {}: {}",
                 prefix,
                 rel_path.bold().magenta(),
-                truncated_line
-            ));
+                plain_line.trim()
+            );
+            let truncated_line = truncate_str(&full_line, 70, "...");
+            progress_bar.set_message(format!("{}", truncated_line));
             last_line = plain_line;
         }
     }

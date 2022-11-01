@@ -202,16 +202,9 @@ fn execute_fetch_with_progress(
     let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
 
     let local_path = toml_repo.local.as_ref().unwrap();
-    progress_bar.set_message(format!(
-        "{:>9} {} : starting",
-        prefix,
-        local_path.clone().bold().magenta()
-    ));
 
     let mut command = Command::new("git".to_string());
-    let full_command = command
-        .args(args)
-        .current_dir(input_path.clone().join(local_path.clone()));
+    let full_command = command.args(args).current_dir(input_path.join(local_path));
 
     let mut spawned = full_command
         .stdin(Stdio::null())
@@ -220,11 +213,7 @@ fn execute_fetch_with_progress(
         .spawn()
         .with_context(|| format!("Error starting command {:?}", full_command))?;
 
-    let mut last_line = format!(
-        "{:>9} {}: running...",
-        prefix,
-        local_path.clone().bold().magenta()
-    );
+    let mut last_line = format!("{:>9} {}: running...", prefix, local_path.bold().magenta());
     progress_bar.set_message(last_line.clone());
 
     // get message from stderr with "--progress" option
@@ -237,14 +226,15 @@ fn execute_fetch_with_progress(
             }
             let line = std::str::from_utf8(&output).unwrap();
             let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let truncated_line = truncate_str(plain_line.trim(), 70, "...");
-            progress_bar.set_message(format!(
+            let full_line = format!(
                 "{:>9} {}: {}",
                 prefix,
-                local_path.clone().bold().magenta(),
-                truncated_line.clone()
-            ));
-            last_line = plain_line.clone();
+                rel_path.bold().magenta(),
+                plain_line.trim()
+            );
+            let truncated_line = truncate_str(&full_line, 70, "...");
+            progress_bar.set_message(format!("{}", truncated_line));
+            last_line = plain_line;
         }
     }
 
