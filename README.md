@@ -43,12 +43,10 @@ mgit snapshot [OPTIONS] [PATH]
 
 快照指定目录，扫描目录夹下的 git 仓库，并将当前 commit 记录生成配置文件
 
-- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
-- **force** 强制执行并覆盖已有的配置文件
-
 Options
 
-- **force** 强制执行并覆盖已有的 `.gitrepos`
+- **config <FILE>** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **force** 强制执行并覆盖已有的配置文件
 
 ### fetch 
 
