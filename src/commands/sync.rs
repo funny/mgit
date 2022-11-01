@@ -1,4 +1,4 @@
-use super::{find_remote_name_by_url, load_config, StashMode, TomlRepo};
+use super::{clean, find_remote_name_by_url, load_config, StashMode, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -23,14 +23,14 @@ pub fn exec(
 ) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
-    let input = path.or(cwd_str).unwrap();
+    let input = path.clone().or(cwd_str).unwrap();
 
     // starting sync repos
     println!("sync repos in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
     // set config file path
-    let config_file = match config {
+    let config_file = match config.clone() {
         Some(r) => r,
         _ => input_path.join(".gitrepos"),
     };
@@ -48,6 +48,11 @@ pub fn exec(
     // load .gitrepos
     if let Some(toml_config) = load_config(&config_file) {
         let default_branch = toml_config.default_branch;
+
+        // remove unused repositories when use '--config' option
+        if stash_mode == StashMode::Hard {
+            clean::exec(path, config);
+        }
 
         // handle sync
         if let Some(toml_repos) = toml_config.repos {
