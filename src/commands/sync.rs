@@ -1,4 +1,8 @@
-use super::{clean, find_remote_name_by_url, load_config, ResetType, StashMode, TomlRepo};
+use crate::commands::cmp_local_remote;
+
+use super::{
+    clean, execute_cmd, find_remote_name_by_url, load_config, ResetType, StashMode, TomlRepo,
+};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -124,12 +128,27 @@ pub fn exec(
                         // handle result
                         let result = match execute_result {
                             Ok(_) => {
-                                progress_bar.finish_with_message(format!(
-                                    "{} {} {}",
+                                // get ahead/behind betwwen local and specified commit/tag/branch/
+                                let ahead_behind = match cmp_local_remote(
+                                    input_path,
+                                    toml_repo,
+                                    &default_branch,
+                                ) {
+                                    Ok(r) => r.unwrap(),
+                                    _ => String::new(),
+                                };
+
+                                let message = format!(
+                                    "{} {} {}: {}",
                                     "√".bold().green(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta()
-                                ));
+                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
+                                    &ahead_behind
+                                );
+                                // Truncates message string to a certain number of characters.
+                                let truncated_message = truncate_str(&message, 70, "...");
+                                // show meeshage in progress bar
+                                progress_bar.finish_with_message(format!("{}", truncated_message));
                                 Ok(())
                             }
                             Err(e) => {
@@ -251,7 +270,7 @@ fn execute_sync_with_progress(
             .with_context(|| stash_message.clone())
             .or_else(|e| {
                 // if reset failed, pop stash if stash something this time
-                if stash_message.contains("Saved working directory and index state WIP") {
+                if stash_message.contains("WIP") {
                     let _ = execute_stash_pop_with_progress(
                         input_path,
                         toml_repo,
@@ -292,7 +311,7 @@ fn execute_sync_with_progress(
 //         .unwrap()
 //         .replace("\\", "/");
 //
-//     let args = vec![
+//     let args = [
 //         "clone",
 //         repo.remote.as_ref().unwrap(),
 //         &input_path,
@@ -321,7 +340,7 @@ fn execute_fetch_with_progress(
         .with_context(|| "remote url is null.")?;
     let remote_name = find_remote_name_by_url(&repo, remote_url)?;
 
-    let args = vec![
+    let args = [
         "fetch",
         &remote_name,
         "--prune",
@@ -350,7 +369,7 @@ fn execute_init_with_progress(
         rel_path.bold().magenta()
     ));
 
-    let args = vec!["init"];
+    let args = ["init"];
 
     match execute_cmd(&full_path, "git", &args) {
         Ok(_) => Ok(()),
@@ -374,7 +393,7 @@ fn execute_add_remote_with_progress(
     ));
 
     // git remote add origin {url}
-    let args = vec![
+    let args = [
         "remote",
         "add",
         "origin",
@@ -402,7 +421,7 @@ fn execute_clean_with_progress(
         rel_path.bold().magenta()
     ));
 
-    let args = vec!["clean", "-fd"];
+    let args = ["clean", "-fd"];
 
     match execute_cmd(&full_path, "git", &args) {
         Ok(_) => Ok(()),
@@ -426,26 +445,25 @@ fn execute_reset_with_progress(
         rel_path.bold().magenta()
     ));
 
-    // branch/default_branch
-    let mut repo_head: String;
-    repo_head = "origin/".to_string() + toml_repo.branch.as_ref().unwrap();
-
-    // tag
-    if let Some(tag) = &toml_repo.tag {
-        repo_head = tag.to_string();
-    }
-
-    // commit
-    if let Some(commit) = &toml_repo.commit {
-        repo_head = commit.to_string();
-    }
+    // priority: commit/tag/branch(default-branch)
+    let remote_ref = {
+        if let Some(commit) = &toml_repo.commit {
+            commit.to_string()
+        } else if let Some(tag) = &toml_repo.tag {
+            tag.to_string()
+        } else if let Some(branch) = &toml_repo.branch {
+            "origin/".to_string() + &branch.to_string()
+        } else {
+            String::new()
+        }
+    };
 
     let reset_type = match reset_type {
         ResetType::Soft => "--soft",
         ResetType::Mixed => "--mixed",
         ResetType::Hard => "--hard",
     };
-    let args = vec!["reset", reset_type, &repo_head];
+    let args = ["reset", reset_type, &remote_ref];
 
     match execute_cmd(&full_path, "git", &args) {
         Ok(_) => Ok(()),
@@ -468,7 +486,7 @@ fn execute_stash_with_progress(
         rel_path.bold().magenta()
     ));
 
-    let args = vec!["stash", "--include-untracked"];
+    let args = ["stash", "--include-untracked"];
 
     execute_cmd(&full_path, "git", &args)
 }
@@ -488,28 +506,9 @@ fn execute_stash_pop_with_progress(
         rel_path.bold().magenta()
     ));
 
-    let args = vec!["stash", "pop"];
+    let args = ["stash", "pop"];
 
     execute_cmd(&full_path, "git", &args)
-}
-
-pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
-    let mut command = std::process::Command::new(cmd);
-    let full_command = command.current_dir(path.to_path_buf()).args(args);
-
-    let output = full_command
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .with_context(|| format!("Error starting command: {:?}", full_command))?;
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8(output.stderr)?;
-
-    match output.status.success() {
-        true => Ok(stdout),
-        false => Err(anyhow::anyhow!(stderr)),
-    }
 }
 
 fn execute_with_progress(

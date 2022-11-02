@@ -20,4 +20,4 @@ indicatif = { version = "0.17.1"}
 console = { version = "0.15.2", features = ["ansi-parsing"], default_features = false }
 atomic-counter = "1.0.1"
 rayon = "1.5"
-
+regex = "1.6.0"

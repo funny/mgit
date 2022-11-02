@@ -25,13 +25,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/fly-apps/hello-rust.git"
-commit = "5d1ed90a208da9f3ac6e23c4bd396933fa16f857"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
 
 [[repos]]
 local = "foobar"
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -49,13 +49,8 @@ branch = "main"
     let _ = execute_cmd(&path, "git", &["add", "."]);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
-    // compaire changes after commit
-    if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert_eq!(
-            output.trim(),
-            "On branch master\nnothing to commit, working tree clean"
-        );
-    }
+    // if commit succ
+    assert!(execute_cmd(&path, "git", &["status"]).is_ok());
 
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -99,13 +94,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -129,7 +124,7 @@ branch = "main"
     }
 
     // set invalid branch
-    let toml_string = toml_string.replace("main", "invalid-branch");
+    let toml_string = toml_string.replace("master", "invalid-branch");
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync
@@ -168,13 +163,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -245,7 +240,7 @@ branch = "main"
 fn cli_sync_stash_tracking_invalid() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_stash_tracking_invalid()");
+        .join("target/tmp/test_sync_stash_tracking_invalid");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -258,13 +253,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -288,10 +283,11 @@ branch = "main"
     }
 
     // set invalid branch
-    let toml_string = toml_string.replace("main", "invalid-branch");
+    let toml_string = toml_string.replace("master", "invalid-branch");
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync --stash
+
     execute_cargo_cmd("mgit", &["sync", &input_path, "--stash"]);
 
     // compaire changes after sync
@@ -332,13 +328,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/fly-apps/hello-rust.git"
-commit = "5d1ed90a208da9f3ac6e23c4bd396933fa16f857"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
 
 [[repos]]
 local = "foobar"
-remote = "https://github.com/fly-apps/hello-rust.git"
-branch = "main"
+remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -356,15 +352,8 @@ branch = "main"
     let _ = execute_cmd(&path, "git", &["add", "."]);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
-    // compaire changes after commit
-    if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert_eq!(
-            output.trim(),
-            "On branch master\nnothing to commit, working tree clean"
-        );
-    } else {
-        panic!("commit error.")
-    }
+    // if commit succ
+    assert!(execute_cmd(&path, "git", &["status"]).is_ok());
 
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
@@ -393,7 +382,6 @@ pub fn execute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) -> Result<String, a
         .current_dir(path.to_path_buf())
         .args(args)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;

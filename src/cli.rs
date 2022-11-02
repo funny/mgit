@@ -121,7 +121,6 @@ pub fn main() {
 
         Commands::Snapshot {
             path,
-
             config,
             branch,
             force,

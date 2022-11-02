@@ -1,13 +1,34 @@
+use anyhow::Context;
 use git2::Repository;
+use owo_colors::OwoColorize;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use toml_edit;
 
 pub mod clean;
 pub mod fetch;
 pub mod snapshot;
 pub mod sync;
+
+#[derive(PartialEq)]
+pub enum StashMode {
+    Normal,
+    Stash,
+    Hard,
+}
+
+pub enum ResetType {
+    Soft,
+    Mixed,
+    Hard,
+}
+pub enum SnapshotType {
+    Commit,
+    Branch,
+}
 
 /// this type is used to deserialize `.gitrepos` files.
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,7 +128,7 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     None
 }
 
-fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
+pub fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
     let remotes: Vec<String> = repo
         .remotes()
         .map_err(|error| error)?
@@ -125,19 +146,142 @@ fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyho
     Err(anyhow::anyhow!("remote {} not found.", url))
 }
 
-#[derive(PartialEq)]
-pub enum StashMode {
-    Normal,
-    Stash,
-    Hard,
+pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
+    let mut command = std::process::Command::new(cmd);
+    let full_command = command.current_dir(path.to_path_buf()).args(args);
+
+    let output = full_command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .with_context(|| format!("Error starting command: {:?}", full_command))?;
+
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+
+    match output.status.success() {
+        true => Ok(stdout),
+        false => Err(anyhow::anyhow!(stderr)),
+    }
 }
 
-pub enum ResetType {
-    Soft,
-    Mixed,
-    Hard,
-}
-pub enum SnapshotType {
-    Commit,
-    Branch,
+/// get full ahead/behind values between branches
+pub fn cmp_local_remote(
+    input_path: &Path,
+    toml_repo: &TomlRepo,
+    default_branch: &Option<String>,
+) -> Result<Option<String>, anyhow::Error> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = input_path.join(rel_path);
+
+    // priority: commit/tag/branch/default-branch
+    let (remote_ref, remote_desc) = {
+        if let Some(commit) = &toml_repo.commit {
+            (commit.clone(), (&commit[..7]).to_string())
+        } else if let Some(tag) = &toml_repo.tag {
+            (tag.clone(), tag.clone())
+        } else if let Some(branch) = toml_repo.clone().branch {
+            let branch = "origin/".to_string() + &branch;
+            (branch.clone(), branch)
+        } else if let Some(branch) = default_branch {
+            let branch = "origin/".to_string() + &branch;
+            (branch.clone(), branch.clone())
+        } else {
+            (String::new(), String::new())
+        }
+    };
+
+    // if specified remote commit/tag/branch is null
+    if remote_desc.is_empty() {
+        return Ok(Some("not tracking".to_string()));
+    }
+
+    let mut changed_files: HashSet<String> = HashSet::new();
+
+    // get untracked files (uncommit)
+    let args = ["ls-files", ".", "--exclude-standard", "--others"];
+    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    // get tracked and changed files (uncommit)
+    let args = ["diff", "--name-only"];
+    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    // get cached(staged) files (uncommit)
+    let args = ["diff", "--cached", "--name-only"];
+    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    let mut changes_desc = String::new();
+    if changed_files.is_empty() == false {
+        // format changes tooltip
+        changes_desc = ", ".to_string()
+            + &format!("changes({})", changed_files.len())
+                .red()
+                .to_string();
+    }
+
+    // get local branch
+    let repo = Repository::open(&full_path)?;
+    let branch = match repo.head() {
+        Ok(head) => match head.shorthand() {
+            Some(name) => name.to_string(),
+            _ => String::new(),
+        },
+        _ => String::new(),
+    };
+
+    if branch.is_empty() {
+        return Ok(Some("init commit".to_string()));
+    }
+
+    // get rev-list between local branch and specified remote commit/tag/branch
+    let branch_pair = format!("{}...{}", &branch, &remote_ref);
+    let args = ["rev-list", "--count", "--left-right", &branch_pair];
+    let mut commit_desc = String::new();
+    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
+        let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
+
+        if let Some(caps) = re.captures(&output) {
+            // format commit tooltip
+            let (ahead, begind) = (&caps[1], &caps[2]);
+            commit_desc = match (ahead, begind) {
+                ("0", "0") => String::new(),
+                (_, "0") => {
+                    String::from(", ") + &format!("commits({}↑)", &caps[1]).yellow().to_string()
+                }
+                ("0", _) => {
+                    String::from(", ") + &format!("commits({}↓)", &caps[2]).yellow().to_string()
+                }
+                _ => {
+                    String::from(", ")
+                        + &format!("commits({}↑{}↓)", &caps[1], &caps[2])
+                            .yellow()
+                            .to_string()
+                }
+            };
+        }
+    } else {
+        // if git rev-list find "unknown revision" error
+        commit_desc = format!(", {}", "unknown revision".yellow());
+    }
+
+    // show diff overview
+    let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
+        "already update to date".to_string()
+    } else {
+        format!("{}{}{}", remote_desc.blue(), commit_desc, changes_desc,)
+    };
+
+    Ok(Some(desc))
 }
