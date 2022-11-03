@@ -1,4 +1,4 @@
-use super::{clean, find_remote_name_by_url, load_config, StashMode, TomlRepo};
+use super::{clean, find_remote_name_by_url, load_config, ResetType, StashMode, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -231,9 +231,15 @@ fn execute_sync_with_progress(
             let stash_message = stash_result.unwrap_or("stash failed.".to_string());
             // TODO: tooltip of stash content
 
-            // reset
-            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
-                .with_context(|| stash_message.clone())?;
+            // reset --mixed
+            execute_reset_with_progress(
+                input_path,
+                toml_repo,
+                ResetType::Mixed,
+                prefix,
+                progress_bar,
+            )
+            .with_context(|| stash_message.clone())?;
 
             // stash reapply
             if stash_message.contains("Saved working directory and index state WIP") {
@@ -248,9 +254,15 @@ fn execute_sync_with_progress(
             let stash_result =
                 execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar);
 
-            // reset
-            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
-                .with_context(|| stash_result.unwrap_or("stash failed.".to_string()))
+            // reset --mixed
+            execute_reset_with_progress(
+                input_path,
+                toml_repo,
+                ResetType::Mixed,
+                prefix,
+                progress_bar,
+            )
+            .with_context(|| stash_result.unwrap_or("stash failed.".to_string()))
         }
         StashMode::Hard => {
             // TODO: mgit clean
@@ -259,7 +271,13 @@ fn execute_sync_with_progress(
             execute_clean_with_progress(input_path, toml_repo, prefix, progress_bar)?;
 
             // reset
-            execute_reset_with_progress(input_path, toml_repo, prefix, progress_bar)
+            execute_reset_with_progress(
+                input_path,
+                toml_repo,
+                ResetType::Hard,
+                prefix,
+                progress_bar,
+            )
         } // stash without `--force` option, maybe return error first without any commit
     }
 }
@@ -399,6 +417,7 @@ fn execute_clean_with_progress(
 fn execute_reset_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
+    reset_type: ResetType,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
@@ -425,7 +444,11 @@ fn execute_reset_with_progress(
         repo_head = commit.to_string();
     }
 
-    let args = vec!["reset", "--hard", &repo_head];
+    let reset_type = match reset_type {
+        ResetType::Mixed => "--mixed",
+        ResetType::Hard => "--hard",
+    };
+    let args = vec!["reset", reset_type, &repo_head];
 
     match execute_cmd(&full_path, "git", &args) {
         Ok(_) => Ok(()),
