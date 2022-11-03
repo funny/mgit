@@ -77,7 +77,7 @@ branch = "main"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit sync ./target/tmp/test_sync_hard'
+/// cmd: 'mgit sync ./target/tmp/test_sync_hard --hard'
 /// repos tree:
 ///   test_sync_hard(.git)
 ///     ├─foobar (.git)
