@@ -1,4 +1,4 @@
-use super::{clean, find_remote_name_by_url, load_config, StashMode, TomlRepo};
+use super::{clean, find_remote_name_by_url, load_config, ResetType, StashMode, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -235,7 +235,7 @@ fn execute_sync_with_progress(
             execute_reset_with_progress(
                 input_path,
                 toml_repo,
-                String::from("--mixed"),
+                ResetType::Mixed,
                 prefix,
                 progress_bar,
             )
@@ -258,7 +258,7 @@ fn execute_sync_with_progress(
             execute_reset_with_progress(
                 input_path,
                 toml_repo,
-                String::from("--mixed"),
+                ResetType::Mixed,
                 prefix,
                 progress_bar,
             )
@@ -274,7 +274,7 @@ fn execute_sync_with_progress(
             execute_reset_with_progress(
                 input_path,
                 toml_repo,
-                String::from("--hard"),
+                ResetType::Hard,
                 prefix,
                 progress_bar,
             )
@@ -417,7 +417,7 @@ fn execute_clean_with_progress(
 fn execute_reset_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
-    reset_type: String,
+    reset_type: ResetType,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
@@ -444,7 +444,11 @@ fn execute_reset_with_progress(
         repo_head = commit.to_string();
     }
 
-    let args = vec!["reset", &reset_type, &repo_head];
+    let reset_type = match reset_type {
+        ResetType::Mixed => "--mixed",
+        ResetType::Hard => "--hard",
+    };
+    let args = vec!["reset", reset_type, &repo_head];
 
     match execute_cmd(&full_path, "git", &args) {
         Ok(_) => Ok(()),
