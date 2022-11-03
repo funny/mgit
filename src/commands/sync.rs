@@ -502,12 +502,17 @@ pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyh
 
     let output = full_command
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
         .output()
         .with_context(|| format!("Error starting command: {:?}", full_command))?;
 
-    let res = String::from_utf8(output.stdout)?;
-    Ok(res)
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+
+    match stderr.is_empty() {
+        false => Err(anyhow::anyhow!(stderr)),
+        true => Ok(stdout),
+    }
 }
 
 fn execute_with_progress(
