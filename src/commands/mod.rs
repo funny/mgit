@@ -133,6 +133,7 @@ pub enum StashMode {
 }
 
 pub enum ResetType {
+    Soft,
     Mixed,
     Hard,
 }
