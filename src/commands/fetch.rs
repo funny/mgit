@@ -1,3 +1,5 @@
+use crate::commands::cmp_local_remote;
+
 use super::{find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
@@ -48,6 +50,9 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
 
     // load .gitrepos
     if let Some(toml_config) = load_config(&config_file) {
+        let default_branch = toml_config.default_branch;
+
+        // handle fetch
         if let Some(toml_repos) = toml_config.repos {
             let repos_count = toml_repos.len();
 
@@ -114,12 +119,27 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
                         // handle result
                         let result = match execute_result {
                             Ok(_) => {
-                                progress_bar.finish_with_message(format!(
-                                    "{} {} {}",
+                                // get ahead/behind betwwen local and specified commit/tag/branch/
+                                let ahead_behind = match cmp_local_remote(
+                                    input_path,
+                                    toml_repo,
+                                    &default_branch,
+                                ) {
+                                    Ok(r) => r.unwrap(),
+                                    _ => String::new(),
+                                };
+
+                                let message = format!(
+                                    "{} {} {}: {}",
                                     "√".bold().green(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta()
-                                ));
+                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
+                                    &ahead_behind
+                                );
+                                // Truncates message string to a certain number of characters.
+                                let truncated_message = truncate_str(&message, 70, "...");
+                                // show meeshage in progress bar
+                                progress_bar.finish_with_message(format!("{}", truncated_message));
                                 Ok(())
                             }
                             Err(e) => {
@@ -127,7 +147,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
                                     "{} {} {}",
                                     "x".bold().red(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta()
+                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
                                 ));
                                 Err((toml_repo, e))
                             }
@@ -191,7 +211,7 @@ fn execute_fetch_with_progress(
         .with_context(|| "remote url is null.")?;
     let remote_name = find_remote_name_by_url(&repo, remote_url)?;
 
-    let args = vec![
+    let args = [
         "fetch",
         &remote_name,
         "--prune",
