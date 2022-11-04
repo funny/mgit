@@ -11,10 +11,16 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
+    let input_path = Path::new(&input);
+
+    // if directory doesn't exist, finsh clean
+    if input_path.is_dir() == false {
+        println!("Directory {} not found!", input.bold().magenta());
+        return;
+    }
 
     // starting clean repos
     println!("start cleaning repos in {}", input.bold().magenta());
-    let input_path = Path::new(&input);
 
     // set config file path
     let config_file = match config {

@@ -33,6 +33,12 @@ pub fn exec(
     println!("sync repos in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
+    // if directory doesn't exist, use --hard
+    let stash_mode = match input_path.is_dir() {
+        true => stash_mode,
+        false => StashMode::Hard,
+    };
+
     // set config file path
     let config_file = match config.clone() {
         Some(r) => r,
@@ -54,7 +60,8 @@ pub fn exec(
         let default_branch = toml_config.default_branch;
 
         // remove unused repositories when use '--config' option
-        if stash_mode == StashMode::Hard {
+        // also if input_path not exists, skip this process
+        if stash_mode == StashMode::Hard && input_path.is_dir() {
             clean::exec(path, config);
         }
 
