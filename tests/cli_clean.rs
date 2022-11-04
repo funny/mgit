@@ -1,9 +1,14 @@
-use assert_cmd::prelude::*;
+use crate::common::{execute_cargo_cmd, execute_cmd};
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
-/// test for the repos tree:
-/// repos tree:
+
+mod common;
+/// 测试内容：
+///     1、运行命令 mgit sync <path>
+///     2、清除不在配置文件 (.gitrepos) 中的仓库
+///     3、根目录不是仓库
+///
+/// 测试目录结构:
 ///   test_clean1
 ///     ├─foobar-1 (.git)
 ///     │  ├──foobar-1-1 (.git)
@@ -63,7 +68,7 @@ use std::process::Command;
 #[test]
 fn cli_clean1() {
     let path = env::current_dir().unwrap().join("target\\tmp\\test_clean1");
-    let rel_paths = vec![
+    let rel_paths = [
         "foobar-1",
         "foobar-1/foobar-1-1",
         "foobar-1/foobar-1-2/foobar-1-2-1",
@@ -136,15 +141,18 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// test for the repos tree:
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit sync <path>
+///     2、清除不在配置文件 (.gitrepos) 中的仓库
+///     3、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_clean2 (.git)
 ///     ├─... (same as cli_clean1())
-
 #[test]
 fn cli_clean2() {
     let path = env::current_dir().unwrap().join("target\\tmp\\test_clean2");
-    let rel_paths = vec![
+    let rel_paths = [
         "./",
         "foobar-1",
         "foobar-1/foobar-1-1",
@@ -223,12 +231,18 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// test for the repos tree with '--config':
-/// repos tree: same as cli_clean1()
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --config <path>
+///     2、清除不在配置文件 (.gitrepos) 中的仓库
+///     3、根目录不是仓库
+///
+/// 测试目录结构:
+///   test_clean3
+///     ├─... (same as cli_clean1())
 #[test]
 fn cli_clean3() {
     let path = env::current_dir().unwrap().join("target\\tmp\\test_clean3");
-    let rel_paths = vec![
+    let rel_paths = [
         "foobar-1",
         "foobar-1/foobar-1-1",
         "foobar-1/foobar-1-2/foobar-1-2-1",
@@ -309,7 +323,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-pub fn create_repos_tree(path: &PathBuf, rel_paths: &Vec<&str>) {
+pub fn create_repos_tree(path: &PathBuf, rel_paths: &[&str]) {
     if path.exists() {
         std::fs::remove_dir_all(&path).unwrap();
     }
@@ -322,10 +336,11 @@ pub fn create_repos_tree(path: &PathBuf, rel_paths: &Vec<&str>) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        execute_cmd(&dir, "git", &["init"]);
+        execute_cmd(&dir, "git", &["init"]).expect("git init error");
 
         // add remote
-        execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
+        execute_cmd(&dir, "git", &["remote", "add", "origin", remote])
+            .expect("git remote add error.");
 
         // create some files
         std::fs::File::create(dir.join("1.txt")).ok();
@@ -339,24 +354,4 @@ pub fn create_repos_tree(path: &PathBuf, rel_paths: &Vec<&str>) {
         std::fs::File::create(dir.join("bar/1.txt")).ok();
         std::fs::File::create(dir.join("bar/2.txt")).ok();
     }
-}
-
-pub fn execute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) {
-    std::process::Command::new(cmd)
-        .current_dir(path.to_path_buf())
-        .args(args)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .unwrap()
-        .wait()
-        .unwrap();
-}
-
-pub fn execute_cargo_cmd(cmd: &str, args: &[&str]) {
-    Command::cargo_bin(cmd)
-        .unwrap()
-        .args(args)
-        .assert()
-        .success();
 }
