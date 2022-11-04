@@ -3,8 +3,14 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-/// cmd: 'mgit init ./target/tmp/test_init_simple --init'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit init <path>
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、branch
+///     3、根目录不是仓库
+///     4. 只有同级仓库目录
+///
+/// 测试目录结构:
 ///   test_snapshot_init
 ///     ├─imgui-rs (.git)
 ///     ├─indicatif (.git)
@@ -52,8 +58,14 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit init ./target/tmp/test_init_force1 --force'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit init <path> --force
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、branch
+///     3、根目录是仓库
+///     4. 只有同级仓库目录
+///
+/// 测试目录结构:
 ///   test_snapshot_init_force1 (.git)
 ///     ├─imgui-rs (.git)
 ///     ├─indicatif (.git)
@@ -105,8 +117,14 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit init ./target/tmp/cli_init_force2 --force'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit init <path> --force
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、branch
+///     3、根目录不是仓库
+///     4. 具有父子级仓库目录
+///
+/// 测试目录结构:
 ///   test_snapshot_init_force2 (.git)
 ///     ├─imgui-rs (.git)
 ///     │  ├──imgui-rs (.git)
@@ -199,8 +217,11 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit snapshot ./target/tmp/test_snapshot_simple'
-/// repos tress is same as `cli_init_simple()`
+/// 测试内容：
+///     1、运行命令 mgit snapshot <path>
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、commit
+///     3、根目录不是仓库
 #[test]
 fn cli_snapshot_simple() {
     let path = env::current_dir()
@@ -247,8 +268,11 @@ commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit snapshot ./target/tmp/cli_snapshot_branch --branch'
-/// repos tress is same as `cli_init_simple()`
+/// 测试内容：
+///     1、运行命令 mgit snapshot <path> --branch
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、branch
+///     3、根目录不是仓库
 #[test]
 fn cli_snapshot_branch() {
     let path = env::current_dir()
@@ -291,8 +315,11 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit snapshot ./target/tmp/test_snapshot_force --init --force --config ./target/tmp/test_snapshot_force/.gitrepos'
-/// repos tress is same as `cli_init_force2()`
+/// 测试内容：
+///     1、运行命令 mgit snapshot <path> --force --config <path>
+///     2、抓取 path 下的所有仓库信息到配置文件 (.gitrepos)
+///        仓库信息为 local、remote、commit
+///     3、根目录是仓库
 #[test]
 fn cli_snapshot_force() {
     let path = env::current_dir()
@@ -413,7 +440,7 @@ pub fn create_repos_tree1(path: &PathBuf) {
 
     let remote = "https://github.com/emk/heroku-rust-cargo-hello.git";
 
-    let repo_names = vec!["foobar-1", "foobar-2", "foobar-3", "foobar-4"];
+    let repo_names = ["foobar-1", "foobar-2", "foobar-3", "foobar-4"];
 
     for idx in 0..repo_names.len() {
         let dir = path.join(repo_names[idx]);

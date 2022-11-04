@@ -1,10 +1,14 @@
-use assert_cmd::prelude::*;
+use crate::common::{execute_cargo_cmd, execute_cmd};
 use std::env;
-use std::path::PathBuf;
-use std::process::Command;
 
-/// cmd: 'mgit sync ./target/tmp/test_sync_simple'
-/// repos tree:
+mod common;
+/// 测试内容：
+///     1、运行命令 mgit sync <path>
+///     2、批量同步配置文件 (.gitrepos)所有仓库，模拟 git reset --soft 到远端 commit/tag/branch   
+///     3、local commit 会还原成 local changes    
+///     4、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_sync_simple(.git)
 ///     ├─foobar (.git)
 ///     └─1.txt
@@ -37,7 +41,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
 
     // initialize the repositories tree
-    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ("mgit", &["sync", &input_path, "--hard"]);
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -46,7 +50,7 @@ branch = "master"
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = (&path, "git", &["add", "."]);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     // if commit succ
@@ -72,8 +76,13 @@ branch = "master"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit sync ./target/tmp/test_sync_simple_tracking_invalid'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit sync <path>
+///     2、模拟远端 commit/tag/branch 失效时的情况
+///     3、commit 会还原成 local changes    
+///     4、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_sync_tracking_invalid(.git)
 ///     ├─foobar (.git)
 ///     └─1.txt
@@ -141,8 +150,12 @@ branch = "master"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit sync ./target/tmp/test_sync_simple --stash'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --stash
+///     2、测试 sync 时，先 stash local changes，再 reset 到远端 commit/tag/branch
+///     3、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_sync_stash(.git)
 ///     ├─foobar (.git)
 ///     └─1.txt
@@ -231,8 +244,12 @@ branch = "master"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-// cmd: 'mgit sync ./target/tmp/test_sync_stash_tracking_invalid --stash'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --stash
+///     2、测试远端 commit/tag/branch 失时导致 sync 失败，将 stash 的内容（若有的话）pop 出来
+///     3、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_sync_stash(.git)
 ///     ├─foobar (.git)
 ///     └─1.txt
@@ -307,7 +324,12 @@ branch = "master"
 }
 
 /// cmd: 'mgit sync ./target/tmp/test_sync_hard --hard'
-/// repos tree:
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --hard
+///     2、测试 sync后, 丢弃所有 changes
+///     3、根目录是仓库
+///
+/// 测试目录结构:
 ///   test_sync_hard(.git)
 ///     ├─foobar (.git)
 ///     └─1.txt
@@ -375,28 +397,4 @@ branch = "master"
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
-}
-
-pub fn execute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
-    let output = std::process::Command::new(cmd)
-        .current_dir(path.to_path_buf())
-        .args(args)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8(output.stderr)?;
-
-    match output.status.success() {
-        false => Err(anyhow::anyhow!(stderr)),
-        true => Ok(stdout),
-    }
-}
-
-pub fn execute_cargo_cmd(cmd: &str, args: &[&str]) {
-    Command::cargo_bin(cmd)
-        .unwrap()
-        .args(args)
-        .assert()
-        .success();
 }
