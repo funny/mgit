@@ -40,9 +40,13 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// Use custom config file
+        /// Use specified config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
+
+        /// snapshot by branch
+        #[arg(long, action = ArgAction::SetTrue)]
+        branch: bool,
 
         /// Force remove git repos without prompt
         #[arg(long, action = ArgAction::SetTrue)]
@@ -54,7 +58,7 @@ enum Commands {
         /// The sync directory
         path: Option<String>,
 
-        /// Use custom config file
+        /// Use specified config file
         #[arg(short, long, value_name = "FILE")]
         config: Option<PathBuf>,
 
@@ -76,7 +80,7 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// Use custom config file
+        /// Use specified config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
 
@@ -90,7 +94,7 @@ enum Commands {
         /// The init directory
         path: Option<String>,
 
-        /// Use custom config file
+        /// Use specified config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
     },
@@ -112,15 +116,21 @@ pub fn main() {
     // handle commands
     match args.command {
         Commands::Init { path, force } => {
-            commands::snapshot::exec(path, None, true, force);
+            commands::snapshot::exec(path, None, commands::SnapshotType::Branch, force);
         }
 
         Commands::Snapshot {
             path,
+
             config,
+            branch,
             force,
         } => {
-            commands::snapshot::exec(path, config, false, force);
+            let snapshot_type = match branch {
+                true => commands::SnapshotType::Branch,
+                false => commands::SnapshotType::Commit,
+            };
+            commands::snapshot::exec(path, config, snapshot_type, force);
         }
 
         Commands::Sync {

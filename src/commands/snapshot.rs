@@ -1,4 +1,4 @@
-use super::{TomlConfig, TomlRepo};
+use super::{SnapshotType, TomlConfig, TomlRepo};
 use git2::Repository;
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
@@ -6,7 +6,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, init: bool, force: bool) {
+pub fn exec(
+    path: Option<String>,
+    config: Option<PathBuf>,
+    snapshot_type: SnapshotType,
+    force: bool,
+) {
     let cwd = std::env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -89,19 +94,22 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, init: bool, force: bo
             // set branch or commit-id with '--init' option
             if let Ok(head) = repo.head() {
                 if let Some(refname) = head.name() {
-                    if init {
-                        // get tracking brach
-                        if let Ok(buf) = repo.branch_upstream_name(refname) {
-                            branch = buf
-                                .as_str()
-                                .map(|str| str.split("refs/remotes/origin/").last())
-                                .unwrap_or(None)
-                                .map(str::to_string)
+                    match snapshot_type {
+                        SnapshotType::Commit => {
+                            // get local head commit id
+                            if let Ok(oid) = repo.refname_to_id(refname) {
+                                commit = Some(oid.to_string());
+                            }
                         }
-                    } else {
-                        // get local head commit id
-                        if let Ok(oid) = repo.refname_to_id(refname) {
-                            commit = Some(oid.to_string());
+                        SnapshotType::Branch => {
+                            // get tracking brach
+                            if let Ok(buf) = repo.branch_upstream_name(refname) {
+                                branch = buf
+                                    .as_str()
+                                    .map(|str| str.split("refs/remotes/origin/").last())
+                                    .unwrap_or(None)
+                                    .map(str::to_string)
+                            }
                         }
                     }
                 }

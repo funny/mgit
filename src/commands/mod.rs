@@ -137,3 +137,7 @@ pub enum ResetType {
     Mixed,
     Hard,
 }
+pub enum SnapshotType {
+    Commit,
+    Branch,
+}
