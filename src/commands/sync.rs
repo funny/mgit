@@ -225,11 +225,20 @@ fn execute_sync_with_progress(
 
     match stash_mode {
         StashMode::Normal => {
+            // reset --soft
+            execute_reset_with_progress(
+                input_path,
+                toml_repo,
+                ResetType::Soft,
+                prefix,
+                progress_bar,
+            )
+        }
+        StashMode::Stash => {
             // stash with `--stash` option, maybe return error firstly without any commit
             let stash_result =
                 execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar);
             let stash_message = stash_result.unwrap_or("stash failed.".to_string());
-            // TODO: tooltip of stash content
 
             // reset --mixed
             execute_reset_with_progress(
@@ -239,34 +248,21 @@ fn execute_sync_with_progress(
                 prefix,
                 progress_bar,
             )
-            .with_context(|| stash_message.clone())?;
-
-            // stash reapply
-            if stash_message.contains("Saved working directory and index state WIP") {
-                // TODO: tooltip of conflict
-                let _ =
-                    execute_stash_pop_with_progress(input_path, toml_repo, prefix, progress_bar);
-            }
-
-            Ok(())
-        }
-        StashMode::Stash => {
-            let stash_result =
-                execute_stash_with_progress(input_path, toml_repo, prefix, progress_bar);
-
-            // reset --mixed
-            execute_reset_with_progress(
-                input_path,
-                toml_repo,
-                ResetType::Mixed,
-                prefix,
-                progress_bar,
-            )
-            .with_context(|| stash_result.unwrap_or("stash failed.".to_string()))
+            .with_context(|| stash_message.clone())
+            .or_else(|e| {
+                // if reset failed, pop stash if stash something this time
+                if stash_message.contains("Saved working directory and index state WIP") {
+                    let _ = execute_stash_pop_with_progress(
+                        input_path,
+                        toml_repo,
+                        prefix,
+                        progress_bar,
+                    );
+                }
+                Err(e)
+            })
         }
         StashMode::Hard => {
-            // TODO: mgit clean
-
             // clean
             execute_clean_with_progress(input_path, toml_repo, prefix, progress_bar)?;
 
@@ -445,6 +441,7 @@ fn execute_reset_with_progress(
     }
 
     let reset_type = match reset_type {
+        ResetType::Soft => "--soft",
         ResetType::Mixed => "--mixed",
         ResetType::Hard => "--hard",
     };
@@ -502,12 +499,17 @@ pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyh
 
     let output = full_command
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
         .output()
         .with_context(|| format!("Error starting command: {:?}", full_command))?;
 
-    let res = String::from_utf8(output.stdout)?;
-    Ok(res)
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+
+    match output.status.success() {
+        true => Ok(stdout),
+        false => Err(anyhow::anyhow!(stderr)),
+    }
 }
 
 fn execute_with_progress(
