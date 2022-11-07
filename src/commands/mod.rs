@@ -120,7 +120,11 @@ impl TomlConfig {
 // deserialize config file (.gitrepos) with full file path
 pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     if config_file.is_file() {
-        let txt = fs::read_to_string(config_file).unwrap();
+        // mac not recognize "."
+        let txt = fs::read_to_string(config_file)
+            .unwrap()
+            .replace("\".\"", "\"\"");
+
         let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
 
         return Some(toml_config);
@@ -284,4 +288,17 @@ pub fn cmp_local_remote(
     };
 
     Ok(Some(desc))
+}
+
+/// normalize path if needed
+pub fn norm_path(path: &String) -> String {
+    path.replace("\\", "/")
+}
+
+/// if path is empty, represent it by "."
+pub fn display_path(path: &String) -> String {
+    match path.is_empty() {
+        true => String::from("."),
+        false => path.clone(),
+    }
 }

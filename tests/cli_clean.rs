@@ -153,7 +153,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 fn cli_clean2() {
     let path = env::current_dir().unwrap().join("target\\tmp\\test_clean2");
     let rel_paths = [
-        "./",
+        ".",
         "foobar-1",
         "foobar-1/foobar-1-1",
         "foobar-1/foobar-1-2/foobar-1-2-1",
@@ -171,7 +171,7 @@ fn cli_clean2() {
 default-branch = "develop"
 
 [[repos]]
-local = ". "
+local = "."
 remote = "https://github.com/imgui-rs/imgui-rs.git"
 
 [[repos]]
