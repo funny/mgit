@@ -12,6 +12,7 @@ pub mod clean;
 pub mod fetch;
 pub mod snapshot;
 pub mod sync;
+pub mod track;
 
 #[derive(PartialEq)]
 pub enum StashMode {

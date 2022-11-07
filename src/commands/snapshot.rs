@@ -16,8 +16,8 @@ pub fn exec(
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
 
-    // starting init repos
-    println!("init {}", input.bold().magenta());
+    //  start taking snapshot repos
+    println!("take snapshot in {}", input.bold().magenta());
     let input_path = Path::new(&input);
 
     // check if input is a valid directory

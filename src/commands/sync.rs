@@ -1,6 +1,6 @@
 use super::{
     clean, cmp_local_remote, display_path, execute_cmd, find_remote_name_by_url, load_config,
-    ResetType, StashMode, TomlRepo,
+    track::set_tracking_remote_branch, ResetType, StashMode, TomlRepo,
 };
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
@@ -24,6 +24,7 @@ pub fn exec(
     stash_mode: StashMode,
     num_threads: usize,
     silent: bool,
+    no_track: bool,
 ) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
@@ -103,9 +104,12 @@ pub fn exec(
                 }
             };
 
+            // do track flag
+            let do_track = !no_track && !silent;
+
             // pool.install means that `.par_iter()` will use the thread pool we've built above.
-            let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
-                let res = toml_repos
+            let (succ_repos, error_repos) = thread_pool.install(|| {
+                let res: Vec<Result<(&TomlRepo, String), (&TomlRepo, anyhow::Error)>> = toml_repos
                     .par_iter()
                     .map(|toml_repo| {
                         let idx = counter.inc();
@@ -163,7 +167,19 @@ pub fn exec(
                                 let truncated_message = truncate_str(&message, 70, "...");
                                 // show meeshage in progress bar
                                 progress_bar.finish_with_message(format!("{}", truncated_message));
-                                Ok(())
+
+                                // track remote branch, return track status
+                                let mut track_msg = String::new();
+                                if do_track {
+                                    if let Ok(res) = set_tracking_remote_branch(
+                                        input_path,
+                                        &toml_repo,
+                                        &default_branch,
+                                    ) {
+                                        track_msg = res;
+                                    }
+                                }
+                                Ok((toml_repo, track_msg))
                             }
                             Err(e) => {
                                 progress_bar.finish_with_message(format!(
@@ -183,37 +199,63 @@ pub fn exec(
 
                         result
                     })
-                    // catch erroring repo
-                    .filter_map(Result::err)
-                    // collect the results into Vec
                     .collect();
 
                 total_bar.finish();
 
-                res
+                // collect the ok results into Vec
+                // collect the err results into Vec
+                let mut succ_repos: Vec<(&TomlRepo, String)> = Vec::new();
+                // collect the results into Vec
+                let mut error_repos: Vec<(&TomlRepo, anyhow::Error)> = Vec::new();
+                for r in res {
+                    match r {
+                        Ok((toml_repo, track_msg)) => succ_repos.push((toml_repo, track_msg)),
+                        Err((toml_repo, e)) => error_repos.push((toml_repo, e)),
+                    }
+                }
+                (succ_repos, error_repos)
             });
 
+            // show sync stat
+            println!("\n");
             println!(
                 "{} repositories sync update successfully.",
-                repos_count - errors.len()
+                succ_repos.len().to_string().green()
             );
+            if !error_repos.is_empty() {
+                eprintln!(
+                    "{} repositories failed.",
+                    error_repos.len().to_string().red()
+                );
+            }
 
-            // print out each repo when failed
-            if !errors.is_empty() {
-                eprintln!("{} repositories failed.", errors.len());
-                eprintln!("");
+            // show track status
+            if do_track {
+                println!("");
+                println!("Track status:");
+                for (_, track_msg) in &succ_repos {
+                    println!("  {}", track_msg);
+                }
+            }
 
-                for (toml_repo, error) in errors {
+            // show each repo when failed
+            if !error_repos.is_empty() {
+                println!("");
+                println!("Errors:",);
+                for (toml_repo, error) in error_repos {
+                    let mut err_msg = String::new();
+                    for e in error.chain() {
+                        err_msg += &e.to_string();
+                    }
                     eprintln!(
-                        "{} errors:",
+                        "{} {}",
                         display_path(toml_repo.local.as_ref().unwrap())
                             .bold()
-                            .magenta()
+                            .magenta(),
+                        err_msg.trim().red()
                     );
-                    error
-                        .chain()
-                        .for_each(|cause| eprintln!("  {}", cause.bold().red()));
-                    eprintln!("");
+                    println!("");
                 }
             }
         }

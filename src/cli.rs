@@ -77,6 +77,10 @@ enum Commands {
         /// Do not report git status
         #[arg(long, action = ArgAction::SetTrue)]
         silent: bool,
+
+        /// Not track remote branch
+        #[arg(long, action = ArgAction::SetTrue)]
+        no_track: bool,
     },
 
     /// Fetch git repos
@@ -99,6 +103,16 @@ enum Commands {
 
     /// Clean unused git repos
     Clean {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+    },
+
+    /// Set tracking branch
+    Track {
         /// The init directory
         path: Option<String>,
 
@@ -147,6 +161,7 @@ pub fn main() {
             hard,
             thread,
             silent,
+            no_track,
         } => {
             let stash_mode = match (stash, hard) {
                 (false, false) => commands::StashMode::Normal,
@@ -161,7 +176,7 @@ pub fn main() {
                     .exit();
                 }
             };
-            commands::sync::exec(path, config, stash_mode, thread, silent);
+            commands::sync::exec(path, config, stash_mode, thread, silent, no_track);
         }
 
         Commands::Fetch {
@@ -175,6 +190,10 @@ pub fn main() {
 
         Commands::Clean { path, config } => {
             commands::clean::exec(path, config);
+        }
+
+        Commands::Track { path, config } => {
+            commands::track::exec(path, config);
         }
     };
 }

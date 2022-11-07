@@ -176,27 +176,31 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                 res
             });
 
+            println!("\n");
             println!(
                 "{} repositories fecth successfully.",
-                repos_count - errors.len()
+                (repos_count - errors.len()).to_string().green()
             );
 
             // print out each repo that failed to fetch
             if !errors.is_empty() {
-                eprintln!("{} repositories failed.", errors.len());
-                eprintln!("");
+                eprintln!("{} repositories failed.", errors.len().to_string().red());
 
+                println!("");
+                println!("Errors:",);
                 for (toml_repo, error) in errors {
+                    let mut err_msg = String::new();
+                    for e in error.chain() {
+                        err_msg += &e.to_string();
+                    }
                     eprintln!(
-                        "{} errors:",
+                        "{} {}",
                         display_path(toml_repo.local.as_ref().unwrap())
                             .bold()
-                            .magenta()
+                            .magenta(),
+                        err_msg.trim().red()
                     );
-                    error
-                        .chain()
-                        .for_each(|cause| eprintln!("  {}", cause.bold().red()));
-                    eprintln!("");
+                    println!("");
                 }
             }
         }
