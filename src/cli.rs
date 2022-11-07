@@ -78,7 +78,7 @@ enum Commands {
         #[arg(long, action = ArgAction::SetTrue)]
         silent: bool,
 
-        /// Not track remote branch
+        /// Do not track remote branch
         #[arg(long, action = ArgAction::SetTrue)]
         no_track: bool,
     },
@@ -111,7 +111,7 @@ enum Commands {
         config: Option<PathBuf>,
     },
 
-    /// Set tracking branch
+    /// Track remote branch
     Track {
         /// The init directory
         path: Option<String>,

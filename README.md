@@ -1,7 +1,7 @@
 mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能有：
 
 - 一键生成当前文件夹下所有仓库的管理配置文件
-- 根据配置文件内容，更新指定仓库的 branch，tag 或 commit 
+- 根据配置文件内容，更新指定仓库的 branch，tag 或 commit
 - 根据配置文件内容，清理文件夹下的无用仓库
 - 提供 cli 工具和 gui 工具
 
@@ -16,6 +16,7 @@ Commands:
   sync      Sync git repos
   fetch     Fetch git repos
   clean     Clean unused git repos
+  track     Track remote branch
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -23,7 +24,7 @@ Options:
   -V, --version  Print version information
 ```
 
-### init 
+### init
 
 ```shell
 mgit init [OPTIONS] [PATH]
@@ -35,7 +36,7 @@ Options
 
 - **--force** 强制执行并覆盖已有的 `.gitrepos`
 
-### snapshot 
+### snapshot
 
 ```shell
 mgit snapshot [OPTIONS] [PATH]
@@ -49,20 +50,7 @@ Options
 - **--branch** 生成 branch 快照
 - **--force** 强制执行并覆盖已有的配置文件
 
-### fetch 
-
-```shell
-mgit fetch [OPTIONS] [PATH]
-```
-
-对指定目录执行 `git fetch` 指令
-
-Options
-
-- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
-- **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
-
-### sync 
+### sync
 
 ```shell
 mgit sync [OPTIONS] [PATH]
@@ -74,16 +62,44 @@ Options
 
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 - **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
+- **--silent** 在 sync 中启用静默播报模式
+- **--no-track** 在 sync 后不跟踪远端分支
 - **--stash** 在 sync 前暂存本地改动
 - **--hard** 在 sync 前忽略所有本地改动
 
-### clean 
+### fetch
+
+```shell
+mgit fetch [OPTIONS] [PATH]
+```
+
+对指定目录执行 `git fetch` 指令
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
+- **--silent** 在 sync 中启用静默播报模式
+
+### clean
 
 ```shell
 mgit clean [OPTIONS] [PATH]
 ```
 
 根据配置文件的仓库路径和指定路径的仓库之间的比对结果，清理不在配置文件中的仓库。
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+
+### track
+
+```shell
+mgit track [OPTIONS] [PATH]
+```
+
+通过配置文件，跟踪远端分支
 
 Options
 
