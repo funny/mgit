@@ -23,6 +23,7 @@ pub fn exec(
     config: Option<PathBuf>,
     stash_mode: StashMode,
     num_threads: usize,
+    silent: bool,
 ) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
@@ -134,25 +135,30 @@ pub fn exec(
                         // handle result
                         let result = match execute_result {
                             Ok(_) => {
-                                // get ahead/behind betwwen local and specified commit/tag/branch/
-                                let ahead_behind = match cmp_local_remote(
-                                    input_path,
-                                    toml_repo,
-                                    &default_branch,
-                                ) {
-                                    Ok(r) => r.unwrap(),
-                                    _ => String::new(),
-                                };
-
-                                let message = format!(
-                                    "{} {} {}: {}",
+                                let mut message = format!(
+                                    "{} {} {}",
                                     "√".bold().green(),
                                     &prefix,
                                     display_path(toml_repo.local.as_ref().unwrap())
                                         .bold()
-                                        .magenta(),
-                                    &ahead_behind
+                                        .magenta()
                                 );
+
+                                // if not silent, show compare stat betweent local and remote
+                                if silent == false {
+                                    // get compare stat betwwen local and specified commit/tag/branch/
+                                    let cmp_msg = match cmp_local_remote(
+                                        input_path,
+                                        toml_repo,
+                                        &default_branch,
+                                    ) {
+                                        Ok(r) => r.unwrap(),
+                                        _ => String::new(),
+                                    };
+
+                                    message = format!("{}: {}", message, &cmp_msg)
+                                };
+
                                 // Truncates message string to a certain number of characters.
                                 let truncated_message = truncate_str(&message, 70, "...");
                                 // show meeshage in progress bar

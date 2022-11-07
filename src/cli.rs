@@ -73,6 +73,10 @@ enum Commands {
         /// Sets the number of threads to be used
         #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
         thread: usize,
+
+        /// Do not report git status
+        #[arg(long, action = ArgAction::SetTrue)]
+        silent: bool,
     },
 
     /// Fetch git repos
@@ -87,6 +91,10 @@ enum Commands {
         /// Sets the number of threads to be used
         #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
         thread: usize,
+
+        /// Do not report git status
+        #[arg(long, action = ArgAction::SetTrue)]
+        silent: bool,
     },
 
     /// Clean unused git repos
@@ -138,6 +146,7 @@ pub fn main() {
             stash,
             hard,
             thread,
+            silent,
         } => {
             let stash_mode = match (stash, hard) {
                 (false, false) => commands::StashMode::Normal,
@@ -152,15 +161,16 @@ pub fn main() {
                     .exit();
                 }
             };
-            commands::sync::exec(path, config, stash_mode, thread);
+            commands::sync::exec(path, config, stash_mode, thread, silent);
         }
 
         Commands::Fetch {
             path,
             config,
             thread,
+            silent,
         } => {
-            commands::fetch::exec(path, config, thread);
+            commands::fetch::exec(path, config, thread, silent);
         }
 
         Commands::Clean { path, config } => {
