@@ -1,7 +1,6 @@
-use crate::commands::cmp_local_remote;
-
 use super::{
-    clean, execute_cmd, find_remote_name_by_url, load_config, ResetType, StashMode, TomlRepo,
+    clean, cmp_local_remote, display_path, execute_cmd, find_remote_name_by_url, load_config,
+    ResetType, StashMode, TomlRepo,
 };
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
@@ -149,7 +148,9 @@ pub fn exec(
                                     "{} {} {}: {}",
                                     "√".bold().green(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
+                                    display_path(toml_repo.local.as_ref().unwrap())
+                                        .bold()
+                                        .magenta(),
                                     &ahead_behind
                                 );
                                 // Truncates message string to a certain number of characters.
@@ -163,7 +164,9 @@ pub fn exec(
                                     "{} {} {}",
                                     "x".bold().red(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta()
+                                    display_path(toml_repo.local.as_ref().unwrap())
+                                        .bold()
+                                        .magenta(),
                                 ));
                                 Err((toml_repo, e))
                             }
@@ -197,7 +200,9 @@ pub fn exec(
                 for (toml_repo, error) in errors {
                     eprintln!(
                         "{} errors:",
-                        toml_repo.local.as_ref().unwrap().bold().magenta()
+                        display_path(toml_repo.local.as_ref().unwrap())
+                            .bold()
+                            .magenta()
                     );
                     error
                         .chain()
@@ -226,7 +231,8 @@ fn execute_sync_with_progress(
     let full_path = &input_path.join(rel_path);
 
     // make repo directory and skip clone the repository
-    std::fs::create_dir_all(full_path)?;
+    std::fs::create_dir_all(full_path)
+        .with_context(|| format!("create dir {} failed.", full_path.to_str().unwrap()))?;
 
     let toml_repo = &mut toml_repo.clone();
 
@@ -373,7 +379,7 @@ fn execute_init_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : initializing...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     let args = ["init"];
@@ -396,7 +402,7 @@ fn execute_add_remote_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : addding remote...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     // git remote add origin {url}
@@ -425,7 +431,7 @@ fn execute_clean_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : cleaning...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     let args = ["clean", "-fd"];
@@ -449,7 +455,7 @@ fn execute_reset_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : resetting...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     // priority: commit/tag/branch(default-branch)
@@ -490,7 +496,7 @@ fn execute_stash_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : stashing...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     let args = ["stash", "--include-untracked"];
@@ -510,7 +516,7 @@ fn execute_stash_pop_with_progress(
     progress_bar.set_message(format!(
         "{:>9} {} : pop stash...",
         prefix,
-        rel_path.bold().magenta()
+        display_path(rel_path).bold().magenta()
     ));
 
     let args = ["stash", "pop"];
@@ -531,7 +537,11 @@ fn execute_with_progress(
         .spawn()
         .with_context(|| format!("Error starting command {:?}", command))?;
 
-    let mut last_line = format!("{:>9} {}: running...", prefix, rel_path.bold().magenta());
+    let mut last_line = format!(
+        "{:>9} {}: running...",
+        prefix,
+        display_path(rel_path).bold().magenta()
+    );
     progress_bar.set_message(last_line.clone());
 
     // get message from stderr with "--progress" option
@@ -547,7 +557,7 @@ fn execute_with_progress(
             let full_line = format!(
                 "{:>9} {}: {}",
                 prefix,
-                rel_path.bold().magenta(),
+                display_path(rel_path).bold().magenta(),
                 plain_line.trim()
             );
             let truncated_line = truncate_str(&full_line, 70, "...");

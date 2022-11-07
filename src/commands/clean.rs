@@ -1,4 +1,4 @@
-use super::load_config;
+use super::{display_path, load_config};
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
 use std::{
@@ -69,12 +69,8 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                     // get relative path
                     let mut pb = path.to_path_buf();
                     pb.pop();
-                    let mut rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
+                    let rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
 
-                    // both "." and "" are present root path, but not equal each other
-                    if rel_path == PathBuf::from("") {
-                        rel_path = PathBuf::from(".");
-                    }
                     if config_repo_paths.contains(&rel_path) == false {
                         unused_paths.push(rel_path);
                     }
@@ -99,8 +95,8 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                         &contained_paths,
                     ) {
                         println!(
-                            "remove {} files error: {:?}",
-                            unused_path.to_str().unwrap(),
+                            "remove {} files error: {}",
+                            display_path(&unused_path.to_str().unwrap().to_string()),
                             e
                         )
                     };
@@ -110,7 +106,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                 count += 1;
                 println!(
                     "  remove unused repository: {} ",
-                    unused_path.display().magenta()
+                    display_path(&unused_path.to_str().unwrap().to_string()).magenta()
                 );
             }
 
@@ -136,17 +132,10 @@ fn find_contained_paths(unused_path: &PathBuf, config_repo_paths: &Vec<PathBuf>)
     let mut contained_paths: Vec<PathBuf> = Vec::new();
 
     for config_repo_path in config_repo_paths {
-        // check if unused_path is root path
-        let is_root = match unused_path.canonicalize() {
-            Ok(r) => r == PathBuf::from(".").canonicalize().unwrap(),
-            _ => false,
-        };
-
         // add contained paths
         if config_repo_path
             .as_path()
             .starts_with(unused_path.as_path())
-            || is_root
         {
             contained_paths.push(config_repo_path.to_path_buf());
         }

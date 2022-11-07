@@ -1,4 +1,4 @@
-use super::{SnapshotType, TomlConfig, TomlRepo};
+use super::{display_path, norm_path, SnapshotType, TomlConfig, TomlRepo};
 use git2::Repository;
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
@@ -77,7 +77,11 @@ pub fn exec(
             // try open git repo
             let repo_result = Repository::open(&pb);
             if let Err(e) = repo_result {
-                println!("Failed to open repo {}, {}", rel_path.display(), e);
+                println!(
+                    "Failed to open repo {}, {}",
+                    display_path(&rel_path.to_str().unwrap().to_string()),
+                    e
+                );
                 continue;
             }
             let repo = repo_result.unwrap();
@@ -116,18 +120,10 @@ pub fn exec(
             }
 
             // normalize path if needed
-            let norm_path = rel_path
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .replace("\\", "/");
+            let norm_path = norm_path(&rel_path.to_str().unwrap().to_string());
 
             // if git in root path, represent it by "."
-            let norm_str = if norm_path.is_empty() {
-                "."
-            } else {
-                norm_path.as_str()
-            };
+            let norm_str = &display_path(&norm_path);
 
             // set toml repo
             let toml_repo = TomlRepo {

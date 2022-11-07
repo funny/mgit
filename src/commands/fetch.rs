@@ -1,6 +1,4 @@
-use crate::commands::cmp_local_remote;
-
-use super::{find_remote_name_by_url, load_config, TomlRepo};
+use super::{cmp_local_remote, display_path, find_remote_name_by_url, load_config, TomlRepo};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use console::{strip_ansi_codes, truncate_str};
@@ -133,7 +131,9 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
                                     "{} {} {}: {}",
                                     "√".bold().green(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
+                                    display_path(toml_repo.local.as_ref().unwrap())
+                                        .bold()
+                                        .magenta(),
                                     &ahead_behind
                                 );
                                 // Truncates message string to a certain number of characters.
@@ -147,7 +147,9 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
                                     "{} {} {}",
                                     "x".bold().red(),
                                     &prefix,
-                                    toml_repo.local.as_ref().unwrap().bold().magenta(),
+                                    display_path(toml_repo.local.as_ref().unwrap())
+                                        .bold()
+                                        .magenta(),
                                 ));
                                 Err((toml_repo, e))
                             }
@@ -181,7 +183,9 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize) {
                 for (toml_repo, error) in errors {
                     eprintln!(
                         "{} errors:",
-                        toml_repo.local.as_ref().unwrap().bold().magenta()
+                        display_path(toml_repo.local.as_ref().unwrap())
+                            .bold()
+                            .magenta()
                     );
                     error
                         .chain()
@@ -233,7 +237,11 @@ fn execute_fetch_with_progress(
         .spawn()
         .with_context(|| format!("Error starting command {:?}", full_command))?;
 
-    let mut last_line = format!("{:>9} {}: running...", prefix, local_path.bold().magenta());
+    let mut last_line = format!(
+        "{:>9} {}: running...",
+        prefix,
+        display_path(local_path).bold().magenta()
+    );
     progress_bar.set_message(last_line.clone());
 
     // get message from stderr with "--progress" option
@@ -249,7 +257,7 @@ fn execute_fetch_with_progress(
             let full_line = format!(
                 "{:>9} {}: {}",
                 prefix,
-                rel_path.bold().magenta(),
+                display_path(rel_path).bold().magenta(),
                 plain_line.trim()
             );
             let truncated_line = truncate_str(&full_line, 70, "...");

@@ -453,6 +453,7 @@ branch = "master"
             config_file.to_str().unwrap(),
         ],
     );
+
     assert!(input_path.is_dir());
 
     let _ = execute_cmd(&path, "git", &["add", "."]);
