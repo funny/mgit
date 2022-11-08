@@ -1,20 +1,19 @@
 use super::{
-    clean, cmp_local_remote, display_path, execute_cmd, find_remote_name_by_url, load_config,
-    track::set_tracking_remote_branch, ResetType, StashMode, TomlRepo,
+    clean, cmp_local_remote, display_path, execute_cmd, execute_cmd_with_progress,
+    find_remote_name_by_url, is_repository, load_config, track::set_tracking_remote_branch,
+    ResetType, StashMode, TomlRepo,
 };
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use console::{strip_ansi_codes, truncate_str};
-use git2::Repository;
+use console::truncate_str;
+
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
     env,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Command,
-    process::Stdio,
     sync::Arc,
 };
 
@@ -105,7 +104,7 @@ pub fn exec(
             };
 
             // do track flag
-            let do_track = !no_track && !silent;
+            let do_track = no_track == false && silent == false;
 
             // pool.install means that `.par_iter()` will use the thread pool we've built above.
             let (succ_repos, error_repos) = thread_pool.install(|| {
@@ -220,10 +219,10 @@ pub fn exec(
             // show sync stat
             println!("\n");
             println!(
-                "{} repositories sync update successfully.",
+                "{} repositories sync successfully.",
                 succ_repos.len().to_string().green()
             );
-            if !error_repos.is_empty() {
+            if error_repos.is_empty() == false {
                 eprintln!(
                     "{} repositories failed.",
                     error_repos.len().to_string().red()
@@ -240,7 +239,7 @@ pub fn exec(
             }
 
             // show each repo when failed
-            if !error_repos.is_empty() {
+            if error_repos.is_empty() == false {
                 println!("");
                 println!("Errors:",);
                 for (toml_repo, error) in error_repos {
@@ -284,11 +283,8 @@ fn execute_sync_with_progress(
 
     let toml_repo = &mut toml_repo.clone();
 
-    // try open git repo
-    let repo_result = Repository::open(full_path);
-
     // if the directory is not a repository
-    if let Err(_) = &repo_result {
+    if is_repository(full_path.as_path()).is_err() {
         // git init when dir exist
         execute_init_with_progress(input_path, toml_repo, prefix, progress_bar)?;
         // git remote add url
@@ -358,31 +354,6 @@ fn execute_sync_with_progress(
     }
 }
 
-// fn execute_clone_with_progress(
-//     input_path: &Path,
-//     repo: &TomlRepo,
-//     prefix: &str,
-//     progress_bar: &ProgressBar,
-// ) -> anyhow::Result<()> {
-//     let rel_path = repo.local.as_ref().unwrap();
-//     let input_path = input_path
-//         .join(rel_path.clone())
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-//         .replace("\\", "/");
-//
-//     let args = [
-//         "clone",
-//         repo.remote.as_ref().unwrap(),
-//         &input_path,
-//         "--progress",
-//     ];
-//     let mut command = Command::new("git");
-//     let full_command = command.args(args);
-//     execute_with_progress(rel_path, full_command, prefix, progress_bar)
-// }
-
 fn execute_fetch_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
@@ -392,14 +363,12 @@ fn execute_fetch_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    // try open git repo
-    let repo = Repository::open(&full_path)?;
     // get remote name from url
     let remote_url = toml_repo
         .remote
         .as_ref()
         .with_context(|| "remote url is null.")?;
-    let remote_name = find_remote_name_by_url(&repo, remote_url)?;
+    let remote_name = find_remote_name_by_url(full_path.as_path(), remote_url)?;
 
     let args = [
         "fetch",
@@ -412,7 +381,7 @@ fn execute_fetch_with_progress(
     let mut command = Command::new("git");
     let full_command = command.args(args).current_dir(full_path);
 
-    execute_with_progress(rel_path, full_command, prefix, progress_bar)
+    execute_cmd_with_progress(rel_path, full_command, prefix, progress_bar)
 }
 
 fn execute_init_with_progress(
@@ -570,62 +539,4 @@ fn execute_stash_pop_with_progress(
     let args = ["stash", "pop"];
 
     execute_cmd(&full_path, "git", &args)
-}
-
-fn execute_with_progress(
-    rel_path: &String,
-    command: &mut Command,
-    prefix: &str,
-    progress_bar: &ProgressBar,
-) -> anyhow::Result<()> {
-    let mut spawned = command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("Error starting command {:?}", command))?;
-
-    let mut last_line = format!(
-        "{:>9} {}: running...",
-        prefix,
-        display_path(rel_path).bold().magenta()
-    );
-    progress_bar.set_message(last_line.clone());
-
-    // get message from stderr with "--progress" option
-    if let Some(ref mut stderr) = spawned.stderr {
-        let lines = BufReader::new(stderr).split(b'\r');
-        for line in lines {
-            let output = line.unwrap();
-            if output.is_empty() {
-                continue;
-            }
-            let line = std::str::from_utf8(&output).unwrap();
-            let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let full_line = format!(
-                "{:>9} {}: {}",
-                prefix,
-                display_path(rel_path).bold().magenta(),
-                plain_line.trim()
-            );
-            let truncated_line = truncate_str(&full_line, 70, "...");
-            progress_bar.set_message(format!("{}", truncated_line));
-            last_line = plain_line;
-        }
-    }
-
-    let exit_code = spawned
-        .wait()
-        .context("Error waiting for process to finish")?;
-
-    if !exit_code.success() {
-        return Err(anyhow::anyhow!(
-            "Git exited with code {}: {}. With command : {:?}.",
-            exit_code.code().unwrap(),
-            last_line.trim(),
-            command
-        ));
-    }
-
-    Ok(())
 }

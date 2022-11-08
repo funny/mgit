@@ -1,11 +1,14 @@
 use anyhow::Context;
-use git2::Repository;
+use console::{strip_ansi_codes, truncate_str};
+use indicatif::ProgressBar;
 use owo_colors::OwoColorize;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use toml_edit;
 
 pub mod clean;
@@ -118,6 +121,19 @@ impl TomlConfig {
     }
 }
 
+/// normalize path if needed
+pub fn norm_path(path: &String) -> String {
+    path.replace("\\", "/")
+}
+
+/// if path is empty, represent it by "."
+pub fn display_path(path: &String) -> String {
+    match path.is_empty() {
+        true => String::from("."),
+        false => path.clone(),
+    }
+}
+
 // deserialize config file (.gitrepos) with full file path
 pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     if config_file.is_file() {
@@ -133,41 +149,79 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     None
 }
 
-pub fn find_remote_name_by_url(repo: &Repository, url: &str) -> Result<String, anyhow::Error> {
-    let remotes: Vec<String> = repo
-        .remotes()
-        .map_err(|error| error)?
-        .iter()
-        .map(|name| name.expect("Remote name is invalid utf-8"))
-        .map(|name| name.to_owned())
-        .collect();
-
-    for remote_name in remotes {
-        let remote = repo.find_remote(&remote_name)?;
-        if remote.url().unwrap() == url {
-            return Ok(remote_name);
-        }
+pub fn is_repository(path: &Path) -> Result<(), anyhow::Error> {
+    match path.join(".git").is_dir() {
+        true => Ok(()),
+        false => Err(anyhow::anyhow!("repository not found!")),
     }
-    Err(anyhow::anyhow!("remote {} not found.", url))
 }
 
-pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
-    let mut command = std::process::Command::new(cmd);
-    let full_command = command.current_dir(path.to_path_buf()).args(args);
+pub fn find_remote_name_by_url(path: &Path, url: &String) -> Result<String, anyhow::Error> {
+    is_repository(path)?;
+    let args = ["remote", "-v"];
+    let output = execute_cmd(path, "git", &args)?;
 
-    let output = full_command
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .with_context(|| format!("Error starting command: {:?}", full_command))?;
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8(output.stderr)?;
-
-    match output.status.success() {
-        true => Ok(stdout),
-        false => Err(anyhow::anyhow!(stderr)),
+    for line in output.trim().lines() {
+        if line.contains(url) {
+            if let Some(remote_name) = line.split(url).next() {
+                return Ok(remote_name.trim().to_string());
+            }
+        }
     }
+
+    Err(anyhow::anyhow!("remote {} not found.", url.blue()))
+}
+
+pub fn find_remote_url_by_name(path: &Path, name: &String) -> Result<String, anyhow::Error> {
+    is_repository(path)?;
+    let args = ["remote", "get-url", &name];
+    let output = execute_cmd(path, "git", &args)?;
+
+    for remote_url in output.trim().lines() {
+        return Ok(remote_url.trim().to_string());
+    }
+
+    Err(anyhow::anyhow!("remote {} not found.", name.blue()))
+}
+
+pub fn get_current_commit(path: &Path) -> Result<String, anyhow::Error> {
+    is_repository(path)?;
+    let args = ["rev-parse", "Head"];
+    let output = execute_cmd(path, "git", &args)?;
+
+    for oid in output.trim().lines() {
+        return Ok(oid.to_string());
+    }
+
+    Err(anyhow::anyhow!("current commit not found."))
+}
+
+pub fn get_tracking_branch(path: &Path) -> Result<String, anyhow::Error> {
+    is_repository(path)?;
+    let args = ["branch", "-vv"];
+    let output = execute_cmd(path, "git", &args)?;
+
+    for line in output.trim().lines() {
+        let re = Regex::new(r"\*([^\[]+)\[(?P<refname>[^\]\:]+)([^\]]*)\]").unwrap();
+        if let Some(caps) = re.captures(line) {
+            let refname = &caps["refname"];
+            if let Some(branch) = refname.split("origin/").last() {
+                return Ok(branch.trim().to_string());
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!("untracked."))
+}
+
+pub fn get_current_branch(path: &Path) -> Result<String, anyhow::Error> {
+    is_repository(path)?;
+    let args = ["branch", "--show-current"];
+    let output = execute_cmd(path, "git", &args)?;
+    for line in output.trim().lines() {
+        return Ok(line.to_string());
+    }
+    Err(anyhow::anyhow!("current branch not found."))
 }
 
 /// get full ahead/behind values between branches
@@ -237,14 +291,7 @@ pub fn cmp_local_remote(
     }
 
     // get local branch
-    let repo = Repository::open(&full_path)?;
-    let branch = match repo.head() {
-        Ok(head) => match head.shorthand() {
-            Some(name) => name.to_string(),
-            _ => String::new(),
-        },
-        _ => String::new(),
-    };
+    let branch = get_current_branch(full_path.as_path())?;
 
     if branch.is_empty() {
         return Ok(Some("init commit".to_string()));
@@ -291,15 +338,79 @@ pub fn cmp_local_remote(
     Ok(Some(desc))
 }
 
-/// normalize path if needed
-pub fn norm_path(path: &String) -> String {
-    path.replace("\\", "/")
+pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
+    let mut command = std::process::Command::new(cmd);
+    let full_command = command.current_dir(path.to_path_buf()).args(args);
+
+    let output = full_command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .with_context(|| format!("Error starting command: {:?}", full_command))?;
+
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+
+    match output.status.success() {
+        true => Ok(stdout),
+        false => Err(anyhow::anyhow!(stderr)),
+    }
 }
 
-/// if path is empty, represent it by "."
-pub fn display_path(path: &String) -> String {
-    match path.is_empty() {
-        true => String::from("."),
-        false => path.clone(),
+fn execute_cmd_with_progress(
+    rel_path: &String,
+    command: &mut Command,
+    prefix: &str,
+    progress_bar: &ProgressBar,
+) -> anyhow::Result<()> {
+    let mut spawned = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("Error starting command {:?}", command))?;
+
+    let mut last_line = format!(
+        "{:>9} {}: running...",
+        prefix,
+        display_path(rel_path).bold().magenta()
+    );
+    progress_bar.set_message(last_line.clone());
+
+    // get message from stderr with "--progress" option
+    if let Some(ref mut stderr) = spawned.stderr {
+        let lines = BufReader::new(stderr).split(b'\r');
+        for line in lines {
+            let output = line.unwrap();
+            if output.is_empty() {
+                continue;
+            }
+            let line = std::str::from_utf8(&output).unwrap();
+            let plain_line = strip_ansi_codes(line).replace('\n', " ");
+            let full_line = format!(
+                "{:>9} {}: {}",
+                prefix,
+                display_path(rel_path).bold().magenta(),
+                plain_line.trim()
+            );
+            let truncated_line = truncate_str(&full_line, 70, "...");
+            progress_bar.set_message(format!("{}", truncated_line));
+            last_line = plain_line;
+        }
     }
+
+    let exit_code = spawned
+        .wait()
+        .context("Error waiting for process to finish")?;
+
+    if exit_code.success() == false {
+        return Err(anyhow::anyhow!(
+            "Git exited with code {}: {}. With command : {:?}.",
+            exit_code.code().unwrap(),
+            last_line.trim(),
+            command
+        ));
+    }
+
+    Ok(())
 }

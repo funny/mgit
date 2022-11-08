@@ -20,7 +20,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     }
 
     // starting clean repos
-    println!("start cleaning repos in {}", input.bold().magenta());
+    println!("Clean Status:");
 
     // set config file path
     let config_file = match config {
@@ -105,23 +105,25 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                 }
                 count += 1;
                 println!(
-                    "  remove unused repository: {} ",
-                    display_path(&unused_path.to_str().unwrap().to_string()).magenta()
+                    "  {}: removed ",
+                    display_path(&unused_path.to_str().unwrap().to_string())
+                        .bold()
+                        .magenta()
                 );
             }
 
             // show statistics info
             if count == 0 {
-                println!("finish clean: no repository removed.\n");
+                println!("no repository is removed.\n");
             } else if count == 1 {
                 println!(
-                    "finish clean: {} repository removed.\n",
-                    count.to_string().bold().magenta()
+                    "{} repository is removed.\n",
+                    count.to_string().bold().green()
                 );
             } else {
                 println!(
-                    "finish clean: {} repositories removed.\n",
-                    count.to_string().bold().magenta()
+                    "{} repositories are removed.\n",
+                    count.to_string().bold().green()
                 );
             }
         }

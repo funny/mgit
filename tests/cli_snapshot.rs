@@ -1,7 +1,8 @@
-use assert_cmd::prelude::*;
+use crate::common::{execute_cargo_cmd, execute_cmd};
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+
+mod common;
 
 /// 测试内容：
 ///     1、运行命令 mgit init <path>
@@ -416,22 +417,6 @@ commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-pub fn execute_cmd(path: &PathBuf, cmd: &str, args: &[&str]) {
-    std::process::Command::new(cmd)
-        .current_dir(path.to_path_buf())
-        .args(args)
-        .output()
-        .ok();
-}
-
-pub fn execute_cargo_cmd(cmd: &str, args: &[&str]) {
-    Command::cargo_bin(cmd)
-        .unwrap()
-        .args(args)
-        .assert()
-        .success();
-}
-
 pub fn create_repos_tree1(path: &PathBuf) {
     if path.exists() {
         std::fs::remove_dir_all(path).unwrap();
@@ -447,10 +432,10 @@ pub fn create_repos_tree1(path: &PathBuf) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        execute_cmd(&dir, "git", &["init"]);
+        let _ = execute_cmd(&dir, "git", &["init"]);
 
         // add remote
-        execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
+        let _ = execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
 
         std::fs::write(
             dir.join(".git/refs/heads/master"),
@@ -464,9 +449,9 @@ pub fn create_repos_tree2(path: &PathBuf) {
     create_repos_tree1(path);
 
     // set root git init
-    execute_cmd(path, "git", &["init"]);
+    let _ = execute_cmd(path, "git", &["init"]);
     let root_remote = "https://github.com/rust-lang/git2-rs.git";
-    execute_cmd(path, "git", &["remote", "add", "origin", root_remote]);
+    let _ = execute_cmd(path, "git", &["remote", "add", "origin", root_remote]);
 
     std::fs::write(
         path.join(".git/refs/heads/master"),
@@ -505,10 +490,10 @@ pub fn create_repos_tree3(path: &PathBuf) {
 
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
             // create local git repositoris
-            execute_cmd(&dir, "git", &["init"]);
+            let _ = execute_cmd(&dir, "git", &["init"]);
 
             // add remote
-            execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
+            let _ = execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
 
             std::fs::write(
                 dir.join(".git/refs/heads/master"),
