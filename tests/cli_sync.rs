@@ -63,11 +63,9 @@ branch = "master"
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(
-            output.contains(".gitignore")
-                && output.contains("1.txt")
-                && output.contains(".gitrepos")
-        );
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains(".gitrepos"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("git status error.")
     }
@@ -127,7 +125,8 @@ branch = "master"
 
     // compaire changes now
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(output.contains(".gitignore") && output.contains("1.txt"));
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("status error.")
     }
@@ -141,7 +140,8 @@ branch = "master"
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(output.contains(".gitignore") && output.contains("1.txt"));
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("sync error.")
     }
@@ -200,7 +200,8 @@ branch = "master"
 
     // compaire changes now
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(output.contains(".gitignore") && output.contains("1.txt"));
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains("1.txt"))
     } else {
         panic!("status error.")
     }
@@ -213,29 +214,25 @@ branch = "master"
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(
-            !output.contains(".gitignore")
-                && !output.contains("1.txt")
-                && !output.contains(".gitrepos")
-        );
+        assert_eq!(false, output.contains(".gitignore"));
+        assert_eq!(false, output.contains(".gitrepos"));
+        assert_eq!(false, output.contains("1.txt"));
     } else {
         panic!("sync error.")
     }
 
     // check stash
     if let Ok(output) = execute_cmd(&path, "git", &["stash", "list"]) {
-        assert!(output.lines().count() == 1);
+        assert_eq!(1, output.lines().count());
     } else {
         panic!("stash error.")
     }
 
     // pop stash and check file
     if let Ok(output) = execute_cmd(&path, "git", &["stash", "pop"]) {
-        assert!(
-            output.contains(".gitignore")
-                && output.contains("1.txt")
-                && output.contains(".gitrepos")
-        );
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains(".gitrepos"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("stash pop error.")
     }
@@ -294,7 +291,8 @@ branch = "master"
 
     // compaire changes now
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(output.contains(".gitignore") && output.contains("1.txt"));
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("status error.")
     }
@@ -310,11 +308,9 @@ branch = "master"
     // compaire changes after sync
     // nothing will be stash
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(
-            output.contains(".gitignore")
-                && output.contains(".gitrepos")
-                && output.contains("1.txt")
-        );
+        assert!(output.contains(".gitignore"));
+        assert!(output.contains(".gitrepos"));
+        assert!(output.contains("1.txt"));
     } else {
         panic!("sync error.")
     }
@@ -386,11 +382,9 @@ branch = "master"
     std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
-        assert!(
-            output.contains(".gitignore")
-                && !output.contains("1.txt")
-                && !output.contains(".gitrepos")
-        );
+        assert!(output.contains(".gitignore"));
+        assert_eq!(false, output.contains(".gitrepos"));
+        assert_eq!(false, output.contains("1.txt"));
     } else {
         panic!("sync error.")
     }
@@ -464,7 +458,9 @@ branch = "master"
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
-    assert!(local_changes1.len() == 1 && local_changes1.contains(".gitignore"));
+
+    assert_eq!(1, local_changes1.len());
+    assert!(local_changes1.contains(".gitignore"));
 
     // for foobar-1/foobar-1-1, local changes is empty
     let local_changes2 = get_local_changes(&input_path.join("foobar-1-1"));
@@ -539,7 +535,8 @@ branch = "master"
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
-    assert!(local_changes1.len() == 1 && local_changes1.contains(".gitignore"));
+    assert_eq!(1, local_changes1.len());
+    assert!(local_changes1.contains(".gitignore"));
 
     // for foobar-1/foobar-1-1, local changes is empty
     let local_changes2 = get_local_changes(&input_path.join("foobar-1-1"));
@@ -614,7 +611,8 @@ branch = "master"
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
-    assert!(local_changes1.len() == 1 && local_changes1.contains(".gitignore"));
+    assert_eq!(1, local_changes1.len());
+    assert!(local_changes1.contains(".gitignore"));
 
     // for foobar-1/foobar-1-1, local changes is empty
     let local_changes2 = get_local_changes(&input_path.join("foobar-1-1"));

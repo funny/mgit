@@ -1,17 +1,18 @@
-use super::{cmp_local_remote, display_path, find_remote_name_by_url, load_config, TomlRepo};
+use super::{
+    cmp_local_remote, display_path, execute_cmd_with_progress, find_remote_name_by_url,
+    load_config, TomlRepo,
+};
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use console::{strip_ansi_codes, truncate_str};
-use git2::Repository;
+use console::truncate_str;
+
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
     env,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
     process::Command,
-    process::Stdio,
     sync::Arc,
 };
 
@@ -183,7 +184,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
             );
 
             // print out each repo that failed to fetch
-            if !errors.is_empty() {
+            if errors.is_empty() == false {
                 eprintln!("{} repositories failed.", errors.len().to_string().red());
 
                 println!("");
@@ -214,16 +215,14 @@ fn execute_fetch_with_progress(
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = &input_path.join(rel_path);
+    let full_path = input_path.join(rel_path);
 
-    // try open git repo
-    let repo = Repository::open(full_path)?;
     // get remote name from url
     let remote_url = toml_repo
         .remote
         .as_ref()
         .with_context(|| "remote url is null.")?;
-    let remote_name = find_remote_name_by_url(&repo, remote_url)?;
+    let remote_name = find_remote_name_by_url(full_path.as_path(), remote_url)?;
 
     let args = [
         "fetch",
@@ -233,60 +232,8 @@ fn execute_fetch_with_progress(
         "--progress",
     ];
 
-    let args: Vec<String> = args.iter().map(|s| (*s).to_string()).collect();
+    let mut command = Command::new("git");
+    let full_command = command.args(args).current_dir(full_path);
 
-    let local_path = toml_repo.local.as_ref().unwrap();
-
-    let mut command = Command::new("git".to_string());
-    let full_command = command.args(args).current_dir(input_path.join(local_path));
-
-    let mut spawned = full_command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("Error starting command {:?}", full_command))?;
-
-    let mut last_line = format!(
-        "{:>9} {}: running...",
-        prefix,
-        display_path(local_path).bold().magenta()
-    );
-    progress_bar.set_message(last_line.clone());
-
-    // get message from stderr with "--progress" option
-    if let Some(ref mut stderr) = spawned.stderr {
-        let lines = BufReader::new(stderr).split(b'\r');
-        for line in lines {
-            let output = line.unwrap();
-            if output.is_empty() {
-                continue;
-            }
-            let line = std::str::from_utf8(&output).unwrap();
-            let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let full_line = format!(
-                "{:>9} {}: {}",
-                prefix,
-                display_path(rel_path).bold().magenta(),
-                plain_line.trim()
-            );
-            let truncated_line = truncate_str(&full_line, 70, "...");
-            progress_bar.set_message(format!("{}", truncated_line));
-            last_line = plain_line;
-        }
-    }
-
-    let exit_code = spawned
-        .wait()
-        .context("Error waiting for process to finish")?;
-
-    if !exit_code.success() {
-        return Err(anyhow::anyhow!(
-            "Git exited with code {}: {}",
-            exit_code.code().unwrap(),
-            last_line
-        ));
-    }
-
-    Ok(())
+    execute_cmd_with_progress(rel_path, full_command, prefix, progress_bar)
 }

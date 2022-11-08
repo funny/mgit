@@ -1,5 +1,8 @@
-use super::{display_path, norm_path, SnapshotType, TomlConfig, TomlRepo};
-use git2::Repository;
+use super::{
+    display_path, find_remote_url_by_name, get_current_commit, get_tracking_branch, is_repository,
+    norm_path, SnapshotType, TomlConfig, TomlRepo,
+};
+
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
 use std::fs;
@@ -74,21 +77,18 @@ pub fn exec(
             pb.pop();
             let rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
 
-            // try open git repo
-            let repo_result = Repository::open(&pb);
-            if let Err(e) = repo_result {
+            // check repository valid
+            if is_repository(pb.as_path()).is_err() {
                 println!(
-                    "Failed to open repo {}, {}",
+                    "Failed to open repo {}!",
                     display_path(&rel_path.to_str().unwrap().to_string()),
-                    e
                 );
                 continue;
             }
-            let repo = repo_result.unwrap();
 
             // get remote
-            let remote = match repo.find_remote("origin") {
-                Ok(r) => r.url().map(|s| String::from(s)),
+            let remote = match find_remote_url_by_name(pb.as_path(), &"origin".to_string()) {
+                Ok(r) => Some(r),
                 _ => None,
             };
 
@@ -96,25 +96,18 @@ pub fn exec(
             let mut branch: Option<String> = None;
 
             // set branch or commit-id with '--init' option
-            if let Ok(head) = repo.head() {
-                if let Some(refname) = head.name() {
-                    match snapshot_type {
-                        SnapshotType::Commit => {
-                            // get local head commit id
-                            if let Ok(oid) = repo.refname_to_id(refname) {
-                                commit = Some(oid.to_string());
-                            }
-                        }
-                        SnapshotType::Branch => {
-                            // get tracking brach
-                            if let Ok(buf) = repo.branch_upstream_name(refname) {
-                                branch = buf
-                                    .as_str()
-                                    .map(|str| str.split("refs/remotes/origin/").last())
-                                    .unwrap_or(None)
-                                    .map(str::to_string)
-                            }
-                        }
+
+            match snapshot_type {
+                SnapshotType::Commit => {
+                    // get local head commit id
+                    if let Ok(oid) = get_current_commit(pb.as_path()) {
+                        commit = Some(oid);
+                    }
+                }
+                SnapshotType::Branch => {
+                    // get tracking brach
+                    if let Ok(upstream_name) = get_tracking_branch(pb.as_path()) {
+                        branch = Some(upstream_name);
                     }
                 }
             }

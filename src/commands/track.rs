@@ -1,6 +1,5 @@
-use super::{display_path, execute_cmd, load_config, TomlRepo};
+use super::{display_path, execute_cmd, get_current_branch, load_config, TomlRepo};
 
-use git2::Repository;
 use owo_colors::OwoColorize;
 use std::{
     env,
@@ -62,22 +61,8 @@ pub fn set_tracking_remote_branch(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    // try open git repo
-    let repo_result = Repository::open(&full_path);
-    let mut local_branch = String::new();
-
-    if let Ok(repo) = repo_result {
-        if let Ok(refname) = repo.head() {
-            local_branch = refname.shorthand().unwrap().to_string();
-        }
-    } else {
-        let res = format!(
-            "{}: {}",
-            display_path(rel_path).magenta(),
-            "repository doesn't exist".red()
-        );
-        return Ok(res);
-    }
+    // get local current branch
+    let local_branch = get_current_branch(full_path.as_path())?;
 
     // priority: commit/tag/branch/default-branch
     let remote_head = {
@@ -97,7 +82,7 @@ pub fn set_tracking_remote_branch(
     if toml_repo.commit.is_some() || toml_repo.tag.is_some() {
         let res = format!(
             "{}: {} {}",
-            display_path(rel_path).magenta(),
+            display_path(rel_path).bold().magenta(),
             remote_head.blue(),
             "untracked"
         );
@@ -110,7 +95,7 @@ pub fn set_tracking_remote_branch(
     if execute_cmd(&full_path, "git", &args).is_ok() {
         let res = format!(
             "{}: {} -> {}",
-            display_path(rel_path).magenta(),
+            display_path(rel_path).bold().magenta(),
             local_branch.blue(),
             remote_head.blue()
         );
@@ -118,7 +103,7 @@ pub fn set_tracking_remote_branch(
     } else {
         let res = format!(
             "{}: {} {} {}",
-            display_path(rel_path).magenta(),
+            display_path(rel_path).bold().magenta(),
             "track failed,".red(),
             remote_head.blue(),
             "not found!".red()

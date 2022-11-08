@@ -6,18 +6,22 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = { version = "1.0.65" }
+anyhow = "1.0.65"
 clap = { version = "4.0.8", features = ["derive", "cargo"] }
-git2 = { version = "0.15.0"}
-globset = { version = "0.4.9" }
+globset = "0.4.9"
 owo-colors = "3.5.0"
 serde = { version = "1.0.145", features = ["derive"] }
 toml = "0.5.9"
 toml_edit = { version = "0.14.4", features = ["serde", "easy"]}
-walkdir = { version = "2.3.2" }
+walkdir = "2.3.2"
 assert_cmd = "2.0.4"
-indicatif = { version = "0.17.1"}
+indicatif = "0.17.1"
 console = { version = "0.15.2", features = ["ansi-parsing"], default_features = false }
 atomic-counter = "1.0.1"
 rayon = "1.5"
 regex = "1.6.0"
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1

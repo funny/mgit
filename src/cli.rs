@@ -1,8 +1,7 @@
+use super::commands;
 use std::path::PathBuf;
 
-use super::commands;
 use clap::{error::ErrorKind, ArgAction, CommandFactory, Parser, Subcommand};
-use git2;
 
 // ========================================
 // main
@@ -128,12 +127,6 @@ enum Commands {
 
 pub fn main() {
     let args = Cli::parse();
-
-    // set git options
-    unsafe {
-        git2::opts::set_verify_owner_validation(false)
-            .expect("Failed to call git2::opts::set_verify_owner_validation");
-    }
 
     // handle commands
     match args.command {
