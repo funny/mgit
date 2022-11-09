@@ -2,8 +2,9 @@ use crate::common::{execute_cargo_cmd, execute_cmd};
 use std::{collections::HashSet, env, path::PathBuf};
 
 mod common;
+
 /// 测试内容：
-///     1、运行命令 mgit sync <path>
+///     1、运行命令 mgit sync <path> --no-checkout
 ///     2、批量同步配置文件 (.gitrepos)所有仓库，模拟 git reset --soft 到远端 commit/tag/branch
 ///     3、local commit 会还原成 local changes
 ///     4、根目录是仓库
@@ -29,19 +30,19 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
-commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
 
 [[repos]]
 local = "foobar"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
 
     // initialize the repositories tree
-    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -59,7 +60,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync
-    execute_cargo_cmd("mgit", &["sync", &input_path]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
@@ -75,7 +76,7 @@ branch = "master"
 }
 
 /// 测试内容：
-///     1、运行命令 mgit sync <path>
+///     1、运行命令 mgit sync <path> --no-checkout
 ///     2、模拟远端 commit/tag/branch 失效时的情况
 ///     3、commit 会还原成 local changes
 ///     4、根目录是仓库
@@ -101,12 +102,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
@@ -136,7 +137,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync
-    execute_cargo_cmd("mgit", &["sync", &input_path]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
@@ -176,12 +177,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
@@ -210,7 +211,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
 
     // excute sync
-    execute_cargo_cmd("mgit", &["sync", &input_path, "--stash"]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
 
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
@@ -267,12 +268,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 
 [[repos]]
 local = "foobar"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
@@ -303,7 +304,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync --stash
 
-    execute_cargo_cmd("mgit", &["sync", &input_path, "--stash"]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
 
     // compaire changes after sync
     // nothing will be stash
@@ -319,7 +320,6 @@ branch = "master"
     std::fs::remove_dir_all(&path).unwrap();
 }
 
-/// cmd: 'mgit sync ./target/tmp/test_sync_hard --hard'
 /// 测试内容：
 ///     1、运行命令 mgit sync <path> --hard
 ///     2、测试 sync后, 丢弃所有 changes
@@ -346,12 +346,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
-commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
 
 [[repos]]
 local = "foobar"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
@@ -376,7 +376,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
     // excute sync --hard
-    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
 
     // ignore "foobar" folder
     std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
@@ -403,7 +403,7 @@ branch = "master"
 ///   test_sync_simple_invalid_path
 ///     ├─.gitrepos
 ///     └─foobar-1
-///         ├─foobar (.git)
+///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
 fn cli_sync_simple_invalid_path() {
@@ -423,12 +423,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
-commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
 
 [[repos]]
 local = "foobar-1-1"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
 
@@ -480,7 +480,7 @@ branch = "master"
 ///   test_sync_stash_invalid_path
 ///     ├─.gitrepos
 ///     └─foobar-1
-///         ├─foobar (.git)
+///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
 fn cli_sync_stash_invalid_path() {
@@ -500,12 +500,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
-commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
 
 [[repos]]
 local = "foobar-1-1"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
 
@@ -556,7 +556,7 @@ branch = "master"
 ///   test_sync_hard_invalid_path
 ///     ├─.gitrepos
 ///     └─foobar-1
-///         ├─foobar (.git)
+///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
 fn cli_sync_hard_invalid_path() {
@@ -576,12 +576,12 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
-commit = "fb3a82a783afc89a2d3f1e40ecbf74a697445e8f"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
 
 [[repos]]
 local = "foobar-1-1"
-remote = "https://gitee.com/mirrors_andygrunwald/rust-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
 
@@ -651,4 +651,508 @@ fn get_local_changes(input_path: &PathBuf) -> HashSet<String> {
     }
 
     changed_files
+}
+
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --config
+///     2、path 指向的目录存在, 但仓库不存在
+///     3、sync 后，changes 数量为 0
+///     4、根目录是仓库
+///
+/// 测试目录结构:
+///   cli_sync_simple_repo_invalid
+///     ├─.gitrepos
+///     └─foobar-1
+///         ├─foobar-1-1 (.git)
+///         └─1.txt
+#[test]
+fn cli_sync_simple_repo_invalid() {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target/tmp/test_sync_simple_repo_invalid");
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let input_path = path.join("foobar-1");
+
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
+
+[[repos]]
+local = "foobar-1-1"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
+"#;
+
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    assert!(config_file.is_file());
+    assert_eq!(false, input_path.is_dir());
+
+    // create root path: "foobar-1"
+    std::fs::create_dir_all(&input_path).unwrap();
+    assert!(input_path.is_dir());
+
+    // create path: "foobar-1/foobar-1-1"
+    std::fs::create_dir_all(&input_path.join("foobar-1-1")).unwrap();
+    assert!(input_path.is_dir());
+
+    // initialize the repositories tree
+    common::execute_cargo_cmd(
+        "mgit",
+        &[
+            "sync",
+            input_path.to_str().unwrap(),
+            "--config",
+            config_file.to_str().unwrap(),
+        ],
+    );
+
+    assert!(input_path.is_dir());
+
+    let _ = execute_cmd(&path, "git", &["add", "."]);
+    // ignore "foobar" folder
+    let ignore_file = input_path.join(".gitignore");
+    let ingore_content = "/target\n/foobar-1-1";
+    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+
+    // for foobar-1, local changes only contain ".gitignore"
+    let local_changes1 = get_local_changes(&input_path);
+
+    assert_eq!(1, local_changes1.len());
+    assert!(local_changes1.contains(".gitignore"));
+
+    // for foobar-1/foobar-1-1, local changes is empty
+    let local_changes2 = get_local_changes(&input_path.join("foobar-1-1"));
+    assert!(local_changes2.is_empty());
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
+}
+
+/// 测试内容：
+///     1、运行命令:
+///         - mgit sync <path>
+///     2、--no-checkout == false 时,负责创建切换 branch, 不负责 track。
+///         - sync commit, 创建或切换 commits/xxxx 分支
+///         - sync tag, 创建或切换 tags/x.x.x 分支
+///         - sync branch, 创建或切换至同名 branch
+///     3、--no-check == false 时, 负责 track
+///     4、根目录是仓库,且根目录为空目录
+///
+/// 测试目录结构:
+///   test_sync_checkout_invalid_path(.git)
+///     ├─foobar-1 (.git)
+///     └─foobar-2 (.git)
+#[test]
+fn cli_sync_checkout_invalid_path() {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target/tmp/test_sync_checkout_invalid_path");
+    let input_path = path.to_str().unwrap();
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-1"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+commit = "dc1d3dbb0383f72fd4b7adcd1a4d54abf557175d"
+
+[[repos]]
+local = "foobar-2"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+tag = "v0.3.0"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+
+    // initialize the repositories tree
+    execute_cargo_cmd("mgit", &["sync", &input_path]);
+
+    let cur_branch_args = ["branch", "--show-current"];
+    let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
+    let root_path = &path;
+    let foobar_1_path = &path.join("foobar-1");
+    let foobar_2_path = &path.join("foobar-2");
+    let invald_name = "invalid".to_string();
+
+    // check initial state
+    // root: master untracked
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    let tracking_branch =
+        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    assert_eq!(tracking_branch.trim(), "origin/master");
+
+    // foobar-1: commits/90296ef untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "commits/dc1d3db");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: tags/1.0.3 untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "tags/v0.3.0");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
+}
+
+/// 测试内容：
+///     1、运行命令:
+///         - mgit sync <path> --no-checkout --no-check
+///         - mgit sync <path> --no-track
+///         - mgit sync <path>
+///         - mgit sync <path> --hard
+///     2、--no-checkout == false 时,负责创建切换 branch, 不负责 track。
+///         - sync commit, 创建或切换 commits/xxxx 分支
+///         - sync tag, 创建或切换 tags/x.x.x 分支
+///         - sync branch, 创建或切换至同名 branch
+///     3、--no-check == false 时, 负责 track
+///     4、根目录是仓库
+///
+/// 测试目录结构:
+///   test_sync_checkout_symple(.git)
+///     ├─foobar-1 (.git)
+///     └─foobar-2 (.git)
+#[test]
+fn cli_sync_checkout_symple() {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target/tmp/test_sync_checkout_symple");
+    let input_path = path.to_str().unwrap();
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-1"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-2"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+
+    // initialize the repositories tree
+    execute_cargo_cmd(
+        "mgit",
+        &["sync", &input_path, "--no-checkout", "--no-track"],
+    );
+
+    let cur_branch_args = ["branch", "--show-current"];
+    let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
+    let root_path = &path;
+    let foobar_1_path = &path.join("foobar-1");
+    let foobar_2_path = &path.join("foobar-2");
+    let invald_name = "invalid".to_string();
+
+    // check initial state
+    // root: master untracked
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // foobar-1: master untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: master untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-1"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+commit = "dc1d3dbb0383f72fd4b7adcd1a4d54abf557175d"
+
+[[repos]]
+local = "foobar-2"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+tag = "v0.3.0"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+
+    // test checkout function
+    // root path, checkout a new branch
+    // root: foobar untracked
+    execute_cmd(
+        root_path,
+        "git",
+        &["checkout", "-B", "foobar", "origin/master", "--no-track"],
+    )
+    .unwrap();
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "foobar");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // sync repositories, with checkout
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--no-track"]);
+
+    // root: master untracked
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // foobar-1: commits/90296ef untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "commits/dc1d3db");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: tags/1.0.3 untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "tags/v0.3.0");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    // sync repositories, with checkout and track
+    execute_cargo_cmd("mgit", &["sync", &input_path]);
+
+    // test checkout and track function
+    // root: master → origin/master
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    let tracking_branch =
+        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    assert_eq!(tracking_branch.trim(), "origin/master");
+
+    // foobar-1: commits/90296ef untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "commits/dc1d3db");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: tags/1.0.3 untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "tags/v0.3.0");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
+}
+
+/// 测试内容：
+///     1、运行命令:
+///         - mgit sync <path> --no-checkout --no-check
+///         - mgit sync <path> --no-track
+///         - mgit sync <path>
+///         - mgit sync <path> --hard
+///     2、--no-checkout == false 时,负责创建切换 branch, 不负责 track
+///         - sync commit, 创建或切换 commits/xxxx 分支
+///         - sync tag, 创建或切换 tags/x.x.x 分支
+///         - sync branch, 创建或切换至同名 branch
+///     3、--no-check == false 时, 负责 track
+///     4、--hard == false 时，有冲突会 checkout 失败
+///        --hard == true 时，放弃 chenges ，强制checkout
+///     5、根目录是仓库
+///
+/// 测试目录结构:
+///   test_sync_checkout_with_conflict(.git)
+///     ├─foobar-1 (.git)
+///     └─foobar-2 (.git)
+#[test]
+fn cli_sync_checkout_with_conflict() {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target/tmp/test_sync_checkout_with_conflict");
+    let input_path = path.to_str().unwrap();
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-1"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-2"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+
+    // initialize the repositories tree
+    execute_cargo_cmd(
+        "mgit",
+        &["sync", &input_path, "--no-checkout", "--no-track"],
+    );
+
+    let cur_branch_args = ["branch", "--show-current"];
+    let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
+    let root_path = &path;
+    let foobar_1_path = &path.join("foobar-1");
+    let foobar_2_path = &path.join("foobar-2");
+    let invald_name = "invalid".to_string();
+
+    // check initial state
+    // root: master untracked
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // foobar-1: master untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: master untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    // ignore and .gitrepos, for confliction test
+    let ignore_file = path.join(".gitignore");
+    let ingore_content = format!("{}\n{}\n{}", "/target", "/foobar-1", "/foobar-2");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+
+    // create local commit
+    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
+
+    if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
+        assert_eq!(false, output.contains(".gitignore"));
+        assert_eq!(false, output.contains(".gitrepos"));
+    } else {
+        panic!("commit error.")
+    }
+
+    // root path, set checkout a new branch
+    // root: foobar untracked
+    execute_cmd(
+        root_path,
+        "git",
+        &["checkout", "-B", "foobar", "origin/master", "--no-track"],
+    )
+    .unwrap();
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "foobar");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // for confliction test
+    let toml_string = r#"
+# This file is automatically @generated by mgit.
+# Editing it as you wish.
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar-1"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+commit = "dc1d3dbb0383f72fd4b7adcd1a4d54abf557175d"
+
+[[repos]]
+local = "foobar-2"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+tag = "v0.3.0"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+
+    // sync repositories, with checkout
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--no-track"]);
+
+    // root: foobar untracked,  checkout failed
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+
+    // foobar-1: commits/90296ef untracked
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "commits/dc1d3db");
+    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+
+    // foobar-2: tags/1.0.3 untracked
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "tags/v0.3.0");
+    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+
+    // sync repositories, with checkout, track and hard
+    execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+
+    // test checkout and track function, ".gitrepos" file have restore the first one
+    // root: master → origin/master
+    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    let tracking_branch =
+        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    assert_eq!(tracking_branch.trim(), "origin/master");
+
+    // foobar-1: master → origin/master
+    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    let tracking_branch =
+        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    assert_eq!(tracking_branch.trim(), "origin/master");
+
+    // foobar-2: master → origin/master
+    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    assert_eq!(branch.trim(), "master");
+    let tracking_branch =
+        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    assert_eq!(tracking_branch.trim(), "origin/master");
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
 }

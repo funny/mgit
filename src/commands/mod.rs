@@ -1,5 +1,5 @@
 use anyhow::Context;
-use console::{strip_ansi_codes, truncate_str};
+use console::strip_ansi_codes;
 use indicatif::ProgressBar;
 use owo_colors::OwoColorize;
 use regex::Regex;
@@ -17,7 +17,7 @@ pub mod snapshot;
 pub mod sync;
 pub mod track;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum StashMode {
     Normal,
     Stash,
@@ -29,9 +29,17 @@ pub enum ResetType {
     Mixed,
     Hard,
 }
+
 pub enum SnapshotType {
     Commit,
     Branch,
+}
+
+#[derive(Clone)]
+pub enum RemoteRef {
+    Commit(String),
+    Tag(String),
+    Branch(String),
 }
 
 /// this type is used to deserialize `.gitrepos` files.
@@ -121,6 +129,34 @@ impl TomlConfig {
     }
 }
 
+impl TomlRepo {
+    pub fn get_remote_name(&self, path: &Path) -> Result<String, anyhow::Error> {
+        let remote_url = self
+            .remote
+            .as_ref()
+            .with_context(|| "remote url is null.")?;
+        find_remote_name_by_url(path, remote_url)
+    }
+
+    pub fn get_remote_ref(&self, path: &Path) -> Result<RemoteRef, anyhow::Error> {
+        let remote_name = &self.get_remote_name(path)?;
+        // priority: commit/tag/branch(default-branch)
+        let remote_ref = {
+            if let Some(commit) = &self.commit {
+                RemoteRef::Commit(commit.to_string())
+            } else if let Some(tag) = &self.tag {
+                RemoteRef::Tag(tag.to_string())
+            } else if let Some(branch) = &self.branch {
+                let branch = format!("{}/{}", remote_name, branch.to_string());
+                RemoteRef::Branch(branch)
+            } else {
+                return Err(anyhow::anyhow!("remote ref is invalid!"));
+            }
+        };
+        Ok(remote_ref)
+    }
+}
+
 /// normalize path if needed
 pub fn norm_path(path: &String) -> String {
     path.replace("\\", "/")
@@ -134,7 +170,7 @@ pub fn display_path(path: &String) -> String {
     }
 }
 
-// deserialize config file (.gitrepos) with full file path
+/// deserialize config file (.gitrepos) with full file path
 pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
     if config_file.is_file() {
         // mac not recognize "."
@@ -143,16 +179,27 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
             .replace("\".\"", "\"\"");
 
         let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
-
-        return Some(toml_config);
+        Some(toml_config)
+    } else {
+        None
     }
-    None
 }
 
 pub fn is_repository(path: &Path) -> Result<(), anyhow::Error> {
     match path.join(".git").is_dir() {
         true => Ok(()),
         false => Err(anyhow::anyhow!("repository not found!")),
+    }
+}
+
+pub fn is_remote_ref_valid(path: &Path, remote_ref: &String) -> Result<(), anyhow::Error> {
+    let args = ["branch", "--contains", remote_ref, "-r"];
+    match execute_cmd(path, "git", &args) {
+        Ok(_) => Ok(()),
+        Err(_) => Err(anyhow::anyhow!(
+            "remote ref {} not found.",
+            remote_ref.blue()
+        )),
     }
 }
 
@@ -186,7 +233,7 @@ pub fn find_remote_url_by_name(path: &Path, name: &String) -> Result<String, any
 
 pub fn get_current_commit(path: &Path) -> Result<String, anyhow::Error> {
     is_repository(path)?;
-    let args = ["rev-parse", "Head"];
+    let args = ["rev-parse", "head"];
     let output = execute_cmd(path, "git", &args)?;
 
     for oid in output.trim().lines() {
@@ -198,17 +245,11 @@ pub fn get_current_commit(path: &Path) -> Result<String, anyhow::Error> {
 
 pub fn get_tracking_branch(path: &Path) -> Result<String, anyhow::Error> {
     is_repository(path)?;
-    let args = ["branch", "-vv"];
-    let output = execute_cmd(path, "git", &args)?;
+    let args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
 
-    for line in output.trim().lines() {
-        let re = Regex::new(r"\*([^\[]+)\[(?P<refname>[^\]\:]+)([^\]]*)\]").unwrap();
-        if let Some(caps) = re.captures(line) {
-            let refname = &caps["refname"];
-            if let Some(branch) = refname.split("origin/").last() {
-                return Ok(branch.trim().to_string());
-            }
-        }
+    let output = execute_cmd(path, "git", &args)?;
+    if !output.trim().is_empty() {
+        return Ok(output.trim().to_string());
     }
 
     Err(anyhow::anyhow!("untracked."))
@@ -219,7 +260,12 @@ pub fn get_current_branch(path: &Path) -> Result<String, anyhow::Error> {
     let args = ["branch", "--show-current"];
     let output = execute_cmd(path, "git", &args)?;
     for line in output.trim().lines() {
-        return Ok(line.to_string());
+        let branch = line.to_string();
+        // check if th branch exists
+        let branch_output = execute_cmd(path, "git", &["branch", "-l", &branch])?;
+        if branch_output.contains(&branch) {
+            return Ok(branch);
+        }
     }
     Err(anyhow::anyhow!("current branch not found."))
 }
@@ -233,21 +279,23 @@ pub fn cmp_local_remote(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    // priority: commit/tag/branch/default-branch
-    let (remote_ref, remote_desc) = {
-        if let Some(commit) = &toml_repo.commit {
-            (commit.clone(), (&commit[..7]).to_string())
-        } else if let Some(tag) = &toml_repo.tag {
-            (tag.clone(), tag.clone())
-        } else if let Some(branch) = toml_repo.clone().branch {
-            let branch = "origin/".to_string() + &branch;
-            (branch.clone(), branch)
-        } else if let Some(branch) = default_branch {
-            let branch = "origin/".to_string() + &branch;
-            (branch.clone(), branch.clone())
-        } else {
-            (String::new(), String::new())
-        }
+    let mut toml_repo = toml_repo.to_owned();
+    // use default branch when branch is null
+    if None == toml_repo.branch {
+        toml_repo.branch = default_branch.to_owned();
+    }
+
+    // priority: commit/tag/branch(default-branch)
+    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+    let remote_ref_str = match remote_ref.clone() {
+        RemoteRef::Commit(commit) => commit,
+        RemoteRef::Tag(tag) => tag,
+        RemoteRef::Branch(branch) => branch,
+    };
+    let remote_desc = match remote_ref {
+        RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
+        RemoteRef::Tag(tag) => tag,
+        RemoteRef::Branch(branch) => branch,
     };
 
     // if specified remote commit/tag/branch is null
@@ -282,7 +330,7 @@ pub fn cmp_local_remote(
     }
 
     let mut changes_desc = String::new();
-    if changed_files.is_empty() == false {
+    if !changed_files.is_empty() {
         // format changes tooltip
         changes_desc = ", ".to_string()
             + &format!("changes({})", changed_files.len())
@@ -298,7 +346,7 @@ pub fn cmp_local_remote(
     }
 
     // get rev-list between local branch and specified remote commit/tag/branch
-    let branch_pair = format!("{}...{}", &branch, &remote_ref);
+    let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
     let args = ["rev-list", "--count", "--left-right", &branch_pair];
     let mut commit_desc = String::new();
     if let Ok(output) = execute_cmd(&full_path, "git", &args) {
@@ -393,8 +441,8 @@ fn execute_cmd_with_progress(
                 display_path(rel_path).bold().magenta(),
                 plain_line.trim()
             );
-            let truncated_line = truncate_str(&full_line, 70, "...");
-            progress_bar.set_message(format!("{}", truncated_line));
+
+            progress_bar.set_message(format!("{}", full_line));
             last_line = plain_line;
         }
     }
@@ -403,7 +451,7 @@ fn execute_cmd_with_progress(
         .wait()
         .context("Error waiting for process to finish")?;
 
-    if exit_code.success() == false {
+    if !exit_code.success() {
         return Err(anyhow::anyhow!(
             "Git exited with code {}: {}. With command : {:?}.",
             exit_code.code().unwrap(),

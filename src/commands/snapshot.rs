@@ -2,7 +2,6 @@ use super::{
     display_path, find_remote_url_by_name, get_current_commit, get_tracking_branch, is_repository,
     norm_path, SnapshotType, TomlConfig, TomlRepo,
 };
-
 use globset::GlobBuilder;
 use owo_colors::OwoColorize;
 use std::fs;
@@ -24,7 +23,7 @@ pub fn exec(
     let input_path = Path::new(&input);
 
     // check if input is a valid directory
-    if input_path.is_dir() == false {
+    if !input_path.is_dir() {
         println!("Directory {} not found!", input.bold().magenta());
         return;
     }
@@ -95,8 +94,7 @@ pub fn exec(
             let mut commit: Option<String> = None;
             let mut branch: Option<String> = None;
 
-            // set branch or commit-id with '--init' option
-
+            // snapshot commit or remote-branch
             match snapshot_type {
                 SnapshotType::Commit => {
                     // get local head commit id
@@ -106,8 +104,11 @@ pub fn exec(
                 }
                 SnapshotType::Branch => {
                     // get tracking brach
-                    if let Ok(upstream_name) = get_tracking_branch(pb.as_path()) {
-                        branch = Some(upstream_name);
+                    if let Ok(refname) = get_tracking_branch(pb.as_path()) {
+                        // split, like origin/master
+                        if let Some((_, branch_ref)) = refname.split_once("/") {
+                            branch = Some(branch_ref.trim().to_string());
+                        }
                     }
                 }
             }
