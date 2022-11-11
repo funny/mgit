@@ -3,6 +3,7 @@ use std::env;
 use std::path::PathBuf;
 
 mod common;
+
 /// 测试内容：
 ///     1、运行命令 mgit sync <path>
 ///     2、清除不在配置文件 (.gitrepos) 中的仓库

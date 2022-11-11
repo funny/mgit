@@ -13,10 +13,8 @@ mod common;
 ///
 /// 测试目录结构:
 ///   test_snapshot_init
-///     ├─imgui-rs (.git)
-///     ├─indicatif (.git)
-///     ├─git-workspace (.git)
-///     └─git-repo-manager (.git)
+///     ├─foobar-1 (.git)
+///     └─foobar-2 (.git)
 #[test]
 fn cli_init_simple() {
     let path = env::current_dir()
@@ -24,6 +22,16 @@ fn cli_init_simple() {
         .join("target/tmp/test_init_simple");
 
     create_repos_tree1(&path);
+
+    for repo_path in ["foobar-1", "foobar-2"] {
+        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
+        execute_cmd(
+            &path.join(repo_path),
+            "git",
+            &["branch", "-u", "origin/master"],
+        )
+        .unwrap();
+    }
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
@@ -38,19 +46,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -67,11 +69,9 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
 ///     4. 只有同级仓库目录
 ///
 /// 测试目录结构:
-///   test_snapshot_init_force1 (.git)
-///     ├─imgui-rs (.git)
-///     ├─indicatif (.git)
-///     ├─git-workspace (.git)
-///     └─git-repo-manager (.git)
+///   cli_init_force1 (.git)
+///     ├─foobar-1 (.git)
+///     └─foobar-2 (.git)
 #[test]
 fn cli_init_force1() {
     let path = env::current_dir()
@@ -79,6 +79,16 @@ fn cli_init_force1() {
         .join("target/tmp/test_init_force1");
 
     create_repos_tree2(&path);
+
+    for repo_path in ["", "foobar-1", "foobar-2"] {
+        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
+        execute_cmd(
+            &path.join(repo_path),
+            "git",
+            &["branch", "-u", "origin/master"],
+        )
+        .unwrap();
+    }
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
@@ -93,23 +103,18 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/rust-lang/git2-rs.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -126,19 +131,13 @@ remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
 ///     4. 具有父子级仓库目录
 ///
 /// 测试目录结构:
-///   test_snapshot_init_force2 (.git)
-///     ├─imgui-rs (.git)
-///     │  ├──imgui-rs (.git)
-///     │  └──indicatif (.git)
-///     ├─indicatif (.git)
-///     │  ├──imgui-rs (.git)
-///     │  └──indicatif (.git)
-///     ├─git-workspace (.git)
-///     │  ├──imgui-rs (.git)
-///     │  └──indicatif (.git)
-///     └─git-repo-manager (.git)
-///        ├──imgui-rs (.git)
-///        └──indicatif (.git)
+///   cli_init_force2 (.git)
+///     ├─foobar-1 (.git)
+///     │  ├──foobar-1-1 (.git)
+///     │  └──foobar-1-2 (.git)
+///     └─foobar-2 (.git)
+///        ├──foobar-2-1 (.git)
+///        └──foobar-2-2 (.git)
 #[test]
 fn cli_init_force2() {
     let path = env::current_dir()
@@ -147,7 +146,25 @@ fn cli_init_force2() {
     std::fs::create_dir_all(path.clone()).unwrap();
 
     create_repos_tree3(&path);
-
+    let repo_paths = [
+        "",
+        "foobar-1",
+        "foobar-1/foobar-1-1",
+        "foobar-1/foobar-1-2",
+        "foobar-2",
+        "foobar-2/foobar-2-1",
+        "foobar-2/foobar-2-2",
+    ];
+    for repo_path in repo_paths {
+        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
+            .expect(&format!("----------------{}", repo_path));
+        execute_cmd(
+            &path.join(repo_path),
+            "git",
+            &["branch", "-u", "origin/master"],
+        )
+        .expect(&format!("{}", repo_path));
+    }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
     execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
@@ -161,55 +178,38 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/rust-lang/git2-rs.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-1/foobar-1-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-1/foobar-1-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2/foobar-2-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2/foobar-2-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3/foobar-3-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3/foobar-3-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4/foobar-4-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4/foobar-4-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -244,23 +244,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "8d90314117b4cb86abb6c4d55130437c6d87a30d"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "8d90314117b4cb86abb6c4d55130437c6d87a30d"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -281,7 +271,15 @@ fn cli_snapshot_branch() {
         .join("target/tmp/test_snapshot_branch");
 
     create_repos_tree1(&path);
-
+    for repo_path in ["foobar-1", "foobar-2"] {
+        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
+        execute_cmd(
+            &path.join(repo_path),
+            "git",
+            &["branch", "-u", "origin/master"],
+        )
+        .unwrap();
+    }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
     execute_cargo_cmd("mgit", &["snapshot", &input_path, "--branch"]);
@@ -295,19 +293,13 @@ default-branch = "develop"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -347,68 +339,38 @@ default-branch = "develop"
 
 [[repos]]
 local = "."
-remote = "https://github.com/rust-lang/git2-rs.git"
-commit = "ca6b3346d2e50e79d7c160cbee82ee65e2bcd701"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 
 [[repos]]
 local = "foobar-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "8d90314117b4cb86abb6c4d55130437c6d87a30d"
 
 [[repos]]
 local = "foobar-1/foobar-1-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 
 [[repos]]
 local = "foobar-1/foobar-1-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 
 [[repos]]
 local = "foobar-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "8d90314117b4cb86abb6c4d55130437c6d87a30d"
 
 [[repos]]
 local = "foobar-2/foobar-2-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 
 [[repos]]
 local = "foobar-2/foobar-2-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
-
-[[repos]]
-local = "foobar-3"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
-
-[[repos]]
-local = "foobar-3/foobar-3-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
-
-[[repos]]
-local = "foobar-3/foobar-3-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
-
-[[repos]]
-local = "foobar-4"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "e17e980a3fe939e677388f9fca5b3a6053d4fa4d"
-
-[[repos]]
-local = "foobar-4/foobar-4-1"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
-
-[[repos]]
-local = "foobar-4/foobar-4-2"
-remote = "https://github.com/emk/heroku-rust-cargo-hello.git"
-commit = "06fef09e5626aad3ef4c0058bd8286bfe409982a"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 "#;
 
     assert_eq!(real_result.trim(), expect_result.trim());
@@ -423,9 +385,9 @@ pub fn create_repos_tree1(path: &PathBuf) {
     }
     std::fs::create_dir_all(path.clone()).unwrap();
 
-    let remote = "https://github.com/emk/heroku-rust-cargo-hello.git";
+    let remote = "https://gitee.com/ForthEspada/CS-Books.git";
 
-    let repo_names = ["foobar-1", "foobar-2", "foobar-3", "foobar-4"];
+    let repo_names = ["foobar-1", "foobar-2"];
 
     for idx in 0..repo_names.len() {
         let dir = path.join(repo_names[idx]);
@@ -439,7 +401,7 @@ pub fn create_repos_tree1(path: &PathBuf) {
 
         std::fs::write(
             dir.join(".git/refs/heads/master"),
-            "e17e980a3fe939e677388f9fca5b3a6053d4fa4d",
+            "8d90314117b4cb86abb6c4d55130437c6d87a30d",
         )
         .unwrap();
     }
@@ -450,12 +412,12 @@ pub fn create_repos_tree2(path: &PathBuf) {
 
     // set root git init
     let _ = execute_cmd(path, "git", &["init"]);
-    let root_remote = "https://github.com/rust-lang/git2-rs.git";
+    let root_remote = "https://gitee.com/ForthEspada/CS-Books.git";
     let _ = execute_cmd(path, "git", &["remote", "add", "origin", root_remote]);
 
     std::fs::write(
         path.join(".git/refs/heads/master"),
-        "ca6b3346d2e50e79d7c160cbee82ee65e2bcd701",
+        "1e835f92604ee5d0b37fc32ea7694d57ff19815e",
     )
     .unwrap();
 }
@@ -464,7 +426,7 @@ pub fn create_repos_tree3(path: &PathBuf) {
     // set root git init
     create_repos_tree2(path);
 
-    let remote = "https://github.com/emk/heroku-rust-cargo-hello.git";
+    let remote = "https://gitee.com/ForthEspada/CS-Books.git";
 
     // get all dir
     for it in std::fs::read_dir(path).unwrap() {
@@ -485,7 +447,7 @@ pub fn create_repos_tree3(path: &PathBuf) {
 
         // init repo randomly
         for idx in 1..3 {
-            let repo_name = entry_name.clone() + "-" + &idx.to_string();
+            let repo_name = format!("{}-{}", entry_name, idx);
             let dir = entry_path.join(&repo_name);
 
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
@@ -497,7 +459,7 @@ pub fn create_repos_tree3(path: &PathBuf) {
 
             std::fs::write(
                 dir.join(".git/refs/heads/master"),
-                "06fef09e5626aad3ef4c0058bd8286bfe409982a",
+                "1e835f92604ee5d0b37fc32ea7694d57ff19815e",
             )
             .unwrap();
         }

@@ -1,11 +1,5 @@
-use super::{
-    cmp_local_remote, display_path, execute_cmd_with_progress, find_remote_name_by_url,
-    load_config, TomlRepo,
-};
-use anyhow::Context;
+use super::{cmp_local_remote, display_path, execute_cmd_with_progress, load_config, TomlRepo};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use console::truncate_str;
-
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
@@ -26,7 +20,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
     let input_path = Path::new(&input);
 
     // check if input is a valid directory
-    if input_path.is_dir() == false {
+    if !input_path.is_dir() {
         println!("Directory {} not found!", input.bold().magenta());
         return;
     }
@@ -38,7 +32,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
     };
 
     // check if .gitrepos exists
-    if config_file.is_file() == false {
+    if !config_file.is_file() {
         println!(
             "{} not found, try {} instead!",
             ".gitrepos".bold().magenta(),
@@ -100,7 +94,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                         let progress_bar =
                             multi_progress_wait.insert(idx, ProgressBar::new_spinner());
                         progress_bar.set_style(
-                            ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
+                            ProgressStyle::with_template("{spinner:.green.dim.bold} {wide_msg} ")
                                 .unwrap()
                                 .tick_chars("/-\\| "),
                         );
@@ -129,7 +123,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                                 );
 
                                 // if not silent, show compare stat betweent local and remote
-                                if silent == false {
+                                if !silent {
                                     // get compare stat betwwen local and specified commit/tag/branch/
                                     let cmp_msg = match cmp_local_remote(
                                         input_path,
@@ -143,21 +137,22 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                                     message = format!("{}: {}", message, &cmp_msg)
                                 };
 
-                                // Truncates message string to a certain number of characters.
-                                let truncated_message = truncate_str(&message, 70, "...");
                                 // show meeshage in progress bar
-                                progress_bar.finish_with_message(format!("{}", truncated_message));
+                                progress_bar.finish_with_message(message);
                                 Ok(())
                             }
                             Err(e) => {
-                                progress_bar.finish_with_message(format!(
+                                let message = format!(
                                     "{} {} {}",
                                     "x".bold().red(),
                                     &prefix,
                                     display_path(toml_repo.local.as_ref().unwrap())
                                         .bold()
                                         .magenta(),
-                                ));
+                                );
+
+                                // show meeshage in progress bar
+                                progress_bar.finish_with_message(message);
                                 Err((toml_repo, e))
                             }
                         };
@@ -177,16 +172,19 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                 res
             });
 
+            // show sync stat
             println!("\n");
-            println!(
-                "{} repositories fecth successfully.",
-                (repos_count - errors.len()).to_string().green()
-            );
+            if errors.is_empty() {
+                println!("fetch finished! 0 error(s).");
+            } else {
+                println!(
+                    "fetch finished! {} error(s).",
+                    errors.len().to_string().bold().red()
+                );
+            }
 
-            // print out each repo that failed to fetch
-            if errors.is_empty() == false {
-                eprintln!("{} repositories failed.", errors.len().to_string().red());
-
+            // show errors
+            if !errors.is_empty() {
                 println!("");
                 println!("Errors:",);
                 for (toml_repo, error) in errors {
@@ -218,11 +216,7 @@ fn execute_fetch_with_progress(
     let full_path = input_path.join(rel_path);
 
     // get remote name from url
-    let remote_url = toml_repo
-        .remote
-        .as_ref()
-        .with_context(|| "remote url is null.")?;
-    let remote_name = find_remote_name_by_url(full_path.as_path(), remote_url)?;
+    let remote_name = toml_repo.get_remote_name(full_path.as_path())?;
 
     let args = [
         "fetch",

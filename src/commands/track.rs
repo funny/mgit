@@ -1,5 +1,4 @@
-use super::{display_path, execute_cmd, get_current_branch, load_config, TomlRepo};
-
+use super::{display_path, execute_cmd, get_current_branch, load_config, RemoteRef, TomlRepo};
 use owo_colors::OwoColorize;
 use std::{
     env,
@@ -13,7 +12,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     let input_path = Path::new(&input);
 
     // if directory doesn't exist, finsh clean
-    if input_path.is_dir() == false {
+    if !input_path.is_dir() {
         println!("Directory {} not found!", input.bold().magenta());
         return;
     }
@@ -28,7 +27,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     };
 
     // check if .gitrepos exists
-    if config_file.is_file() == false {
+    if !config_file.is_file() {
         println!(
             "{} not found, try {} instead!",
             ".gitrepos".bold().magenta(),
@@ -64,26 +63,30 @@ pub fn set_tracking_remote_branch(
     // get local current branch
     let local_branch = get_current_branch(full_path.as_path())?;
 
-    // priority: commit/tag/branch/default-branch
-    let remote_head = {
-        if let Some(commit) = &toml_repo.commit {
-            (&commit[..7]).to_string()
-        } else if let Some(tag) = &toml_repo.tag {
-            tag.to_string()
-        } else if let Some(branch) = &toml_repo.branch {
-            "origin/".to_string() + &branch.to_string()
-        } else if let Some(branch) = default_branch {
-            "origin/".to_string() + &branch.to_string()
-        } else {
-            String::new()
-        }
+    let mut toml_repo = toml_repo.to_owned();
+    // use default branch when branch is null
+    if None == toml_repo.branch {
+        toml_repo.branch = default_branch.to_owned();
+    }
+
+    // priority: commit/tag/branch(default-branch)
+    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+    let remote_ref_str = match remote_ref.clone() {
+        RemoteRef::Commit(commit) => commit,
+        RemoteRef::Tag(tag) => tag,
+        RemoteRef::Branch(branch) => branch,
+    };
+    let remote_desc = match remote_ref {
+        RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
+        RemoteRef::Tag(tag) => tag,
+        RemoteRef::Branch(branch) => branch,
     };
 
     if toml_repo.commit.is_some() || toml_repo.tag.is_some() {
         let res = format!(
             "{}: {} {}",
             display_path(rel_path).bold().magenta(),
-            remote_head.blue(),
+            remote_desc.blue(),
             "untracked"
         );
         return Ok(res);
@@ -91,13 +94,14 @@ pub fn set_tracking_remote_branch(
 
     // git branch --set-upstream-to <name>
     // true only when remote head is branch
-    let args = vec!["branch", "--set-upstream-to", &remote_head];
+    let args = vec!["branch", "--set-upstream-to", &remote_ref_str];
+
     if execute_cmd(&full_path, "git", &args).is_ok() {
         let res = format!(
             "{}: {} -> {}",
             display_path(rel_path).bold().magenta(),
             local_branch.blue(),
-            remote_head.blue()
+            remote_desc.blue()
         );
         Ok(res)
     } else {
@@ -105,7 +109,7 @@ pub fn set_tracking_remote_branch(
             "{}: {} {} {}",
             display_path(rel_path).bold().magenta(),
             "track failed,".red(),
-            remote_head.blue(),
+            remote_desc.blue(),
             "not found!".red()
         );
         Ok(res)

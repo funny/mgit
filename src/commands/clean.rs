@@ -14,7 +14,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     let input_path = Path::new(&input);
 
     // if directory doesn't exist, finsh clean
-    if input_path.is_dir() == false {
+    if !input_path.is_dir() {
         println!("Directory {} not found!", input.bold().magenta());
         return;
     }
@@ -29,7 +29,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     };
 
     // check if .gitrepos exists
-    if config_file.is_file() == false {
+    if !config_file.is_file() {
         println!(
             "{} not found, try {} instead!",
             ".gitrepos".bold().magenta(),
@@ -71,7 +71,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
                     pb.pop();
                     let rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
 
-                    if config_repo_paths.contains(&rel_path) == false {
+                    if !config_repo_paths.contains(&rel_path) {
                         unused_paths.push(rel_path);
                     }
 

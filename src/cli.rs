@@ -80,6 +80,10 @@ enum Commands {
         /// Do not track remote branch
         #[arg(long, action = ArgAction::SetTrue)]
         no_track: bool,
+
+        /// Do not checkout branch after sync
+        #[arg(long, action = ArgAction::SetTrue)]
+        no_checkout: bool,
     },
 
     /// Fetch git repos
@@ -155,6 +159,7 @@ pub fn main() {
             thread,
             silent,
             no_track,
+            no_checkout,
         } => {
             let stash_mode = match (stash, hard) {
                 (false, false) => commands::StashMode::Normal,
@@ -169,7 +174,15 @@ pub fn main() {
                     .exit();
                 }
             };
-            commands::sync::exec(path, config, stash_mode, thread, silent, no_track);
+            commands::sync::exec(
+                path,
+                config,
+                stash_mode,
+                thread,
+                silent,
+                no_track,
+                no_checkout,
+            );
         }
 
         Commands::Fetch {
