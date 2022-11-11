@@ -64,6 +64,7 @@ Options
 - **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
 - **--silent** 在 sync 中启用静默播报模式
 - **--no-track** 在 sync 后不跟踪远端分支
+- **--no-checkout** 在 sync 后不迁出新的远端分支
 - **--stash** 在 sync 前暂存本地改动
 - **--hard** 在 sync 前忽略所有本地改动
 
