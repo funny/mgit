@@ -1,5 +1,5 @@
 use super::{
-    clean, cmp_local_remote, display_path, execute_cmd, execute_cmd_with_progress,
+    clean, cmp_local_remote, display_path, execute_cmd, execute_cmd_with_progress, fmt_msg_spinner,
     get_current_branch, is_remote_ref_valid, is_repository, load_config,
     track::set_tracking_remote_branch, RemoteRef, ResetType, StashMode, TomlRepo,
 };
@@ -74,9 +74,9 @@ pub fn exec(
                     "[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}",
                 )
                 .unwrap()
-                .progress_chars("=>·"),
+                .progress_chars("=>-"),
             );
-            total_bar.enable_steady_tick(std::time::Duration::from_millis(500));
+            total_bar.tick();
 
             // user a counter
             let counter = RelaxedCounter::new(1);
@@ -99,7 +99,6 @@ pub fn exec(
 
             // do track flag
             let do_track = !no_track && !silent;
-
             // pool.install means that `.par_iter()` will use the thread pool we've built above.
             let (succ_repos, error_repos) = thread_pool.install(|| {
                 let res: Vec<Result<(&TomlRepo, String), (&TomlRepo, anyhow::Error)>> = toml_repos
@@ -112,12 +111,13 @@ pub fn exec(
                         let progress_bar =
                             multi_progress_wait.insert(idx, ProgressBar::new_spinner());
                         progress_bar.set_style(
-                            ProgressStyle::with_template("{spinner:.green.dim.bold} {wide_msg} ")
+                            ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
                                 .unwrap()
                                 .tick_chars("/-\\| "),
                         );
                         progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
-                        progress_bar.set_message(format!("{:>9} waiting...", &prefix));
+                        let message = format!("{:>9} waiting...", &prefix);
+                        progress_bar.set_message(fmt_msg_spinner(&message));
 
                         // execute command according each repo status
                         let execute_result = execute_sync_with_progress(
@@ -158,7 +158,7 @@ pub fn exec(
                                 };
 
                                 // show meeshage in progress bar
-                                progress_bar.finish_with_message(message);
+                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
 
                                 // track remote branch, return track status
                                 let mut track_msg = String::new();
@@ -184,7 +184,7 @@ pub fn exec(
                                 );
 
                                 // show meeshage in progress bar
-                                progress_bar.finish_with_message(message);
+                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
 
                                 Err((toml_repo, e))
                             }
@@ -328,11 +328,11 @@ fn execute_sync_with_progress(
                 );
 
                 if result.is_ok() {
-                    // reset --soft
+                    // reset --hard
                     result = execute_reset_with_progress(
                         input_path,
                         &toml_repo,
-                        ResetType::Soft,
+                        ResetType::Hard,
                         prefix,
                         progress_bar,
                     );
@@ -368,6 +368,7 @@ fn execute_sync_with_progress(
 
             // checkout
             let mut result: Result<(), anyhow::Error> = Ok(());
+            let mut reset_type = ResetType::Mixed;
             if !no_checkout {
                 result = execute_checkout_with_progress(
                     input_path,
@@ -377,6 +378,7 @@ fn execute_sync_with_progress(
                     progress_bar,
                 )
                 .with_context(|| stash_message.clone());
+                reset_type = ResetType::Hard;
             }
 
             // reset --mixed
@@ -384,7 +386,7 @@ fn execute_sync_with_progress(
                 result = execute_reset_with_progress(
                     input_path,
                     &toml_repo,
-                    ResetType::Mixed,
+                    reset_type,
                     prefix,
                     progress_bar,
                 )
@@ -462,11 +464,12 @@ fn execute_init_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : initialize...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     let args = ["init"];
 
@@ -485,11 +488,12 @@ fn execute_add_remote_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : add remote...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     // git remote add origin {url}
     let args = [
@@ -514,11 +518,12 @@ fn execute_clean_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : clean...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     let args = ["clean", "-fd"];
 
@@ -538,11 +543,12 @@ fn execute_reset_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : reset...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
@@ -574,11 +580,12 @@ fn execute_stash_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : stash...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     let args = ["stash", "--include-untracked"];
 
@@ -594,11 +601,12 @@ fn execute_stash_pop_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : pop stash...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     let args = ["stash", "pop"];
 
@@ -615,11 +623,12 @@ fn execute_checkout_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : checkout...",
         prefix,
         display_path(rel_path).bold().magenta()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     // priority: commit/tag/branch(default-branch)
     // priority: commit/tag/branch(default-branch)
@@ -645,12 +654,13 @@ fn execute_checkout_with_progress(
         }
     }
 
-    progress_bar.set_message(format!(
+    let message = format!(
         "{:>9} {} : checkout {}...",
         prefix,
         display_path(rel_path).bold().magenta(),
         &branch.blue()
-    ));
+    );
+    progress_bar.set_message(fmt_msg_spinner(&message));
 
     // check if local branch already exists
     let output = execute_cmd(full_path.as_path(), "git", &["branch", "-l", &branch])?;

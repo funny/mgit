@@ -1,4 +1,7 @@
-use super::{cmp_local_remote, display_path, execute_cmd_with_progress, load_config, TomlRepo};
+use super::{
+    cmp_local_remote, display_path, execute_cmd_with_progress, fmt_msg_spinner, load_config,
+    TomlRepo,
+};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use owo_colors::OwoColorize;
@@ -59,7 +62,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                     "[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}",
                 )
                 .unwrap()
-                .progress_chars("=>·"),
+                .progress_chars("=>-"),
             );
             total_bar.enable_steady_tick(std::time::Duration::from_millis(500));
 
@@ -94,12 +97,13 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                         let progress_bar =
                             multi_progress_wait.insert(idx, ProgressBar::new_spinner());
                         progress_bar.set_style(
-                            ProgressStyle::with_template("{spinner:.green.dim.bold} {wide_msg} ")
+                            ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
                                 .unwrap()
                                 .tick_chars("/-\\| "),
                         );
                         progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
-                        progress_bar.set_message(format!("{:>9} waiting...", &prefix));
+                        let message = format!("{:>9} waiting...", &prefix);
+                        progress_bar.set_message(fmt_msg_spinner(&message));
 
                         // execute fetch command with progress
                         let execute_result = execute_fetch_with_progress(
@@ -138,7 +142,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                                 };
 
                                 // show meeshage in progress bar
-                                progress_bar.finish_with_message(message);
+                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
                                 Ok(())
                             }
                             Err(e) => {
@@ -152,7 +156,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                                 );
 
                                 // show meeshage in progress bar
-                                progress_bar.finish_with_message(message);
+                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
                                 Err((toml_repo, e))
                             }
                         };
