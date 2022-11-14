@@ -186,10 +186,16 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
 }
 
 pub fn is_repository(path: &Path) -> Result<(), anyhow::Error> {
-    match path.join(".git").is_dir() {
-        true => Ok(()),
-        false => Err(anyhow::anyhow!("repository not found!")),
+    if path.join(".git").is_dir() {
+        let args = ["rev-parse", "--show-cdup"];
+        if let Ok(output) = execute_cmd(path, "git", &args) {
+            if output.trim().is_empty() {
+                return Ok(());
+            }
+        }
     }
+
+    Err(anyhow::anyhow!("repository not found!"))
 }
 
 pub fn is_remote_ref_valid(path: &Path, remote_ref: &String) -> Result<(), anyhow::Error> {
@@ -423,7 +429,8 @@ fn execute_cmd_with_progress(
         prefix,
         display_path(rel_path).bold().magenta()
     );
-    progress_bar.set_message(last_line.clone());
+
+    progress_bar.set_message(fmt_msg_spinner(&last_line));
 
     // get message from stderr with "--progress" option
     if let Some(ref mut stderr) = spawned.stderr {
@@ -442,7 +449,8 @@ fn execute_cmd_with_progress(
                 plain_line.trim()
             );
 
-            progress_bar.set_message(format!("{}", full_line));
+            progress_bar.set_message(fmt_msg_spinner(&full_line));
+
             last_line = plain_line;
         }
     }
@@ -461,4 +469,16 @@ fn execute_cmd_with_progress(
     }
 
     Ok(())
+}
+
+pub fn get_terminal_width() -> usize {
+    match term_size::dimensions() {
+        Some((width, _)) => width - 10,
+        _ => 70,
+    }
+}
+
+pub fn fmt_msg_spinner(message: &String) -> String {
+    let max_width = get_terminal_width();
+    console::truncate_str(&message, max_width, "...").to_string()
 }
