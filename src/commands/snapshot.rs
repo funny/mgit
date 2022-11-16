@@ -13,6 +13,7 @@ pub fn exec(
     config: Option<PathBuf>,
     snapshot_type: SnapshotType,
     force: bool,
+    ignore: Option<Vec<String>>,
 ) {
     let cwd = std::env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
@@ -74,14 +75,24 @@ pub fn exec(
             // get relative path
             let mut pb = path.to_path_buf();
             pb.pop();
-            let rel_path = pb.strip_prefix(input_path).unwrap().to_path_buf();
+            let rel_path = pb.strip_prefix(input_path).unwrap();
+
+            // normalize path if needed
+            let norm_path = norm_path(&rel_path.to_str().unwrap().to_string());
+
+            // if git in root path, represent it by "."
+            let norm_str = display_path(&norm_path);
+
+            // ignore specified path
+            if let Some(ignore_paths) = &ignore {
+                if ignore_paths.contains(&norm_str) {
+                    continue;
+                }
+            }
 
             // check repository valid
             if is_repository(pb.as_path()).is_err() {
-                println!(
-                    "Failed to open repo {}!",
-                    display_path(&rel_path.to_str().unwrap().to_string()),
-                );
+                println!("Failed to open repo {}!", &norm_str);
                 continue;
             }
 
@@ -113,15 +124,9 @@ pub fn exec(
                 }
             }
 
-            // normalize path if needed
-            let norm_path = norm_path(&rel_path.to_str().unwrap().to_string());
-
-            // if git in root path, represent it by "."
-            let norm_str = &display_path(&norm_path);
-
             // set toml repo
             let toml_repo = TomlRepo {
-                local: Some(String::from(norm_str)),
+                local: Some(norm_str.clone()),
                 remote,
                 branch,
                 tag: None,
