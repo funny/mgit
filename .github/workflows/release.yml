@@ -136,7 +136,7 @@ jobs:
       shell: bash
       run: |
         staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
-        cp {README.md} "$staging/"
+        cp README.md "$staging/"
         # mkdir -p "$staging"/{complete,doc}
         # cp complete/_mgit "$staging/complete/"
         if [ "${{ matrix.os }}" = "windows-2022" ]; then
