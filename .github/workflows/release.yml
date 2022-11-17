@@ -135,19 +135,15 @@ jobs:
     - name: Build archive
       shell: bash
       run: |
-        outdir="$(ci/cargo-out-dir "${{ env.TARGET_DIR }}")"
         staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
         cp {README.md} "$staging/"
         # mkdir -p "$staging"/{complete,doc}
-        # cp "$outdir"/{mgit.bash,mgit.fish,_mgit.ps1} "$staging/complete/"
         # cp complete/_mgit "$staging/complete/"
         if [ "${{ matrix.os }}" = "windows-2022" ]; then
           cp "target/${{ matrix.target }}/release/mgit.exe" "$staging/"
           7z a "$staging.zip" "$staging"
           echo "ASSET=$staging.zip" >> $GITHUB_ENV
         else
-          # The man page is only generated on Unix systems. ¯\_(ツ)_/¯
-          # cp "$outdir"/mgit.1 "$staging/doc/"
           cp "target/${{ matrix.target }}/release/mgit" "$staging/"
           tar czf "$staging.tar.gz" "$staging"
           echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
