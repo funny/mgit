@@ -50,6 +50,10 @@ enum Commands {
         /// Force remove git repos without prompt
         #[arg(long, action = ArgAction::SetTrue)]
         force: bool,
+
+        /// Ignore specified repositories for snapshot
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
     },
 
     /// Sync git repos
@@ -135,7 +139,7 @@ pub fn main() {
     // handle commands
     match args.command {
         Commands::Init { path, force } => {
-            commands::snapshot::exec(path, None, commands::SnapshotType::Branch, force);
+            commands::snapshot::exec(path, None, commands::SnapshotType::Branch, force, None);
         }
 
         Commands::Snapshot {
@@ -143,12 +147,14 @@ pub fn main() {
             config,
             branch,
             force,
+            ignore,
         } => {
             let snapshot_type = match branch {
                 true => commands::SnapshotType::Branch,
                 false => commands::SnapshotType::Commit,
             };
-            commands::snapshot::exec(path, config, snapshot_type, force);
+
+            commands::snapshot::exec(path, config, snapshot_type, force, ignore);
         }
 
         Commands::Sync {
