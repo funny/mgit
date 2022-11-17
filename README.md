@@ -49,6 +49,7 @@ Options
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 - **--branch** 生成 branch 快照
 - **--force** 强制执行并覆盖已有的配置文件
+- **--ignore** 忽略不想生成 config 文件的目录，可多次使用
 
 ### sync
 
