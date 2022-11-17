@@ -136,9 +136,12 @@ jobs:
       shell: bash
       run: |
         staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
+        mkdir -p "$staging"
         cp README.md "$staging/"
+        # DISABLE
         # mkdir -p "$staging"/{complete,doc}
         # cp complete/_mgit "$staging/complete/"
+
         if [ "${{ matrix.os }}" = "windows-2022" ]; then
           cp "target/${{ matrix.target }}/release/mgit.exe" "$staging/"
           7z a "$staging.zip" "$staging"
