@@ -11,6 +11,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use toml_edit;
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 pub mod clean;
 pub mod fetch;
 pub mod snapshot;
@@ -46,20 +49,31 @@ pub enum RemoteRef {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct TomlConfig {
-    version: Option<String>,
-    default_branch: Option<String>,
-    default_remote: Option<String>,
-    repos: Option<Vec<TomlRepo>>,
+    pub version: Option<String>,
+    pub default_branch: Option<String>,
+    pub default_remote: Option<String>,
+    pub repos: Option<Vec<TomlRepo>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct TomlRepo {
-    local: Option<String>,
-    remote: Option<String>,
-    branch: Option<String>,
-    tag: Option<String>,
-    commit: Option<String>,
+    pub local: Option<String>,
+    pub remote: Option<String>,
+    pub branch: Option<String>,
+    pub tag: Option<String>,
+    pub commit: Option<String>,
+}
+
+impl Default for TomlConfig {
+    fn default() -> Self {
+        Self {
+            version: None,
+            default_branch: None,
+            default_remote: None,
+            repos: None,
+        }
+    }
 }
 
 impl TomlConfig {
@@ -159,7 +173,11 @@ impl TomlRepo {
 
 /// normalize path if needed
 pub fn norm_path(path: &String) -> String {
-    path.replace("\\", "/")
+    let mut path = path.replace("\\", "/");
+    while path.ends_with("/") {
+        path.pop();
+    }
+    path
 }
 
 /// if path is empty, represent it by "."
@@ -182,6 +200,23 @@ pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
         Some(toml_config)
     } else {
         None
+    }
+}
+
+pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<String>>) {
+    if let Some(ignore_paths) = ignore {
+        for ignore_path in ignore_paths {
+            if let Some(idx) = toml_repos.iter().position(|r| {
+                if let Some(rel_path) = r.local.clone() {
+                    // consider "." as root path
+                    display_path(&rel_path) == ignore_path
+                } else {
+                    false
+                }
+            }) {
+                toml_repos.remove(idx);
+            }
+        }
     }
 }
 
@@ -276,11 +311,21 @@ pub fn get_current_branch(path: &Path) -> Result<String, anyhow::Error> {
     Err(anyhow::anyhow!("current branch not found."))
 }
 
+pub fn get_branch_log(path: &Path, branch: String) -> String {
+    let args = ["show-branch", &branch];
+    let output = execute_cmd(path, "git", &args).unwrap_or(String::new());
+    if let Some((_, msg)) = output.split_once("]") {
+        return msg.trim().to_string();
+    }
+    String::new()
+}
+
 /// get full ahead/behind values between branches
 pub fn cmp_local_remote(
     input_path: &Path,
     toml_repo: &TomlRepo,
     default_branch: &Option<String>,
+    use_tracking_remote: bool,
 ) -> Result<Option<String>, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
@@ -292,16 +337,24 @@ pub fn cmp_local_remote(
     }
 
     // priority: commit/tag/branch(default-branch)
-    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
-    let remote_ref_str = match remote_ref.clone() {
-        RemoteRef::Commit(commit) => commit,
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
-    };
-    let remote_desc = match remote_ref {
-        RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+    let (remote_ref_str, remote_desc) = {
+        if use_tracking_remote {
+            let remote_ref_str = get_tracking_branch(full_path.as_path())?;
+            (remote_ref_str.clone(), remote_ref_str)
+        } else {
+            let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+            let remote_ref_str = match remote_ref.clone() {
+                RemoteRef::Commit(commit) => commit,
+                RemoteRef::Tag(tag) => tag,
+                RemoteRef::Branch(branch) => branch,
+            };
+            let remote_desc = match remote_ref {
+                RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
+                RemoteRef::Tag(tag) => tag,
+                RemoteRef::Branch(branch) => branch,
+            };
+            (remote_ref_str, remote_desc)
+        }
     };
 
     // if specified remote commit/tag/branch is null
@@ -355,6 +408,7 @@ pub fn cmp_local_remote(
     let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
     let args = ["rev-list", "--count", "--left-right", &branch_pair];
     let mut commit_desc = String::new();
+
     if let Ok(output) = execute_cmd(&full_path, "git", &args) {
         let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
 
@@ -384,7 +438,10 @@ pub fn cmp_local_remote(
 
     // show diff overview
     let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
-        "already update to date".to_string()
+        format!(
+            "already update to date. {}",
+            get_branch_log(&full_path, branch)
+        )
     } else {
         format!("{}{}{}", remote_desc.blue(), commit_desc, changes_desc,)
     };
@@ -395,6 +452,12 @@ pub fn cmp_local_remote(
 pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
     let mut command = std::process::Command::new(cmd);
     let full_command = command.current_dir(path.to_path_buf()).args(args);
+
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        full_command.creation_flags(CREATE_NO_WINDOW);
+    }
 
     let output = full_command
         .stdout(std::process::Stdio::piped())

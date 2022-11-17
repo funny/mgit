@@ -1,0 +1,21 @@
+[package]
+name = "mgit-gui"
+version = "0.0.8-alpha"
+edition = "2021"
+repository = "https://github.com/funny/mgit"
+
+[dependencies]
+mgit = {version ="1.1.1",path="../cli" }
+eframe = {version ="0.19.0",features = ["persistence"]}
+egui_extras = "0.19.0"
+rfd = "0.10"
+image = "0.24.2"
+console = { version = "0.15.2", features = ["ansi-parsing"], default_features = false }
+poll-promise = "0.2.0"
+strip-ansi-escapes = "0.1.1"
+anyhow = "1.0.65"
+rayon = "1.5"
+home = "0.5.4"
+toml = "0.5.9"
+toml_edit = { version = "0.14.4", features = ["serde", "easy"]}
+serde = { version = "1.0.145", features = ["derive"] }

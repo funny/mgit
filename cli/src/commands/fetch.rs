@@ -1,6 +1,6 @@
 use super::{
-    cmp_local_remote, display_path, execute_cmd_with_progress, fmt_msg_spinner, load_config,
-    TomlRepo,
+    cmp_local_remote, display_path, exclude_ignore, execute_cmd_with_progress, fmt_msg_spinner,
+    load_config, TomlRepo,
 };
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -13,7 +13,13 @@ use std::{
     sync::Arc,
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, silent: bool) {
+pub fn exec(
+    path: Option<String>,
+    config: Option<PathBuf>,
+    num_threads: usize,
+    silent: bool,
+    ignore: Option<Vec<String>>,
+) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -50,6 +56,10 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
 
         // handle fetch
         if let Some(toml_repos) = toml_config.repos {
+            // ignore specified repositories
+            let mut toml_repos = toml_repos;
+            exclude_ignore(&mut toml_repos, ignore);
+
             let repos_count = toml_repos.len();
 
             // multi_progress manages multiple progress bars from different threads
@@ -133,6 +143,7 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>, num_threads: usize, s
                                         input_path,
                                         toml_repo,
                                         &default_branch,
+                                        false,
                                     ) {
                                         Ok(r) => r.unwrap(),
                                         _ => String::new(),

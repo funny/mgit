@@ -1,11 +1,13 @@
-use super::{display_path, execute_cmd, get_current_branch, load_config, RemoteRef, TomlRepo};
+use super::{
+    display_path, exclude_ignore, execute_cmd, get_current_branch, load_config, RemoteRef, TomlRepo,
+};
 use owo_colors::OwoColorize;
 use std::{
     env,
     path::{Path, PathBuf},
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>) {
+pub fn exec(path: Option<String>, config: Option<PathBuf>, ignore: Option<Vec<String>>) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
     let input = path.or(cwd_str).unwrap();
@@ -40,8 +42,12 @@ pub fn exec(path: Option<String>, config: Option<PathBuf>) {
     if let Some(toml_config) = load_config(&config_file) {
         let default_branch = toml_config.default_branch;
 
-        // handle sync
+        // handle track
         if let Some(toml_repos) = toml_config.repos {
+            // ignore specified repositories
+            let mut toml_repos = toml_repos;
+            exclude_ignore(&mut toml_repos, ignore);
+
             for toml_repo in toml_repos {
                 if let Ok(res) = set_tracking_remote_branch(input_path, &toml_repo, &default_branch)
                 {

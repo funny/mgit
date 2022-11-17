@@ -1,0 +1,21 @@
+[package]
+name = "mgit"
+version = "1.1.2"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.65"
+clap = { version = "4.0.8", features = ["derive", "cargo"] }
+globset = "0.4.9"
+owo-colors = "3.5.0"
+serde = { version = "1.0.145", features = ["derive"] }
+toml = "0.5.9"
+toml_edit = { version = "0.14.4", features = ["serde", "easy"]}
+walkdir = "2.3.2"
+assert_cmd = "2.0.4"
+indicatif = "0.17.2"
+console = { version = "0.15.2", features = ["ansi-parsing"], default_features = false }
+atomic-counter = "1.0.1"
+rayon = "1.5"
+regex = "1.6.0"
+term_size = "0.3.2"
