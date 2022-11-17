@@ -66,7 +66,7 @@ jobs:
       RUST_BACKTRACE: 1
     strategy:
       matrix:
-        build: [linux, linux-arm, macos, win-msvc, win-gnu, win32-msvc]
+        build: [linux, linux-arm, macos, win-msvc, win32-msvc]
         include:
         - build: linux
           os: ubuntu-22.04
@@ -84,10 +84,10 @@ jobs:
           os: windows-2022
           rust: nightly
           target: x86_64-pc-windows-msvc
-        - build: win-gnu
-          os: windows-2022
-          rust: nightly-x86_64-gnu
-          target: x86_64-pc-windows-gnu
+        # - build: win-gnu
+        #   os: windows-2022
+        #   rust: nightly-x86_64-gnu
+        #   target: x86_64-pc-windows-gnu
         - build: win32-msvc
           os: windows-2022
           rust: nightly
@@ -132,6 +132,7 @@ jobs:
           rustembedded/cross:arm-unknown-linux-gnueabihf \
           arm-linux-gnueabihf-strip \
           /target/arm-unknown-linux-gnueabihf/release/mgit
+
     - name: Build archive
       shell: bash
       run: |
