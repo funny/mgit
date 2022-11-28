@@ -30,10 +30,10 @@ impl super::WindowBase for Dialog {
         self.name.clone()
     }
 
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
         let width = 300.0;
         let height = 160.0;
-        let screen_rect = ctx.used_size();
+        let screen_rect = eframe.info().window_info.size;
         let default_pos = [
             (screen_rect.x - width) * 0.5,
             (screen_rect.y - height) * 0.5,
@@ -41,7 +41,7 @@ impl super::WindowBase for Dialog {
         self.is_ok = None;
 
         egui::Window::new(&self.name)
-            .default_pos(default_pos)
+            .fixed_pos(default_pos)
             .fixed_size([width, height])
             .collapsible(false)
             .open(open)

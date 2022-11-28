@@ -190,17 +190,18 @@ pub fn display_path(path: &String) -> String {
 
 /// deserialize config file (.gitrepos) with full file path
 pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
+    let mut toml_config = None;
     if config_file.is_file() {
         // mac not recognize "."
         let txt = fs::read_to_string(config_file)
             .unwrap()
             .replace("\".\"", "\"\"");
 
-        let toml_config: TomlConfig = toml::from_str(txt.as_str()).unwrap();
-        Some(toml_config)
-    } else {
-        None
+        if let Ok(res) = toml::from_str(txt.as_str()) {
+            toml_config = Some(res);
+        }
     }
+    toml_config
 }
 
 pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<String>>) {
@@ -312,12 +313,9 @@ pub fn get_current_branch(path: &Path) -> Result<String, anyhow::Error> {
 }
 
 pub fn get_branch_log(path: &Path, branch: String) -> String {
-    let args = ["show-branch", &branch];
+    let args = ["show-branch", "--sha1-name", &branch];
     let output = execute_cmd(path, "git", &args).unwrap_or(String::new());
-    if let Some((_, msg)) = output.split_once("]") {
-        return msg.trim().to_string();
-    }
-    String::new()
+    output.trim().to_string()
 }
 
 /// get full ahead/behind values between branches
@@ -440,7 +438,7 @@ pub fn cmp_local_remote(
     let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
         format!(
             "already update to date. {}",
-            get_branch_log(&full_path, branch)
+            get_branch_log(&full_path, branch).as_str().bright_black()
         )
     } else {
         format!("{}{}{}", remote_desc.blue(), commit_desc, changes_desc,)

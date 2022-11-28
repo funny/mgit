@@ -1,5 +1,6 @@
-use super::defines::hex_code;
+use super::defines::{hex_code, resource};
 use eframe::egui;
+use egui_extras::RetainedImage;
 
 #[derive(Default)]
 pub struct AboutWindow {}
@@ -9,16 +10,17 @@ impl super::WindowBase for AboutWindow {
         format!("About mgit-gui")
     }
 
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
         let width = 300.0;
         let height = 160.0;
-        let screen_rect = ctx.used_size();
+        let screen_rect = eframe.info().window_info.size;
         let default_pos = [
             (screen_rect.x - width) * 0.5,
             (screen_rect.y - height) * 0.5,
         ];
+
         egui::Window::new(self.name())
-            .default_pos(default_pos)
+            .fixed_pos(default_pos)
             .fixed_size([width, height])
             .collapsible(false)
             .open(open)
@@ -34,6 +36,11 @@ impl super::View for AboutWindow {
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(0.0, 10.0);
             ui.label("");
+
+            if let Ok(image) = RetainedImage::from_image_bytes("logo128x128.png", resource::LOGO) {
+                image.show(ui);
+            }
+
             ui.heading(std::env!("CARGO_PKG_NAME"));
 
             let version = format!("version {}", std::env!("CARGO_PKG_VERSION"));

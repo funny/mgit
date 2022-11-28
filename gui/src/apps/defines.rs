@@ -11,7 +11,9 @@ pub mod resource {
     pub const NERD_FONT: &'static [u8] =
         include_bytes!("../../resource/Fira Code Medium Nerd Font Complete.ttf");
 
-    pub const APP_ICON: &'static [u8] = include_bytes!("../../resource/icon-64x64.ico");
+    pub const APP_ICON: &'static [u8] = include_bytes!("../../resource/logo64x64.ico");
+
+    pub const LOGO: &'static [u8] = include_bytes!("../../resource/logo128x128.png");
 }
 
 pub mod text_color {
@@ -40,22 +42,24 @@ pub mod hex_code {
     pub const NORMAL: &str = "\u{ea71}";
     pub const WARNING: &str = "\u{ea6c}";
     pub const ERROR: &str = "\u{ea87}";
+    pub const ISSUE: &str = "\u{f41b}";
 
     pub const ARROW_RIGHT_BOLD: &str = "\u{fc32}";
     pub const ARROW_RIGHT_BOX: &str = "\u{fbc0}";
     pub const ARROW_DOWN: &str = "\u{f544}";
     pub const FOLDER: &str = "\u{ea83}";
+    pub const LINK_EXTERNAL: &str = "\u{f465}";
     pub const FILE: &str = "\u{ea7b}";
     pub const EDIT: &str = "\u{f044}";
     pub const GIT: &str = "\u{eb00}";
 
     pub const INIT: &str = "\u{eba0}";
     pub const SNAPSHOT: &str = "\u{f030}";
-    pub const FETCH: &str = "\u{f65f}";
+    pub const FETCH: &str = "\u{f409}";
     pub const SYNC: &str = "\u{fb3e}";
     pub const TRACK: &str = "\u{f73e}";
     pub const CLEAN: &str = "\u{eabf}";
-    pub const REFRESH: &str = "\u{eb37}";
+    pub const REFRESH: &str = "\u{f94f}";
 
     pub const REPOSITORY: &str = "\u{ea62}";
     pub const URL: &str = "\u{f838}";

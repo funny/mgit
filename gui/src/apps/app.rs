@@ -20,7 +20,7 @@ impl eframe::App for App {
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
     }
 
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // top view
         self.top_view(ctx);
 
@@ -28,17 +28,17 @@ impl eframe::App for App {
         self.content_view(ctx);
 
         // show windows
-        self.handle_windows(ctx);
+        self.handle_windows(ctx, eframe);
 
         // handle channel recv
         self.handle_channel_recv();
     }
 }
 
+// ========================================
+// data handle for app
+// ========================================
 impl App {
-    // ========================================
-    // data handle
-    // ========================================
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // restore app state
         #[cfg(feature = "persistence")]
@@ -58,17 +58,19 @@ impl App {
     }
 
     fn load_setting(&mut self) {
-        self.toml_setting = TomlSetting::load_settings();
+        self.toml_user_settings = TomlUserSettings::load();
+        self.load_recent_projects();
 
-        // restore last project
-        if let Some(recent_projects) = &self.toml_setting.get_recent_projects() {
-            if !recent_projects.is_empty() {
-                self.project_path = recent_projects[0].to_owned();
-            }
+        // restore last project and settings
+        if !self.recent_projects.is_empty() {
+            self.project_path = self.recent_projects[0].to_owned();
         }
 
+        // load project settings
+        self.load_project_settings();
+
         // restore last config file
-        if let Some(recent_configs) = &self.toml_setting.get_recent_configs() {
+        if let Some(recent_configs) = &self.get_recent_configs() {
             if !recent_configs.is_empty() {
                 self.config_file = recent_configs[0].to_owned();
             }
@@ -76,7 +78,7 @@ impl App {
 
         // restore options setting
         self.options_window
-            .load_option_from_settings(&self.toml_setting);
+            .load_option_from_settings(&self.toml_user_settings, &self.get_snapshot_ignore());
     }
 
     fn load_config(&mut self) {
@@ -89,20 +91,17 @@ impl App {
                 if let Some(toml_repos) = &self.toml_config.repos {
                     for toml_repo in toml_repos {
                         // get ignore state
-                        let do_ignore =
-                            if let Some(common_ignore) = &self.toml_setting.common_ignore {
-                                let ignore_paths: Vec<String> = common_ignore
-                                    .split("\n")
-                                    .map(|s| s.trim().to_string())
-                                    .collect();
-                                let rel_path = toml_repo
-                                    .local
-                                    .to_owned()
-                                    .unwrap_or(String::from("invalid"));
-                                ignore_paths.contains(&display_path(&rel_path))
-                            } else {
-                                false
-                            };
+                        let do_ignore = if let Some(ignore) = &self.get_ignore() {
+                            let ignore_paths: Vec<String> =
+                                ignore.split("\n").map(|s| s.trim().to_string()).collect();
+                            let rel_path = toml_repo
+                                .local
+                                .to_owned()
+                                .unwrap_or(String::from("invalid"));
+                            ignore_paths.contains(&display_path(&rel_path))
+                        } else {
+                            false
+                        };
 
                         // init repo state
                         self.repo_states.push(RepoState {
@@ -132,18 +131,6 @@ impl App {
     }
 
     fn get_repo_states(&mut self) {
-        // save recent project
-        if Path::new(&self.project_path).is_dir() {
-            self.toml_setting
-                .push_recent_project(self.project_path.clone());
-        }
-
-        // save recent config file
-        if Path::new(&self.config_file).is_file() {
-            self.toml_setting
-                .push_recent_config(self.config_file.clone());
-        }
-
         // get repository state
         if let Some(repos) = &self.toml_config.repos.clone() {
             let project_path = self.project_path.clone();
@@ -172,7 +159,6 @@ impl App {
                 self.reset_repo_state(StateType::Updating);
                 self.get_repo_states();
             }
-            // ctx.request_repaint();
         }
     }
 
@@ -186,7 +172,7 @@ impl App {
             CommandType::Init => {
                 self.config_file = format!("{}/.gitrepos", &self.project_path);
                 // option --force
-                let options = match self.toml_setting.init_force.unwrap_or(true) {
+                let options = match self.toml_user_settings.init_force.unwrap_or(true) {
                     true => String::from("--force"),
                     false => String::new(),
                 };
@@ -204,22 +190,22 @@ impl App {
                 // option --config
                 let mut options = match self.config_file.is_empty() {
                     true => String::new(),
-                    false => format!("--config {}", &self.config_file),
+                    false => format!("--config \"{}\"", &self.config_file),
                 };
                 // option --branch
-                if self.toml_setting.snapshot_branch.unwrap_or(true) {
+                if self.toml_user_settings.snapshot_branch.unwrap_or(true) {
                     options = format!("{} --branch", options);
                 }
                 // option --force
-                if self.toml_setting.snapshot_force.unwrap_or(true) {
+                if self.toml_user_settings.snapshot_force.unwrap_or(true) {
                     options = format!("{} --force", options);
                 }
                 // option --ignore
-                if let Some(ignore_paths) = &self.toml_setting.snapshot_ignore {
+                if let Some(ignore_paths) = &self.get_snapshot_ignore() {
                     let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
                     for ignore_path in ignore_paths {
                         if !ignore_path.is_empty() {
-                            options = format!("{} --ignore {}", options, ignore_path.trim());
+                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
                         }
                     }
                 }
@@ -237,18 +223,18 @@ impl App {
                 // option --config
                 let mut options = match self.config_file.is_empty() {
                     true => String::new(),
-                    false => format!("--config {}", &self.config_file),
+                    false => format!("--config \"{}\"", &self.config_file),
                 };
                 // option --thread <num>
-                if let Some(thread) = self.toml_setting.sync_thread {
+                if let Some(thread) = self.toml_user_settings.sync_thread {
                     options = format!("{} --thread {}", options, thread);
                 }
                 // option --ignore
-                if let Some(ignore_paths) = &self.toml_setting.common_ignore {
+                if let Some(ignore_paths) = &self.get_ignore() {
                     let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
                     for ignore_path in ignore_paths {
                         if !ignore_path.is_empty() {
-                            options = format!("{} --ignore {}", options, ignore_path.trim());
+                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
                         }
                     }
                 }
@@ -268,12 +254,12 @@ impl App {
                 // option --config
                 let mut options = match self.config_file.is_empty() {
                     true => String::new(),
-                    false => format!("--config {}", &self.config_file),
+                    false => format!("--config \"{}\"", &self.config_file),
                 };
                 // check if command_type is CommandType::SyncHard
                 let sync_type = match command_type == CommandType::SyncHard {
                     true => SyncType::Hard,
-                    false => self.toml_setting.sync_type.unwrap_or(SyncType::Stash),
+                    false => self.toml_user_settings.sync_type.unwrap_or(SyncType::Stash),
                 };
                 // option none or --stash or --hard
                 match sync_type {
@@ -282,23 +268,23 @@ impl App {
                     SyncType::Hard => options = format!("{} --hard", options),
                 };
                 // option --no-checkout
-                if self.toml_setting.sync_no_checkout.unwrap_or(false) {
+                if self.toml_user_settings.sync_no_checkout.unwrap_or(false) {
                     options = format!("{} --no-checkout", options);
                 }
                 // option --no-track
-                if self.toml_setting.sync_no_track.unwrap_or(false) {
+                if self.toml_user_settings.sync_no_track.unwrap_or(false) {
                     options = format!("{} --no-track", options);
                 }
                 // option --thread <num>
-                if let Some(thread) = self.toml_setting.sync_thread {
+                if let Some(thread) = self.toml_user_settings.sync_thread {
                     options = format!("{} --thread {}", options, thread);
                 }
                 // option --ignore
-                if let Some(ignore_paths) = &self.toml_setting.common_ignore {
+                if let Some(ignore_paths) = &self.get_ignore() {
                     let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
                     for ignore_path in ignore_paths {
                         if !ignore_path.is_empty() {
-                            options = format!("{} --ignore {}", options, ignore_path.trim());
+                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
                         }
                     }
                 }
@@ -319,14 +305,14 @@ impl App {
                 // option --config
                 let mut options = match self.config_file.is_empty() {
                     true => String::new(),
-                    false => format!("--config {}", &self.config_file),
+                    false => format!("--config \"{}\"", &self.config_file),
                 };
                 // option --ignore
-                if let Some(ignore_paths) = &self.toml_setting.common_ignore {
+                if let Some(ignore_paths) = &self.get_ignore() {
                     let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
                     for ignore_path in ignore_paths {
                         if !ignore_path.is_empty() {
-                            options = format!("{} --ignore {}", options, ignore_path.trim());
+                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
                         }
                     }
                 }
@@ -344,7 +330,7 @@ impl App {
                 // option --config
                 let options = match self.config_file.is_empty() {
                     true => String::new(),
-                    false => format!("--config {}", &self.config_file),
+                    false => format!("--config \"{}\"", &self.config_file),
                 };
 
                 self.reset_repo_state(StateType::Updating);
@@ -365,32 +351,44 @@ impl App {
             CommandType::None => {}
         }
     }
+}
 
-    // ========================================
-    // ui design
-    // ========================================
+// ========================================
+// ui design for app
+// ========================================
+impl App {
     /// part of app
-    fn handle_windows(&mut self, ctx: &egui::Context) {
+    fn handle_windows(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // show about window
-        self.about_window.show(ctx, &mut self.about_is_open);
+        self.about_window.show(ctx, eframe, &mut self.about_is_open);
 
         // show options window
-        self.options_window.show(ctx, &mut self.options_is_open);
+        self.options_window
+            .show(ctx, eframe, &mut self.options_is_open);
         if self.options_is_open {
-            self.toml_setting.save_options(&self.options_window);
+            self.toml_user_settings.save_options(&self.options_window);
+            self.save_snapshot_ignore();
         }
 
         // show clean dialog
-        self.clean_dialog.show(ctx, &mut self.clean_is_open);
+        self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
         if self.clean_dialog.is_ok() {
             self.execute_cmd(CommandType::Clean);
         }
 
         // show sync hard dialog
-        self.sync_hard_dialog.show(ctx, &mut self.sync_hard_is_open);
+        self.sync_hard_dialog
+            .show(ctx, eframe, &mut self.sync_hard_is_open);
         if self.sync_hard_dialog.is_ok() {
             self.execute_cmd(CommandType::SyncHard);
         }
+    }
+
+    fn close_all_windows(&mut self) {
+        self.about_is_open = false;
+        self.options_is_open = false;
+        self.clean_is_open = false;
+        self.sync_hard_is_open = false;
     }
 
     /// quick bar panel of app
@@ -403,6 +401,7 @@ impl App {
 
             // quick bar
             self.quick_bar(ui);
+            ui.add_space(2.0);
         });
     }
 
@@ -442,6 +441,7 @@ impl App {
 
                 // clean button
                 if ui.button("  Clean").clicked() {
+                    self.close_all_windows();
                     self.clean_is_open = true;
                     ui.close_menu();
                 }
@@ -458,6 +458,7 @@ impl App {
                 ui.set_min_width(MENU_BOX_WIDTH);
                 // option button
                 if ui.button("  Options").clicked() {
+                    self.close_all_windows();
                     self.options_is_open = true;
                     ui.close_menu();
                 }
@@ -473,6 +474,7 @@ impl App {
                 ui.set_min_width(MENU_BOX_WIDTH);
                 // about button
                 if ui.button("  About").clicked() {
+                    self.close_all_windows();
                     self.about_is_open = true;
                     ui.close_menu();
                 }
@@ -482,34 +484,41 @@ impl App {
 
     fn quick_bar(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
-            ui.set_min_height(38.0);
+            let button_size = [96.0, 36.0];
             // fetch button
-            if ui.button(format!("  {}\nFetch", hex_code::FETCH)).clicked() {
+            let fetch_button = ui.add_sized(
+                button_size,
+                egui::Button::new(format!("  {}\nFetch", hex_code::FETCH)),
+            );
+            if fetch_button.clicked() {
                 self.execute_cmd(CommandType::Fetch);
             }
 
             // sync button
-            if ui.button(format!(" {}\nSync", hex_code::SYNC)).clicked() {
+            let sync_button = ui.add_sized(
+                button_size,
+                egui::Button::new(format!(" {}\nSync", hex_code::SYNC)),
+            );
+            if sync_button.clicked() {
                 self.execute_cmd(CommandType::Sync);
             }
 
             // sync hard button
-            if ui
-                .button(format!(
-                    "   {} {}\nSync Hard",
-                    hex_code::SYNC,
-                    hex_code::ARROW_DOWN
-                ))
-                .clicked()
-            {
+            let sync_hard_button = ui.add_sized(
+                button_size,
+                egui::Button::new(format!("     {}\nSync (Hard)", hex_code::SYNC)),
+            );
+            if sync_hard_button.clicked() {
+                self.close_all_windows();
                 self.sync_hard_is_open = true;
             }
 
-            // refres button
-            if ui
-                .button(format!("   {}\nRefresh", hex_code::REFRESH))
-                .clicked()
-            {
+            // refress button
+            let refresh_button = ui.add_sized(
+                button_size,
+                egui::Button::new(format!("   {}\nRefresh", hex_code::REFRESH)),
+            );
+            if refresh_button.clicked() {
                 self.execute_cmd(CommandType::Refresh);
             }
         });
@@ -561,12 +570,10 @@ impl App {
                 egui::ComboBox::from_id_source("project_path")
                     .width(desired_width)
                     .show_ui(ui, |ui| {
-                        if let Some(recent_projects) = &self.toml_setting.get_recent_projects() {
-                            for recent_project in recent_projects {
-                                if ui.selectable_label(false, recent_project).clicked() {
-                                    self.project_path = recent_project.to_owned();
-                                    is_project_changed = true;
-                                }
+                        for recent_project in &self.get_recent_projects() {
+                            if ui.selectable_label(false, recent_project).clicked() {
+                                self.project_path = recent_project.to_owned();
+                                is_project_changed = true;
                             }
                         }
                     });
@@ -590,9 +597,14 @@ impl App {
                 );
                 // key down - enter
                 if project_edit_text.lost_focus() {
-                    is_project_changed = ui.input().key_pressed(egui::Key::Enter);
-                    // close combo box
-                    ui.memory().close_popup();
+                    if ui.input().key_pressed(egui::Key::Enter) {
+                        is_project_changed = true;
+
+                        // close combo box
+                        ui.memory().close_popup();
+                    } else if ui.input().key_pressed(egui::Key::Tab) {
+                        ui.memory().close_popup();
+                    }
                 };
 
                 ui.end_row();
@@ -601,11 +613,21 @@ impl App {
                 if is_project_changed {
                     self.project_path = norm_path(&self.project_path);
 
-                    if Path::new(&self.project_path).is_dir() {
-                        self.config_file = format!("{}/.gitrepos", &self.project_path);
+                    is_config_changed = true;
+                    // save recent project
+                    self.push_recent_project();
 
-                        is_config_changed = true;
-                    }
+                    // reload project settings
+                    self.load_project_settings();
+
+                    // reload options setting
+                    self.options_window = OptionsWindow::default();
+                    self.options_window.load_option_from_settings(
+                        &self.toml_user_settings,
+                        &self.get_snapshot_ignore(),
+                    );
+
+                    self.config_file = format!("{}/.gitrepos", &self.project_path);
                 }
 
                 // config file
@@ -615,7 +637,7 @@ impl App {
                 egui::ComboBox::from_id_source("config_file")
                     .width(desired_width)
                     .show_ui(ui, |ui| {
-                        if let Some(recent_configs) = &self.toml_setting.get_recent_configs() {
+                        if let Some(recent_configs) = &self.get_recent_configs() {
                             for recent_config in recent_configs {
                                 if ui.selectable_label(false, recent_config).clicked() {
                                     self.config_file = recent_config.to_owned();
@@ -645,15 +667,24 @@ impl App {
                 // key down - enter
                 if config_edit_text.lost_focus() {
                     self.config_file = norm_path(&self.config_file);
-                    is_config_changed = ui.input().key_pressed(egui::Key::Enter);
-                    // close combo box
-                    ui.memory().close_popup();
+                    if ui.input().key_pressed(egui::Key::Enter) {
+                        is_config_changed = true;
+
+                        // close combo box
+                        ui.memory().close_popup();
+                    } else if ui.input().key_pressed(egui::Key::Tab) {
+                        ui.memory().close_popup();
+                    }
                 };
 
                 ui.end_row();
 
                 // if config_file changed, auto refresh
                 if is_config_changed {
+                    if Path::new(&self.config_file).is_file() {
+                        self.push_recent_config();
+                    }
+
                     self.execute_cmd(CommandType::Refresh);
                 }
             });
@@ -681,7 +712,7 @@ impl App {
                                     .changed()
                                 {
                                     if let Some(rel_path) = &toml_repo.local {
-                                        self.toml_setting.save_remove_common_ignore(
+                                        self.save_ignore(
                                             display_path(rel_path),
                                             !self.repo_states[idx].no_ignore,
                                         );
@@ -732,10 +763,18 @@ impl App {
                 false => create_layout_job(repository_display, text_color::DARK_PURPLE),
             };
             ui.horizontal(|ui| {
+                ui.set_row_height(18.0);
                 // display name
                 ui.label(job);
 
-                if ui.button(hex_code::FOLDER).clicked() {
+                // edit text
+                let widget_rect = egui::Rect::from_min_size(
+                    egui::pos2(ui.min_rect().max.x + 5.0, ui.min_rect().min.y),
+                    egui::vec2(18.0, 12.0),
+                );
+                let open_button = ui.put(widget_rect, egui::Button::new(hex_code::LINK_EXTERNAL));
+
+                if open_button.clicked() {
                     let full_path = format!("{}/{}", &self.project_path, &rel_path);
                     open_in_file_explorer(full_path);
                 }
@@ -786,6 +825,7 @@ impl App {
                             text_color::GRAY,
                         );
                         ui.label(job);
+                        ui.add_space(4.0);
                     }
                     // show updating
                     StateType::Updating => {
@@ -793,7 +833,12 @@ impl App {
                             format!("{} Updating...", hex_code::UPDATING),
                             text_color::GREEN,
                         );
-                        ui.label(job);
+                        ui.horizontal(|ui| {
+                            ui.label(job);
+                            ui.add(egui::widgets::Spinner::new());
+                        });
+
+                        ui.add_space(4.0);
                     }
                     // show Warning
                     StateType::Warning => {
@@ -803,11 +848,13 @@ impl App {
                         );
 
                         ui.label(job);
-                        ui.label("");
+                        ui.add_space(4.0);
 
                         // show untracked
-                        let mut job =
-                            create_layout_job(repo_state.current_branch.clone(), text_color::BLUE);
+                        let mut job = create_layout_job(
+                            format!("{} {}", hex_code::BRANCH, &repo_state.current_branch),
+                            text_color::BLUE,
+                        );
 
                         job.append(" ", 0.0, egui::TextFormat::default());
                         job.append(
@@ -827,10 +874,12 @@ impl App {
                             text_color::GREEN,
                         );
                         ui.label(job);
+                        ui.add_space(4.0);
 
                         // show track
                         let track_str = format!(
-                            "{} {} {}",
+                            "{} {} {} {}",
+                            hex_code::BRANCH,
                             &repo_state.current_branch,
                             hex_code::ARROW_RIGHT_BOLD,
                             &repo_state.tracking_branch
@@ -842,7 +891,7 @@ impl App {
                         // Normal
                         if repo_state.cmp_state == StateType::Normal {
                             let job = create_truncate_layout_job(
-                                repo_state.cmp_obj.clone(),
+                                format!("{} {}", hex_code::COMMIT, &repo_state.cmp_obj),
                                 text_color::GRAY,
                             );
                             ui.label(job);
@@ -850,7 +899,7 @@ impl App {
                         // Warning
                         else if repo_state.cmp_state == StateType::Warning {
                             let mut job = create_layout_job(
-                                repo_state.cmp_commit.clone(),
+                                format!("{} {}", hex_code::COMMIT, &repo_state.cmp_commit),
                                 text_color::YELLOW,
                             );
                             job.append(" ", 0.0, egui::TextFormat::default());
@@ -867,7 +916,7 @@ impl App {
                         // Error
                         else {
                             let job = create_truncate_layout_job(
-                                repo_state.cmp_obj.clone(),
+                                format!("{} {}", hex_code::COMMIT, &repo_state.cmp_obj),
                                 text_color::RED,
                             );
                             ui.label(job);
@@ -879,9 +928,12 @@ impl App {
             else {
                 let job = create_layout_job(format!("{} Error", hex_code::ERROR), text_color::RED);
                 ui.label(job);
+                ui.add_space(4.0);
 
-                let job = create_truncate_layout_job(repo_state.err_msg, text_color::RED);
-
+                let job = create_truncate_layout_job(
+                    format!("{} {}", hex_code::ISSUE, &repo_state.err_msg),
+                    text_color::RED,
+                );
                 ui.label(job);
             }
         });
@@ -965,18 +1017,22 @@ fn get_repo_states_thread(
                             {
                                 repo_state.cmp_state = StateType::Error;
                                 repo_state.cmp_obj = cmp_msg.clone();
-                            } else if cmp_msg.clone().contains("already update to date") {
+                            } else if cmp_msg.clone().contains("already update to date.") {
                                 repo_state.cmp_state = StateType::Normal;
-                                repo_state.cmp_obj = cmp_msg.clone();
+                                let (prefix, log) = cmp_msg.split_once('.').unwrap();
+                                repo_state.cmp_obj = log.trim().to_string();
+                                if repo_state.cmp_obj.is_empty() {
+                                    repo_state.cmp_obj = prefix.to_string();
+                                }
                             } else {
                                 repo_state.cmp_state = StateType::Warning;
                                 for part in cmp_msg.clone().split(",") {
                                     if part.contains("commits") {
-                                        repo_state.cmp_commit = part.to_string()
+                                        repo_state.cmp_commit = part.trim().to_string()
                                     } else if part.contains("changes") {
-                                        repo_state.cmp_changes = part.to_string()
+                                        repo_state.cmp_changes = part.trim().to_string()
                                     } else {
-                                        repo_state.cmp_obj = part.to_string();
+                                        repo_state.cmp_obj = part.trim().to_string();
                                     }
                                 }
                             }
@@ -1003,13 +1059,13 @@ fn execute_cmd_with_send(
     command_type: CommandType,
     send: Sender<(CommandType, (usize, RepoState))>,
 ) {
-    let command_str = format!("{} {} {} {}", MGIT_DIR, cmd, project, option);
+    let command_str = format!("{} {} \"{}\" {}", MGIT_DIR, cmd, project, option);
     std::thread::spawn(move || {
         #[cfg(target_os = "windows")]
         {
             std::process::Command::new("cmd")
-                .arg("/C")
-                .arg(&command_str)
+                .raw_arg("/C")
+                .raw_arg(&command_str)
                 .creation_flags(defines::console_option::DETACHED_PROCESS)
                 .output()
                 .expect("command failed to start");
