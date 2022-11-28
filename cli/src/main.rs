@@ -1,7 +1,6 @@
-use super::commands;
-use std::path::PathBuf;
-
 use clap::{error::ErrorKind, ArgAction, CommandFactory, Parser, Subcommand};
+use mgit::commands;
+use std::path::PathBuf;
 
 // ========================================
 // main
@@ -88,6 +87,10 @@ enum Commands {
         /// Do not checkout branch after sync
         #[arg(long, action = ArgAction::SetTrue)]
         no_checkout: bool,
+
+        /// Ignore specified repositories for sync
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
     },
 
     /// Fetch git repos
@@ -106,6 +109,10 @@ enum Commands {
         /// Do not report git status
         #[arg(long, action = ArgAction::SetTrue)]
         silent: bool,
+
+        /// Ignore specified repositories for fetch
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
     },
 
     /// Clean unused git repos
@@ -126,6 +133,10 @@ enum Commands {
         /// Use specified config file
         #[arg(long, value_name = "FILE")]
         config: Option<PathBuf>,
+
+        /// Ignore specified repositories for track
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
     },
 }
 
@@ -133,7 +144,7 @@ enum Commands {
 // main
 // ========================================
 
-pub fn main() {
+fn main() {
     let args = Cli::parse();
 
     // handle commands
@@ -166,6 +177,7 @@ pub fn main() {
             silent,
             no_track,
             no_checkout,
+            ignore,
         } => {
             let stash_mode = match (stash, hard) {
                 (false, false) => commands::StashMode::Normal,
@@ -188,6 +200,7 @@ pub fn main() {
                 silent,
                 no_track,
                 no_checkout,
+                ignore,
             );
         }
 
@@ -196,16 +209,21 @@ pub fn main() {
             config,
             thread,
             silent,
+            ignore,
         } => {
-            commands::fetch::exec(path, config, thread, silent);
+            commands::fetch::exec(path, config, thread, silent, ignore);
         }
 
         Commands::Clean { path, config } => {
             commands::clean::exec(path, config);
         }
 
-        Commands::Track { path, config } => {
-            commands::track::exec(path, config);
+        Commands::Track {
+            path,
+            config,
+            ignore,
+        } => {
+            commands::track::exec(path, config, ignore);
         }
     };
 }

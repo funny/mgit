@@ -1,6 +1,6 @@
 use super::{
-    clean, cmp_local_remote, display_path, execute_cmd, execute_cmd_with_progress, fmt_msg_spinner,
-    get_current_branch, is_remote_ref_valid, is_repository, load_config,
+    clean, cmp_local_remote, display_path, exclude_ignore, execute_cmd, execute_cmd_with_progress,
+    fmt_msg_spinner, get_current_branch, is_remote_ref_valid, is_repository, load_config,
     track::set_tracking_remote_branch, RemoteRef, ResetType, StashMode, TomlRepo,
 };
 use anyhow::Context;
@@ -24,6 +24,7 @@ pub fn exec(
     silent: bool,
     no_track: bool,
     no_checkout: bool,
+    ignore: Option<Vec<String>>,
 ) {
     let cwd = env::current_dir().unwrap();
     let cwd_str = Some(String::from(cwd.to_string_lossy()));
@@ -61,6 +62,10 @@ pub fn exec(
 
         // handle sync
         if let Some(toml_repos) = toml_config.repos {
+            // ignore specified repositories
+            let mut toml_repos = toml_repos;
+            exclude_ignore(&mut toml_repos, ignore);
+
             let repos_count = toml_repos.len();
 
             // multi_progress manages multiple progress bars from different threads
@@ -97,8 +102,6 @@ pub fn exec(
                 }
             };
 
-            // do track flag
-            let do_track = !no_track && !silent;
             // pool.install means that `.par_iter()` will use the thread pool we've built above.
             let (succ_repos, error_repos) = thread_pool.install(|| {
                 let res: Vec<Result<(&TomlRepo, String), (&TomlRepo, anyhow::Error)>> = toml_repos
@@ -149,6 +152,7 @@ pub fn exec(
                                         input_path,
                                         toml_repo,
                                         &default_branch,
+                                        false,
                                     ) {
                                         Ok(r) => r.unwrap(),
                                         _ => String::new(),
@@ -162,7 +166,7 @@ pub fn exec(
 
                                 // track remote branch, return track status
                                 let mut track_msg = String::new();
-                                if do_track {
+                                if !no_track {
                                     if let Ok(res) = set_tracking_remote_branch(
                                         input_path,
                                         &toml_repo,
@@ -224,7 +228,7 @@ pub fn exec(
             }
 
             // show track status
-            if do_track {
+            if !silent {
                 println!("");
                 println!("Track status:");
                 for (_, track_msg) in &succ_repos {
@@ -373,11 +377,12 @@ fn execute_sync_with_progress(
                 result = execute_checkout_with_progress(
                     input_path,
                     &toml_repo,
-                    false,
+                    true,
                     prefix,
                     progress_bar,
                 )
                 .with_context(|| stash_message.clone());
+
                 reset_type = ResetType::Hard;
             }
 
@@ -631,7 +636,6 @@ fn execute_checkout_with_progress(
     progress_bar.set_message(fmt_msg_spinner(&message));
 
     // priority: commit/tag/branch(default-branch)
-    // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref.clone() {
         RemoteRef::Commit(commit) => commit,
@@ -668,10 +672,10 @@ fn execute_checkout_with_progress(
 
     // create/checkout/reset branch
     let args = match (branch_exist, force) {
-        (false, false) => vec!["checkout", "-b", &branch, &remote_ref_str, "--no-track"],
+        (false, false) => vec!["checkout", "-B", &branch, &remote_ref_str, "--no-track"],
         (false, true) => vec![
             "checkout",
-            "-b",
+            "-B",
             &branch,
             &remote_ref_str,
             "--no-track",
