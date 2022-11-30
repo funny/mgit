@@ -1,4 +1,4 @@
-use super::settings::{SyncType, TomlSetting};
+use super::settings::{SyncType, TomlUserSettings};
 use eframe::egui;
 
 pub struct OptionsWindow {
@@ -33,7 +33,11 @@ impl Default for OptionsWindow {
 }
 
 impl OptionsWindow {
-    pub fn load_option_from_settings(&mut self, toml_setting: &TomlSetting) {
+    pub fn load_option_from_settings(
+        &mut self,
+        toml_setting: &TomlUserSettings,
+        snapshot_ignore: &Option<String>,
+    ) {
         if let Some(item) = toml_setting.init_force {
             self.init_force = item;
         }
@@ -43,7 +47,7 @@ impl OptionsWindow {
         if let Some(item) = toml_setting.snapshot_branch {
             self.snapshot_branch = item;
         }
-        if let Some(item) = &toml_setting.snapshot_ignore {
+        if let Some(item) = snapshot_ignore {
             self.snapshot_ignore = item.to_owned();
         }
         if let Some(item) = &toml_setting.sync_type {
@@ -69,16 +73,16 @@ impl super::WindowBase for OptionsWindow {
         format!("Command Options")
     }
 
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool) {
+    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
         let width = 470.0;
         let height = 460.0;
-        let screen_rect = ctx.used_size();
+        let screen_rect = eframe.info().window_info.size;
         let default_pos = [
             (screen_rect.x - width) * 0.5,
             (screen_rect.y - height) * 0.5,
         ];
         egui::Window::new(self.name())
-            .default_pos(default_pos)
+            .fixed_pos(default_pos)
             .fixed_size([width, height])
             .collapsible(false)
             .open(open)

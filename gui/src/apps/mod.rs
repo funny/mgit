@@ -2,7 +2,7 @@ use self::about_window::AboutWindow;
 use self::defines::*;
 use self::dialog::Dialog;
 use self::options_window::OptionsWindow;
-use self::settings::{SyncType, TomlSetting};
+use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
 use mgit::commands::{TomlConfig, TomlRepo};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -45,7 +45,7 @@ pub trait WindowBase {
     fn name(&self) -> String;
 
     // show window
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool);
+    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool);
 }
 
 pub trait DialogBase {
@@ -56,7 +56,12 @@ pub trait DialogBase {
 pub struct App {
     project_path: String,
     config_file: String,
-    toml_setting: TomlSetting,
+
+    // recent
+    toml_user_settings: TomlUserSettings,
+    toml_project_settings: TomlProjectSettings,
+    recent_projects: Vec<String>,
+
     toml_config: TomlConfig,
     repo_states: Vec<RepoState>,
 
@@ -116,8 +121,12 @@ impl Default for App {
         Self {
             project_path: String::new(),
             config_file: String::new(),
+
+            toml_user_settings: TomlUserSettings::default(),
+            toml_project_settings: TomlProjectSettings::default(),
+            recent_projects: Vec::new(),
+
             toml_config: TomlConfig::default(),
-            toml_setting: TomlSetting::default(),
             repo_states: Vec::new(),
 
             send,
@@ -164,7 +173,29 @@ pub fn setup_custom_fonts(ctx: &egui::Context) {
         .families
         .entry(egui::FontFamily::Monospace)
         .or_default()
-        .push("nerd_font".to_owned());
+        .insert(0, "nerd_font".to_owned());
+
+    // chinese character on window
+    #[cfg(target_os = "windows")]
+    {
+        let font = std::fs::read("c:/Windows/Fonts/msyh.ttc").unwrap();
+        fonts.font_data.insert(
+            "microsoft_yahei".to_owned(),
+            egui::FontData::from_owned(font),
+        );
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .insert(1, "microsoft_yahei".to_owned());
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Monospace)
+            .or_default()
+            .insert(1, "microsoft_yahei".to_owned());
+    }
 
     // tell egui to use these fonts:
     ctx.set_fonts(fonts);

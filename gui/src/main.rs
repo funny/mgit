@@ -4,6 +4,7 @@ use apps::{
     defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
     load_icon, App,
 };
+
 mod apps;
 
 fn main() {

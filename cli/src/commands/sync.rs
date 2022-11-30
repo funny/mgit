@@ -122,6 +122,20 @@ pub fn exec(
                         let message = format!("{:>9} waiting...", &prefix);
                         progress_bar.set_message(fmt_msg_spinner(&message));
 
+                        let mut cur_cmp_msg = String::new();
+                        if !silent {
+                            // get compare stat betwwen local and specified commit/tag/branch/
+                            cur_cmp_msg = match cmp_local_remote(
+                                input_path,
+                                toml_repo,
+                                &default_branch,
+                                false,
+                            ) {
+                                Ok(r) => r.unwrap(),
+                                _ => String::new(),
+                            };
+                        };
+
                         // execute command according each repo status
                         let execute_result = execute_sync_with_progress(
                             input_path,
@@ -148,7 +162,7 @@ pub fn exec(
                                 // if not silent, show compare stat betweent local and remote
                                 if !silent {
                                     // get compare stat betwwen local and specified commit/tag/branch/
-                                    let cmp_msg = match cmp_local_remote(
+                                    let mut new_cmp_msg = match cmp_local_remote(
                                         input_path,
                                         toml_repo,
                                         &default_branch,
@@ -158,7 +172,17 @@ pub fn exec(
                                         _ => String::new(),
                                     };
 
-                                    message = format!("{}: {}", message, &cmp_msg)
+                                    if cur_cmp_msg != new_cmp_msg {
+                                        new_cmp_msg =
+                                            new_cmp_msg.replace("already update to date.", "");
+                                        new_cmp_msg = format!(
+                                            "{} {}",
+                                            "update to".green(),
+                                            new_cmp_msg.trim()
+                                        );
+                                    }
+
+                                    message = format!("{}: {}", message, &new_cmp_msg)
                                 };
 
                                 // show meeshage in progress bar
