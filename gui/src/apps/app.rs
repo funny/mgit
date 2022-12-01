@@ -57,22 +57,51 @@ impl App {
         app
     }
 
+    // startup with arg: mgit-gui <path>
+    fn get_path_from_env_args(&self) -> Option<String> {
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() > 1 {
+            let path = PathBuf::from(args[1].clone());
+            if let Ok(path) = std::fs::canonicalize(path) {
+                let path = norm_path(&format!("{}", path.display()));
+
+                let norm_path = path.replace("//?/", "");
+                return Some(norm_path);
+            }
+        }
+        None
+    }
+
     fn load_setting(&mut self) {
         self.toml_user_settings = TomlUserSettings::load();
         self.load_recent_projects();
 
-        // restore last project and settings
-        if !self.recent_projects.is_empty() {
-            self.project_path = self.recent_projects[0].to_owned();
+        // if app startup with args including project path, use the path
+        if let Some(startup_project) = self.get_path_from_env_args() {
+            self.project_path = startup_project.clone();
+            self.push_recent_project();
+
+            // load project settings
+            self.load_project_settings();
+
+            self.config_file = format!("{}/.gitrepos", startup_project);
+            self.push_recent_config();
         }
+        // if app startup normally, load saves
+        else {
+            // restore last project and settings
+            if !self.recent_projects.is_empty() {
+                self.project_path = self.recent_projects[0].to_owned();
+            }
 
-        // load project settings
-        self.load_project_settings();
+            // load project settings
+            self.load_project_settings();
 
-        // restore last config file
-        if let Some(recent_configs) = &self.get_recent_configs() {
-            if !recent_configs.is_empty() {
-                self.config_file = recent_configs[0].to_owned();
+            // restore last config file
+            if let Some(recent_configs) = &self.get_recent_configs() {
+                if !recent_configs.is_empty() {
+                    self.config_file = recent_configs[0].to_owned();
+                }
             }
         }
 
@@ -486,39 +515,39 @@ impl App {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::LEFT), |ui| {
             let button_size = [96.0, 36.0];
             // fetch button
-            let fetch_button = ui.add_sized(
+            let fetch_button_response = ui.add_sized(
                 button_size,
                 egui::Button::new(format!("  {}\nFetch", hex_code::FETCH)),
             );
-            if fetch_button.clicked() {
+            if fetch_button_response.clicked() {
                 self.execute_cmd(CommandType::Fetch);
             }
 
             // sync button
-            let sync_button = ui.add_sized(
+            let sync_button_response = ui.add_sized(
                 button_size,
                 egui::Button::new(format!(" {}\nSync", hex_code::SYNC)),
             );
-            if sync_button.clicked() {
+            if sync_button_response.clicked() {
                 self.execute_cmd(CommandType::Sync);
             }
 
             // sync hard button
-            let sync_hard_button = ui.add_sized(
+            let sync_hard_button_response = ui.add_sized(
                 button_size,
                 egui::Button::new(format!("     {}\nSync (Hard)", hex_code::SYNC)),
             );
-            if sync_hard_button.clicked() {
+            if sync_hard_button_response.clicked() {
                 self.close_all_windows();
                 self.sync_hard_is_open = true;
             }
 
             // refress button
-            let refresh_button = ui.add_sized(
+            let refresh_button_response = ui.add_sized(
                 button_size,
                 egui::Button::new(format!("   {}\nRefresh", hex_code::REFRESH)),
             );
-            if refresh_button.clicked() {
+            if refresh_button_response.clicked() {
                 self.execute_cmd(CommandType::Refresh);
             }
         });
@@ -550,12 +579,12 @@ impl App {
 
     /// part of app/content_view
     fn configuration_panel(&mut self, ui: &mut egui::Ui) {
-        let desired_width = ui.ctx().used_size().x - 160.0;
+        let desired_width = ui.ctx().used_size().x - 192.0;
 
         egui::Grid::new("config_grid")
             .num_columns(3)
             .spacing([10.0, 4.0])
-            .min_col_width(60.0)
+            .min_col_width(50.0)
             .max_col_width(desired_width)
             .min_row_height(20.0)
             .striped(false)
@@ -566,7 +595,7 @@ impl App {
                 let mut is_project_changed = false;
                 let mut is_config_changed = false;
 
-                // combo box
+                // combo box to select recent project
                 egui::ComboBox::from_id_source("project_path")
                     .width(desired_width)
                     .show_ui(ui, |ui| {
@@ -578,7 +607,7 @@ impl App {
                         }
                     });
 
-                // open button
+                // button to pick folder
                 if ui.button(format!("{} open", hex_code::FOLDER)).clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_folder() {
                         self.project_path = norm_path(&path.display().to_string());
@@ -586,9 +615,19 @@ impl App {
                     }
                 }
 
-                // edit text
+                // button to open in file in explorer
+                if ui
+                    .add_sized([18.0, 18.0], egui::Button::new(hex_code::LINK_EXTERNAL))
+                    .clicked()
+                {
+                    if Path::new(&self.project_path).is_dir() {
+                        open_in_file_explorer(self.project_path.clone());
+                    }
+                }
+
+                // edit text for project
                 let widget_rect = egui::Rect::from_min_size(
-                    ui.min_rect().min + egui::vec2(70.0, 0.0),
+                    ui.min_rect().min + egui::vec2(66.0, 0.0),
                     egui::vec2(desired_width - 15.0, 20.0),
                 );
                 let project_edit_text = ui.put(
@@ -606,8 +645,6 @@ impl App {
                         ui.memory().close_popup();
                     }
                 };
-
-                ui.end_row();
 
                 // if project_path changed , auto change config_file,
                 if is_project_changed {
@@ -629,11 +666,12 @@ impl App {
 
                     self.config_file = format!("{}/.gitrepos", &self.project_path);
                 }
+                ui.end_row();
 
                 // config file
                 ui.label("config");
 
-                // combo box
+                // combo box to select rencet config file
                 egui::ComboBox::from_id_source("config_file")
                     .width(desired_width)
                     .show_ui(ui, |ui| {
@@ -647,7 +685,7 @@ impl App {
                         }
                     });
 
-                // open button
+                // button to pick config file
                 if ui.button(format!("{} open", hex_code::FILE)).clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_file() {
                         self.config_file = norm_path(&path.display().to_string());
@@ -655,9 +693,21 @@ impl App {
                     }
                 }
 
-                // edit text
+                // button to open in file in explorer
+                if ui
+                    .add_sized([18.0, 18.0], egui::Button::new(hex_code::LINK_EXTERNAL))
+                    .clicked()
+                {
+                    if let Some(path) = Path::new(&self.config_file).parent() {
+                        if path.is_dir() {
+                            open_in_file_explorer(path.to_str().unwrap().to_string());
+                        }
+                    }
+                }
+
+                // edit text for config file path
                 let widget_rect = egui::Rect::from_min_size(
-                    ui.min_rect().min + egui::vec2(70.0, 24.0),
+                    ui.min_rect().min + egui::vec2(66.0, 24.0),
                     egui::vec2(desired_width - 15.0, 20.0),
                 );
                 let config_edit_text = ui.put(
@@ -677,8 +727,6 @@ impl App {
                     }
                 };
 
-                ui.end_row();
-
                 // if config_file changed, auto refresh
                 if is_config_changed {
                     if Path::new(&self.config_file).is_file() {
@@ -687,6 +735,7 @@ impl App {
 
                     self.execute_cmd(CommandType::Refresh);
                 }
+                ui.end_row();
             });
     }
 
@@ -699,11 +748,14 @@ impl App {
         scroll_area.show(ui, |ui| {
             ui.vertical(|ui| {
                 if let Some(toml_repos) = self.toml_config.repos.clone() {
+                    // modification flag
+                    let mut is_modified = false;
+
                     for idx in 0..toml_repos.len() {
                         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                             ui.set_min_width(desired_width);
                             ui.horizontal(|ui| {
-                                let toml_repo = toml_repos[idx].clone();
+                                let mut toml_repo = toml_repos[idx].clone();
 
                                 // show check box for sync ignore
                                 // save ignore
@@ -722,10 +774,18 @@ impl App {
                                 // letf panel - repository remote config
                                 self.repository_remote_config_panel(
                                     ui,
-                                    toml_repo,
+                                    &mut toml_repo,
                                     idx,
                                     desired_width * 0.5,
                                 );
+                                // save modification to toml_repo
+                                if cmp_toml_repo(
+                                    &self.toml_config.repos.as_ref().unwrap()[idx],
+                                    &toml_repo,
+                                ) {
+                                    is_modified = true;
+                                    self.toml_config.repos.as_mut().unwrap()[idx] = toml_repo;
+                                }
 
                                 // right panel - repository state
                                 let repo_state = match idx < self.repo_states.len() {
@@ -737,6 +797,13 @@ impl App {
                         });
                         ui.separator();
                     }
+
+                    if is_modified {
+                        // serialize .gitrepos
+                        let toml_string = self.toml_config.serialize();
+                        std::fs::write(Path::new(&self.config_file), toml_string)
+                            .expect("Failed to write file .gitrepos!");
+                    }
                 }
             });
         });
@@ -746,7 +813,7 @@ impl App {
     fn repository_remote_config_panel(
         &mut self,
         ui: &mut egui::Ui,
-        toml_repo: TomlRepo,
+        toml_repo: &mut TomlRepo,
         idx: usize,
         desired_width: f32,
     ) {
@@ -755,26 +822,28 @@ impl App {
 
             // show repository name
             // text format by sync ignore
-            let rel_path = toml_repo.local.unwrap();
+            let rel_path = toml_repo.local.to_owned().unwrap();
             let repository_display =
                 format!("{} {}", hex_code::REPOSITORY, display_path(&rel_path));
             let job = match self.repo_states[idx].no_ignore {
                 true => create_layout_job(repository_display, text_color::PURPLE),
                 false => create_layout_job(repository_display, text_color::DARK_PURPLE),
             };
+
             ui.horizontal(|ui| {
                 ui.set_row_height(18.0);
                 // display name
                 ui.label(job);
 
-                // edit text
                 let widget_rect = egui::Rect::from_min_size(
                     egui::pos2(ui.min_rect().max.x + 5.0, ui.min_rect().min.y),
                     egui::vec2(18.0, 12.0),
                 );
-                let open_button = ui.put(widget_rect, egui::Button::new(hex_code::LINK_EXTERNAL));
 
-                if open_button.clicked() {
+                // open in file explorer
+                let button_response =
+                    ui.put(widget_rect, egui::Button::new(hex_code::LINK_EXTERNAL));
+                if button_response.clicked() {
                     let full_path = format!("{}/{}", &self.project_path, &rel_path);
                     open_in_file_explorer(full_path);
                 }
@@ -782,23 +851,59 @@ impl App {
 
             // show remote reference - commit/tag/branch
             let mut remote_ref = String::new();
-            if let Some(branch) = toml_repo.branch {
+            let mut branch_text = String::new();
+            let mut tag_text = String::new();
+            let mut commit_text = String::new();
+            if let Some(branch) = toml_repo.branch.to_owned() {
+                branch_text = branch.clone();
                 remote_ref = format!("{} {}", hex_code::BRANCH, branch);
             }
-            if let Some(tag) = toml_repo.tag {
-                remote_ref = format!("{} {} {}", remote_ref, hex_code::TAG, tag);
+            if let Some(tag) = toml_repo.tag.to_owned() {
+                tag_text = tag.clone();
+                remote_ref = format!("{}  {} {}", remote_ref, hex_code::TAG, tag);
             }
-            if let Some(commit) = toml_repo.commit {
-                remote_ref = format!("{} {} {}", remote_ref, hex_code::COMMIT, &commit[0..7]);
+            if let Some(commit) = toml_repo.commit.to_owned() {
+                commit_text = commit.clone();
+
+                let commit = match commit.len() < 7 {
+                    true => &commit,
+                    false => &commit[0..7],
+                };
+                remote_ref = format!("{}  {} {}", remote_ref, hex_code::COMMIT, commit);
             }
             let job = create_truncate_layout_job(remote_ref, text_color::GRAY);
-            ui.label(job);
+
+            ui.horizontal(|ui| {
+                ui.label(job);
+
+                // edit button
+                let pos = [ui.min_rect().min.x + 160.0, ui.min_rect().min.y - 40.0];
+                ui.remote_ref_edit_button(
+                    pos,
+                    idx,
+                    &mut branch_text,
+                    &mut tag_text,
+                    &mut commit_text,
+                );
+                toml_repo.branch = match branch_text.is_empty() {
+                    true => None,
+                    false => Some(branch_text),
+                };
+                toml_repo.tag = match tag_text.is_empty() {
+                    true => None,
+                    false => Some(tag_text),
+                };
+                toml_repo.commit = match commit_text.is_empty() {
+                    true => None,
+                    false => Some(commit_text),
+                };
+            });
 
             // show remote url
             let url = format!(
                 "{} {}",
                 hex_code::URL,
-                display_path(&toml_repo.remote.unwrap())
+                display_path(&toml_repo.remote.to_owned().unwrap())
             );
             let job = create_truncate_layout_job(url, text_color::LIGHT_GRAY);
             ui.label(job);
@@ -1087,4 +1192,81 @@ fn execute_cmd_with_send(
         send.send((command_type, (usize::MAX, RepoState::default())))
             .unwrap();
     });
+}
+
+impl<'t> UiExt<'t> for egui::Ui {
+    fn remote_ref_edit_button(
+        &mut self,
+        current_pos: impl Into<egui::Pos2>,
+        idx: usize,
+        branch_text: &'t mut dyn egui::TextBuffer,
+        tag_text: &'t mut dyn egui::TextBuffer,
+        commit_text: &'t mut dyn egui::TextBuffer,
+    ) -> egui::Response {
+        let source = format!("remote_ref_editing_context_{}", idx);
+        let popup_id = egui::Id::new(self.skip_ahead_auto_ids(0)).with(source);
+        let open = self.memory().is_popup_open(popup_id);
+
+        let widget_rect = egui::Rect::from_min_size(
+            egui::pos2(self.min_rect().max.x + 5.0, self.min_rect().min.y),
+            egui::vec2(18.0, 18.0),
+        );
+
+        let toggle_response = self.put(
+            widget_rect,
+            egui::SelectableLabel::new(open, hex_code::EDIT),
+        );
+
+        if toggle_response.clicked() {
+            self.memory().toggle_popup(popup_id);
+        }
+
+        if self.memory().is_popup_open(popup_id) {
+            let area_response = egui::Area::new(popup_id)
+                .order(egui::Order::Foreground)
+                .current_pos(current_pos)
+                .show(self.ctx(), |ui| {
+                    egui::Frame::popup(self.style()).show(ui, |ui| {
+                        ui.add_space(5.0);
+
+                        egui::Grid::new(format!("repo_editing_panel_{}", idx))
+                            .striped(false)
+                            .num_columns(3)
+                            .min_col_width(60.0)
+                            .show(ui, |ui| {
+                                ui.set_width(410.0);
+                                let label_size = [300.0, 20.0];
+                                // branch
+                                ui.label(format!("  {} branch", hex_code::BRANCH));
+                                ui.add_sized(label_size, egui::TextEdit::singleline(branch_text));
+
+                                ui.end_row();
+
+                                // tag
+                                ui.label(format!("  {} tag", hex_code::TAG));
+
+                                ui.add_sized(label_size, egui::TextEdit::singleline(tag_text));
+                                ui.end_row();
+
+                                // commit
+                                ui.label(format!("  {} commmit", hex_code::COMMIT));
+                                ui.add_sized(label_size, egui::TextEdit::singleline(commit_text));
+                                ui.end_row();
+                            });
+
+                        ui.add_space(5.0);
+                    });
+                })
+                .response;
+
+            if !toggle_response.clicked()
+                && (self.input().key_pressed(egui::Key::Escape)
+                    || area_response.clicked_elsewhere()
+                    || (self.input().scroll_delta.y.abs() > 0.0 && !area_response.hovered()))
+            {
+                self.memory().close_popup();
+            }
+        }
+        toggle_response
+    }
 }
