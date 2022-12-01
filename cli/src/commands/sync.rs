@@ -172,7 +172,9 @@ pub fn exec(
                                         _ => String::new(),
                                     };
 
-                                    if cur_cmp_msg != new_cmp_msg {
+                                    if cur_cmp_msg != new_cmp_msg
+                                        && new_cmp_msg.contains("already update to date.")
+                                    {
                                         new_cmp_msg =
                                             new_cmp_msg.replace("already update to date.", "");
                                         new_cmp_msg = format!(
