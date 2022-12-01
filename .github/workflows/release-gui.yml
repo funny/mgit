@@ -107,7 +107,7 @@ jobs:
     - name: Build archive
       shell: bash
       run: |
-        staging="mgit-gui-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
+        staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
         mkdir -p "$staging"
         cp README.md "$staging/"
 
