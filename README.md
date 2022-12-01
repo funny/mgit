@@ -1,3 +1,7 @@
+<p align="center">
+    <img width="128" alt="mgit logo" src="./gui/resource/logo128x128.png">
+</p>
+
 mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能有：
 
 - 一键生成当前文件夹下所有仓库的管理配置文件
@@ -68,6 +72,7 @@ Options
 - **--no-checkout** 在 sync 后不迁出新的远端分支
 - **--stash** 在 sync 前暂存本地改动
 - **--hard** 在 sync 前忽略所有本地改动
+- **--ignore** 忽略不想生成 config 文件的目录，可多次使用
 
 ### fetch
 
@@ -82,6 +87,7 @@ Options
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 - **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
 - **--silent** 在 sync 中启用静默播报模式
+- **--ignore** 忽略不想生成 config 文件的目录，可多次使用
 
 ### clean
 
@@ -106,6 +112,7 @@ mgit track [OPTIONS] [PATH]
 Options
 
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--ignore** 忽略不想生成 config 文件的目录，可多次使用
 
 ## 图形界面工具 (GUI)
 

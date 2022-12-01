@@ -13,14 +13,14 @@
 # Reference:
 # https://eugene-babichenko.github.io/blog/2020/05/09/github-actions-cross-platform-auto-releases/
 
-name: release
+name: release-gui
 on:
   push:
     # Enable when testing release infrastructure on a branch.
     # branches:
     # - ag/work
     tags:
-    - "[0-9]+.[0-9]+.[0-9]+"
+    - "gui-[0-9]+.[0-9]+.[0-9]+"
 jobs:
   create-release:
     name: create-release
@@ -66,28 +66,12 @@ jobs:
       RUST_BACKTRACE: 1
     strategy:
       matrix:
-        build: [linux, linux-arm, macos, win-msvc, win32-msvc]
+        build: [win-msvc, win32-msvc]
         include:
-        - build: linux
-          os: ubuntu-22.04
-          rust: nightly
-          target: x86_64-unknown-linux-musl
-        - build: linux-arm
-          os: ubuntu-22.04
-          rust: nightly
-          target: arm-unknown-linux-gnueabihf
-        - build: macos
-          os: macos-12
-          rust: nightly
-          target: x86_64-apple-darwin
         - build: win-msvc
           os: windows-2022
           rust: nightly
           target: x86_64-pc-windows-msvc
-        # - build: win-gnu
-        #   os: windows-2022
-        #   rust: nightly-x86_64-gnu
-        #   target: x86_64-pc-windows-gnu
         - build: win32-msvc
           os: windows-2022
           rust: nightly
@@ -118,40 +102,18 @@ jobs:
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Build release binary
-      run: ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
-
-    - name: Strip release binary (linux and macos)
-      if: matrix.build == 'linux' || matrix.build == 'macos'
-      run: strip "target/${{ matrix.target }}/release/mgit"
-
-    - name: Strip release binary (arm)
-      if: matrix.build == 'linux-arm'
-      run: |
-        docker run --rm -v \
-          "$PWD/target:/target:Z" \
-          rustembedded/cross:arm-unknown-linux-gnueabihf \
-          arm-linux-gnueabihf-strip \
-          /target/arm-unknown-linux-gnueabihf/release/mgit
+      run: ${{ env.CARGO }} build -p mgit-gui --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Build archive
       shell: bash
       run: |
-        staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
+        staging="mgit-gui-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
         mkdir -p "$staging"
         cp README.md "$staging/"
-        # DISABLE
-        # mkdir -p "$staging"/{complete,doc}
-        # cp complete/_mgit "$staging/complete/"
 
-        if [ "${{ matrix.os }}" = "windows-2022" ]; then
-          cp "target/${{ matrix.target }}/release/mgit.exe" "$staging/"
-          7z a "$staging.zip" "$staging"
-          echo "ASSET=$staging.zip" >> $GITHUB_ENV
-        else
-          cp "target/${{ matrix.target }}/release/mgit" "$staging/"
-          tar czf "$staging.tar.gz" "$staging"
-          echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
-        fi
+        cp "target/${{ matrix.target }}/release/mgit-gui.exe" "$staging/"
+        7z a "$staging.zip" "$staging"
+        echo "ASSET=$staging.zip" >> $GITHUB_ENV
 
     - name: Upload release archive
       uses: actions/upload-release-asset@v1.0.2
