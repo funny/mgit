@@ -53,6 +53,17 @@ pub trait DialogBase {
     fn is_ok(&self) -> bool;
 }
 
+pub trait UiExt<'t> {
+    fn remote_ref_edit_button(
+        &mut self,
+        current_pos: impl Into<egui::Pos2>,
+        idx: usize,
+        branch_text: &'t mut dyn egui::TextBuffer,
+        tag_text: &'t mut dyn egui::TextBuffer,
+        commit_text: &'t mut dyn egui::TextBuffer,
+    ) -> egui::Response;
+}
+
 pub struct App {
     project_path: String,
     config_file: String,
@@ -188,13 +199,34 @@ pub fn setup_custom_fonts(ctx: &egui::Context) {
             .families
             .entry(egui::FontFamily::Proportional)
             .or_default()
-            .insert(1, "microsoft_yahei".to_owned());
+            .push("microsoft_yahei".to_owned());
 
         fonts
             .families
             .entry(egui::FontFamily::Monospace)
             .or_default()
-            .insert(1, "microsoft_yahei".to_owned());
+            .push("microsoft_yahei".to_owned());
+    }
+
+    // chinese character on macos
+    #[cfg(target_os = "macos")]
+    {
+        let font = std::fs::read("/System/Library/Fonts/PingFang.ttc").unwrap();
+        fonts
+            .font_data
+            .insert("PingFang".to_owned(), egui::FontData::from_owned(font));
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Proportional)
+            .or_default()
+            .push("PingFang".to_owned());
+
+        fonts
+            .families
+            .entry(egui::FontFamily::Monospace)
+            .or_default()
+            .push("PingFang".to_owned());
     }
 
     // tell egui to use these fonts:
@@ -281,4 +313,12 @@ pub fn create_truncate_layout_job(text: String, color: egui::Color32) -> egui::t
         text,
         ..Default::default()
     }
+}
+
+fn cmp_toml_repo(dest: &TomlRepo, src: &TomlRepo) -> bool {
+    let mut result = false;
+    if dest.branch != src.branch || dest.tag != src.tag || dest.commit != src.commit {
+        result = true;
+    }
+    result
 }
