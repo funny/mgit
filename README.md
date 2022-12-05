@@ -5,7 +5,7 @@
 <h1 align="center">MGIT - git 多仓库管理工具</h1>
 
 <p align="center">
-  <img width="600" alt="mgit" src="./imgs/mgit-gui.png">
+  <img width="500" alt="mgit" src="./imgs/mgit-gui.png">
 </p>
 
 mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能有：
