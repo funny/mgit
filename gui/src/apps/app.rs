@@ -445,8 +445,17 @@ impl App {
                     ui.close_menu();
                 }
 
+                // snapshot button - open save file dialog
                 if ui.button("  Snapshot").clicked() {
-                    self.execute_cmd(CommandType::Snapshot);
+                    if let Some(path) = rfd::FileDialog::new()
+                        .set_directory(Path::new(&self.project_path.replace("/", "\\")))
+                        .set_title("save new config file")
+                        .set_file_name(".gitrepos")
+                        .save_file()
+                    {
+                        self.config_file = norm_path(&path.to_str().unwrap().to_string());
+                        self.execute_cmd(CommandType::Snapshot);
+                    }
                     ui.close_menu();
                 }
 
@@ -468,7 +477,7 @@ impl App {
                     ui.close_menu();
                 }
 
-                // clean button
+                // clean button - open ok/cancel dialog
                 if ui.button("  Clean").clicked() {
                     self.close_all_windows();
                     self.clean_is_open = true;
