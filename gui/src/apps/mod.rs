@@ -1,17 +1,21 @@
 use self::about_window::AboutWindow;
 use self::defines::*;
 use self::dialog::Dialog;
+use self::error_window::ErrorWindow;
 use self::options_window::OptionsWindow;
 use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
 use mgit::commands::{TomlConfig, TomlRepo};
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-pub mod defines;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 mod about_window;
 mod app;
+pub mod defines;
 mod dialog;
+mod error_window;
 mod options_window;
 mod settings;
 
@@ -53,17 +57,6 @@ pub trait DialogBase {
     fn is_ok(&self) -> bool;
 }
 
-pub trait UiExt<'t> {
-    fn remote_ref_edit_button(
-        &mut self,
-        current_pos: impl Into<egui::Pos2>,
-        idx: usize,
-        branch_text: &'t mut dyn egui::TextBuffer,
-        tag_text: &'t mut dyn egui::TextBuffer,
-        commit_text: &'t mut dyn egui::TextBuffer,
-    ) -> egui::Response;
-}
-
 pub struct App {
     project_path: String,
     config_file: String,
@@ -74,6 +67,7 @@ pub struct App {
     recent_projects: Vec<String>,
 
     toml_config: TomlConfig,
+    remote_ref_edit_idx: i32,
     repo_states: Vec<RepoState>,
 
     send: Sender<(CommandType, (usize, RepoState))>,
@@ -82,6 +76,10 @@ pub struct App {
     // about window
     about_window: AboutWindow,
     about_is_open: bool,
+
+    // error window
+    error_window: ErrorWindow,
+    error_is_open: bool,
 
     // option window
     options_window: OptionsWindow,
@@ -138,6 +136,7 @@ impl Default for App {
             recent_projects: Vec::new(),
 
             toml_config: TomlConfig::default(),
+            remote_ref_edit_idx: -1,
             repo_states: Vec::new(),
 
             send,
@@ -146,6 +145,10 @@ impl Default for App {
             // about window
             about_window: Default::default(),
             about_is_open: false,
+
+            // error window
+            error_window: Default::default(),
+            error_is_open: false,
 
             // option window
             options_window: Default::default(),
@@ -315,10 +318,87 @@ pub fn create_truncate_layout_job(text: String, color: egui::Color32) -> egui::t
     }
 }
 
-fn cmp_toml_repo(dest: &TomlRepo, src: &TomlRepo) -> bool {
+pub fn cmp_toml_repo(dest: &TomlRepo, src: &TomlRepo) -> bool {
     let mut result = false;
     if dest.branch != src.branch || dest.tag != src.tag || dest.commit != src.commit {
         result = true;
     }
     result
+}
+
+pub fn check_dependencies() -> Result<(), String> {
+    let mut err_msg = String::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        let cur_path = std::env::current_exe().unwrap();
+        let mgit = cur_path.parent().unwrap().join("mgit.exe");
+        // check mgit.exe existance
+        if !mgit.is_file() {
+            err_msg.push_str("mgit.exe is undetected.\n");
+        }
+        // make sure version is right
+        else {
+            let command_str = format!("{} -V", MGIT_DIR);
+            let output = std::process::Command::new("cmd")
+                .arg("/C")
+                .arg(&command_str)
+                .creation_flags(defines::console_option::CREATE_NO_WINDOW)
+                .output()
+                .expect("command failed to start");
+
+            if !output.status.success() {
+                err_msg.push_str("run 'mgit -V' failed.\n");
+            } else {
+                let stdout = String::from_utf8(output.stdout).unwrap();
+                if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
+                    err_msg.push_str(&format!("mgit.exe require version {}", MGIT_VERSION));
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let cur_path = std::env::current_exe().unwrap();
+        let mgit = cur_path.parent().unwrap().join("mgit");
+        // check mgit existance
+        if !mgit.is_file() {
+            err_msg.push_str("mgit is undetected.\n");
+        }
+        // make sure version is right
+        else {
+            let cur_path = cur_path.parent().unwrap().to_str().unwrap();
+            let command_str = format!("./{} -V", &MGIT_DIR);
+            let output = std::process::Command::new("sh")
+                .current_dir(cur_path)
+                .arg("-c")
+                .arg(&command_str)
+                .output()
+                .expect("command failed to start");
+
+            if !output.status.success() {
+                err_msg.push_str("run 'mgit -V' failed.\n");
+            } else {
+                let stdout = String::from_utf8(output.stdout).unwrap();
+                if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
+                    err_msg.push_str(&format!("mgit require version {}", MGIT_VERSION));
+                }
+            }
+        }
+
+        // make sure git is installed
+        let output = std::process::Command::new("git")
+            .arg("--version")
+            .output()
+            .expect("command failed to start");
+        if !output.status.success() {
+            err_msg.push_str("git is undetected.\n");
+        }
+    }
+
+    match err_msg.is_empty() {
+        true => Ok(()),
+        false => Err(err_msg),
+    }
 }

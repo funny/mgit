@@ -1,8 +1,8 @@
 use super::*;
 use eframe::egui;
 use mgit::commands::{
-    cmp_local_remote, display_path, get_current_branch, get_tracking_branch, is_repository,
-    load_config, norm_path,
+    cmp_local_remote, display_path, execute_cmd, get_current_branch, get_tracking_branch,
+    is_repository, load_config, norm_path,
 };
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
@@ -52,8 +52,16 @@ impl App {
         configure_text_styles(&cc.egui_ctx);
 
         let mut app = App::default();
-        app.load_setting();
-        app.execute_cmd(CommandType::Refresh);
+
+        if let Err(err_msg) = check_dependencies() {
+            app.error_is_open = true;
+            app.error_window = ErrorWindow::new(err_msg);
+        } else {
+            app.error_is_open = false;
+            app.load_setting();
+            app.execute_cmd(CommandType::Refresh);
+        }
+
         app
     }
 
@@ -399,6 +407,14 @@ impl App {
             self.save_snapshot_ignore();
         }
 
+        // show error window
+        if self.error_is_open {
+            self.error_window.show(ctx, eframe, &mut self.error_is_open);
+            if !self.error_is_open {
+                std::process::exit(0x0100);
+            }
+        }
+
         // show clean dialog
         self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
         if self.clean_dialog.is_ok() {
@@ -423,6 +439,7 @@ impl App {
     /// quick bar panel of app
     fn top_view(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("mgit_gui_top_bar").show(ctx, |ui| {
+            ui.set_enabled(!self.error_is_open);
             ui.spacing_mut().item_spacing = egui::vec2(10.0, 5.0);
 
             // menu bar
@@ -565,6 +582,7 @@ impl App {
     /// content_view of app
     fn content_view(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.set_enabled(!self.error_is_open);
             ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                 ui.set_min_width(DEFAULT_WIDTH);
                 ui.heading("Configuration");
@@ -839,6 +857,7 @@ impl App {
                 false => create_layout_job(repository_display, text_color::DARK_PURPLE),
             };
 
+            // repository name
             ui.horizontal(|ui| {
                 ui.set_row_height(18.0);
                 // display name
@@ -886,14 +905,104 @@ impl App {
                 ui.label(job);
 
                 // edit button
-                let pos = [ui.min_rect().min.x + 160.0, ui.min_rect().min.y - 40.0];
-                ui.remote_ref_edit_button(
-                    pos,
-                    idx,
-                    &mut branch_text,
-                    &mut tag_text,
-                    &mut commit_text,
+                let current_pos = [ui.min_rect().min.x + 160.0, ui.min_rect().min.y - 40.0];
+                let widget_rect = egui::Rect::from_min_size(
+                    egui::pos2(ui.min_rect().max.x + 5.0, ui.min_rect().min.y),
+                    egui::vec2(18.0, 18.0),
                 );
+
+                let toggle_response = ui.put(
+                    widget_rect,
+                    egui::SelectableLabel::new(
+                        self.remote_ref_edit_idx == idx as i32,
+                        hex_code::EDIT,
+                    ),
+                );
+
+                if toggle_response.clicked() {
+                    self.remote_ref_edit_idx = match self.remote_ref_edit_idx == idx as i32 {
+                        true => -1,
+                        false => idx as i32,
+                    };
+                }
+
+                if self.remote_ref_edit_idx == idx as i32 {
+                    let full_path = Path::new(&self.project_path).join(&rel_path);
+                    let remote_branches = get_remote_branches(&full_path);
+
+                    egui::Window::new(format!("{} config", &rel_path))
+                        .fixed_pos(current_pos)
+                        .resizable(false)
+                        .collapsible(false)
+                        .title_bar(false)
+                        .open(&mut true)
+                        .show(ui.ctx(), |ui| {
+                            let mut is_combo_box_expand = false;
+
+                            ui.add_space(5.0);
+
+                            egui::Grid::new(format!("repo_editing_panel_{}", idx))
+                                .striped(false)
+                                .num_columns(3)
+                                .min_col_width(60.0)
+                                .show(ui, |ui| {
+                                    ui.set_width(410.0);
+                                    let label_size = [300.0, 20.0];
+                                    // branch
+                                    ui.label(format!("  {} branch", hex_code::BRANCH));
+                                    //ui.add_sized(label_size, egui::TextEdit::singleline(branch_text));
+
+                                    // combo box to select recent project
+
+                                    egui::ComboBox::new(format!("branch_select_{}", idx), "")
+                                        .width(290.0)
+                                        .selected_text(branch_text.as_str())
+                                        .show_ui(ui, |ui| {
+                                            is_combo_box_expand = true;
+                                            ui.set_min_width(290.0);
+                                            for branch in &remote_branches {
+                                                if ui.selectable_label(false, branch).clicked() {
+                                                    branch_text = branch.to_owned();
+                                                }
+                                            }
+                                        });
+
+                                    //self.memory().open_popup(popup_id);
+                                    ui.end_row();
+
+                                    // tag
+                                    ui.label(format!("  {} tag", hex_code::TAG));
+
+                                    ui.add_sized(
+                                        label_size,
+                                        egui::TextEdit::singleline(&mut tag_text),
+                                    );
+                                    ui.end_row();
+
+                                    // commit
+                                    ui.label(format!("  {} commmit", hex_code::COMMIT));
+                                    ui.add_sized(
+                                        label_size,
+                                        egui::TextEdit::singleline(&mut commit_text),
+                                    );
+                                    ui.end_row();
+                                });
+
+                            ui.add_space(5.0);
+
+                            let pointer = &ui.input().pointer;
+                            if let Some(pos) = pointer.interact_pos() {
+                                if !is_combo_box_expand
+                                    && !ui.min_rect().contains(pos)
+                                    && !widget_rect.contains(pos)
+                                    && pointer.button_clicked(egui::PointerButton::Primary)
+                                {
+                                    self.remote_ref_edit_idx = -1;
+                                }
+                            }
+                        });
+                }
+
                 toml_repo.branch = match branch_text.is_empty() {
                     true => None,
                     false => Some(branch_text),
@@ -1203,79 +1312,14 @@ fn execute_cmd_with_send(
     });
 }
 
-impl<'t> UiExt<'t> for egui::Ui {
-    fn remote_ref_edit_button(
-        &mut self,
-        current_pos: impl Into<egui::Pos2>,
-        idx: usize,
-        branch_text: &'t mut dyn egui::TextBuffer,
-        tag_text: &'t mut dyn egui::TextBuffer,
-        commit_text: &'t mut dyn egui::TextBuffer,
-    ) -> egui::Response {
-        let source = format!("remote_ref_editing_context_{}", idx);
-        let popup_id = egui::Id::new(self.skip_ahead_auto_ids(0)).with(source);
-        let open = self.memory().is_popup_open(popup_id);
-
-        let widget_rect = egui::Rect::from_min_size(
-            egui::pos2(self.min_rect().max.x + 5.0, self.min_rect().min.y),
-            egui::vec2(18.0, 18.0),
-        );
-
-        let toggle_response = self.put(
-            widget_rect,
-            egui::SelectableLabel::new(open, hex_code::EDIT),
-        );
-
-        if toggle_response.clicked() {
-            self.memory().toggle_popup(popup_id);
+fn get_remote_branches(full_path: &Path) -> Vec<String> {
+    let mut branches = Vec::new();
+    let args = ["branch", "-r"];
+    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
+        for file in output.trim().lines() {
+            let branch = file.trim().replace("origin/", "");
+            branches.push(branch);
         }
-
-        if self.memory().is_popup_open(popup_id) {
-            let area_response = egui::Area::new(popup_id)
-                .order(egui::Order::Foreground)
-                .current_pos(current_pos)
-                .show(self.ctx(), |ui| {
-                    egui::Frame::popup(self.style()).show(ui, |ui| {
-                        ui.add_space(5.0);
-
-                        egui::Grid::new(format!("repo_editing_panel_{}", idx))
-                            .striped(false)
-                            .num_columns(3)
-                            .min_col_width(60.0)
-                            .show(ui, |ui| {
-                                ui.set_width(410.0);
-                                let label_size = [300.0, 20.0];
-                                // branch
-                                ui.label(format!("  {} branch", hex_code::BRANCH));
-                                ui.add_sized(label_size, egui::TextEdit::singleline(branch_text));
-
-                                ui.end_row();
-
-                                // tag
-                                ui.label(format!("  {} tag", hex_code::TAG));
-
-                                ui.add_sized(label_size, egui::TextEdit::singleline(tag_text));
-                                ui.end_row();
-
-                                // commit
-                                ui.label(format!("  {} commmit", hex_code::COMMIT));
-                                ui.add_sized(label_size, egui::TextEdit::singleline(commit_text));
-                                ui.end_row();
-                            });
-
-                        ui.add_space(5.0);
-                    });
-                })
-                .response;
-
-            if !toggle_response.clicked()
-                && (self.input().key_pressed(egui::Key::Escape)
-                    || area_response.clicked_elsewhere()
-                    || (self.input().scroll_delta.y.abs() > 0.0 && !area_response.hovered()))
-            {
-                self.memory().close_popup();
-            }
-        }
-        toggle_response
     }
+    branches
 }
