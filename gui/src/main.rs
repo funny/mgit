@@ -1,11 +1,11 @@
 // hide console window on Windows in release
 #![windows_subsystem = "windows"]
-use apps::{
+use editor::{
     defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
     load_icon, App,
 };
 
-mod apps;
+mod editor;
 
 fn main() {
     let mut native_options = eframe::NativeOptions::default();

@@ -335,11 +335,11 @@ pub fn check_dependencies() -> Result<(), String> {
         let mgit = cur_path.parent().unwrap().join("mgit.exe");
         // check mgit.exe existance
         if !mgit.is_file() {
-            err_msg.push_str("mgit.exe is undetected.\n");
+            err_msg.push_str("mgit.exe is not found!.\n");
         }
         // make sure version is right
         else {
-            let command_str = format!("{} -V", MGIT_DIR);
+            let command_str = format!("{} --version", MGIT_DIR);
             let output = std::process::Command::new("cmd")
                 .arg("/C")
                 .arg(&command_str)
@@ -347,14 +347,30 @@ pub fn check_dependencies() -> Result<(), String> {
                 .output()
                 .expect("command failed to start");
 
+            let mut wrong_ver = false;
+
             if !output.status.success() {
-                err_msg.push_str("run 'mgit -V' failed.\n");
+                wrong_ver = true;
             } else {
                 let stdout = String::from_utf8(output.stdout).unwrap();
                 if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
-                    err_msg.push_str(&format!("mgit.exe require version {}", MGIT_VERSION));
+                    wrong_ver = true;
                 }
             }
+
+            if wrong_ver {
+                err_msg.push_str(&format!("Please update mgit.exe to {}", MGIT_VERSION));
+            }
+        }
+
+        // make sure git is installed
+        let output = std::process::Command::new("cmd")
+            .arg("/C")
+            .arg("git --version")
+            .output()
+            .expect("command failed to start");
+        if !output.status.success() {
+            err_msg.push_str("git is not found!\n");
         }
     }
 
@@ -364,7 +380,7 @@ pub fn check_dependencies() -> Result<(), String> {
         let mgit = cur_path.parent().unwrap().join("mgit");
         // check mgit existance
         if !mgit.is_file() {
-            err_msg.push_str("mgit is undetected.\n");
+            err_msg.push_str("mgit is not found!.\n");
         }
         // make sure version is right
         else {
@@ -377,13 +393,19 @@ pub fn check_dependencies() -> Result<(), String> {
                 .output()
                 .expect("command failed to start");
 
+            let mut wrong_ver = false;
+
             if !output.status.success() {
-                err_msg.push_str("run 'mgit -V' failed.\n");
+                wrong_ver = true;
             } else {
                 let stdout = String::from_utf8(output.stdout).unwrap();
                 if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
-                    err_msg.push_str(&format!("mgit require version {}", MGIT_VERSION));
+                    wrong_ver = true;
                 }
+            }
+
+            if wrong_ver {
+                err_msg.push_str(&format!("Please update mgit to {}", MGIT_VERSION));
             }
         }
 
@@ -393,7 +415,7 @@ pub fn check_dependencies() -> Result<(), String> {
             .output()
             .expect("command failed to start");
         if !output.status.success() {
-            err_msg.push_str("git is undetected.\n");
+            err_msg.push_str("git is not found!\n");
         }
     }
 
