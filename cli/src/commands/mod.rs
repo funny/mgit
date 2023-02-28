@@ -275,7 +275,7 @@ pub fn find_remote_url_by_name(path: &Path, name: &String) -> Result<String, any
 
 pub fn get_current_commit(path: &Path) -> Result<String, anyhow::Error> {
     is_repository(path)?;
-    let args = ["rev-parse", "head"];
+    let args = ["rev-parse", "HEAD"];
     let output = execute_cmd(path, "git", &args)?;
 
     for oid in output.trim().lines() {
