@@ -927,7 +927,8 @@ tag = "v0.3.0"
         "git",
         &["checkout", "-B", "foobar", "origin/master", "--no-track"],
     )
-    .unwrap();
+    .expect("git checkout -B foobar origin/master --no-track failed!");
+
     let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "foobar");
     assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
@@ -1064,6 +1065,15 @@ branch = "master"
 
     // create local commit
     let _ = execute_cmd(&path, "git", &["add", "."]);
+    if let Err(_) = execute_cmd(&path, "git", &["config", "--global", "user.email"]) {
+        let _ = execute_cmd(
+            &path,
+            "git",
+            &["config", "--global", "user.email", "foobar@xmfunny.com"],
+        );
+        let _ = execute_cmd(&path, "git", &["config", "--global", "user.name", "foobar"]);
+    }
+
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
