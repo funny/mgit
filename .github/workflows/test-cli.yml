@@ -1,4 +1,4 @@
-name: Rust
+name: test-cli
 on: [push]
 
 env:
