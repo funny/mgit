@@ -81,7 +81,8 @@ fn cli_init_force1() {
     create_repos_tree2(&path);
 
     for repo_path in ["", "foobar-1", "foobar-2"] {
-        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
+        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
+            .expect("git fetch --all failed!");
         execute_cmd(
             &path.join(repo_path),
             "git",
