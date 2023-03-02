@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd};
+use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
 use std::{collections::HashSet, env, path::PathBuf};
 
 mod common;
@@ -39,7 +39,7 @@ remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
@@ -47,18 +47,19 @@ branch = "master"
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "/target\n/foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+    check_git_author_identity(&path);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     // if commit succ
     assert!(execute_cmd(&path, "git", &["status"]).is_ok());
 
     // sync --hard will delete .gitrepos in the front
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
     execute_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
 
@@ -68,7 +69,7 @@ branch = "master"
         assert!(output.contains(".gitrepos"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("git status error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // clean-up
@@ -111,7 +112,7 @@ remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
@@ -119,7 +120,7 @@ branch = "master"
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "/target\n/foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -129,13 +130,13 @@ branch = "master"
         assert!(output.contains(".gitignore"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("status error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // set invalid branch
     let toml_string = toml_string.replace("master", "invalid-branch");
     // sync --hard will delete .gitrepos in the front
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
     execute_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
 
@@ -144,7 +145,7 @@ branch = "master"
         assert!(output.contains(".gitignore"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("sync error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // clean-up
@@ -186,7 +187,7 @@ remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
@@ -194,7 +195,7 @@ branch = "master"
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "/target\n/foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -204,11 +205,11 @@ branch = "master"
         assert!(output.contains(".gitignore"));
         assert!(output.contains("1.txt"))
     } else {
-        panic!("status error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // sync --hard will delete .gitrepos in the front
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // excute sync
     execute_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
@@ -219,14 +220,14 @@ branch = "master"
         assert_eq!(false, output.contains(".gitrepos"));
         assert_eq!(false, output.contains("1.txt"));
     } else {
-        panic!("sync error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // check stash
     if let Ok(output) = execute_cmd(&path, "git", &["stash", "list"]) {
         assert_eq!(1, output.lines().count());
     } else {
-        panic!("stash error.")
+        panic!("{}", failed_message::GIT_STASH_LIST);
     }
 
     // pop stash and check file
@@ -235,7 +236,7 @@ branch = "master"
         assert!(output.contains(".gitrepos"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("stash pop error.")
+        panic!("{}", failed_message::GIT_STASH_POP);
     }
 
     // clean-up
@@ -277,7 +278,7 @@ remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
@@ -285,7 +286,7 @@ branch = "master"
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "/target\n/foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -295,13 +296,13 @@ branch = "master"
         assert!(output.contains(".gitignore"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("status error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // set invalid branch
     let toml_string = toml_string.replace("master", "invalid-branch");
     // sync --hard will delete .gitrepos in the front
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --stash
 
     execute_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
@@ -313,7 +314,7 @@ branch = "master"
         assert!(output.contains(".gitrepos"));
         assert!(output.contains("1.txt"));
     } else {
-        panic!("sync error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // clean-up
@@ -355,7 +356,7 @@ remote = "https://gitee.com/ForthEspada/CS-Books.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
@@ -363,30 +364,31 @@ branch = "master"
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "/target\n/foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+    check_git_author_identity(&path);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     // if commit succ
     assert!(execute_cmd(&path, "git", &["status"]).is_ok());
 
     // sync --hard will delete .gitrepos in the front
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --hard
     execute_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
 
     // ignore "foobar" folder
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
     // compaire changes after sync
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
         assert!(output.contains(".gitignore"));
         assert_eq!(false, output.contains(".gitrepos"));
         assert_eq!(false, output.contains("1.txt"));
     } else {
-        panic!("sync error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // clean-up
@@ -433,12 +435,12 @@ branch = "master"
 "#;
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    common::execute_cargo_cmd(
+    execute_cargo_cmd(
         "mgit",
         &[
             "sync",
@@ -450,11 +452,12 @@ branch = "master"
 
     assert!(input_path.is_dir());
 
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "/target\n/foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -510,12 +513,12 @@ branch = "master"
 "#;
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    common::execute_cargo_cmd(
+    execute_cargo_cmd(
         "mgit",
         &[
             "sync",
@@ -527,11 +530,12 @@ branch = "master"
     );
     assert!(input_path.is_dir());
 
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "/target\n/foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -586,12 +590,12 @@ branch = "master"
 "#;
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    common::execute_cargo_cmd(
+    execute_cargo_cmd(
         "mgit",
         &[
             "sync",
@@ -603,11 +607,12 @@ branch = "master"
     );
     assert!(input_path.is_dir());
 
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "/target\n/foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -693,7 +698,7 @@ branch = "master"
 "#;
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
     assert_eq!(false, input_path.is_dir());
 
@@ -706,7 +711,7 @@ branch = "master"
     assert!(input_path.is_dir());
 
     // initialize the repositories tree
-    common::execute_cargo_cmd(
+    execute_cargo_cmd(
         "mgit",
         &[
             "sync",
@@ -718,11 +723,11 @@ branch = "master"
 
     assert!(input_path.is_dir());
 
-    let _ = execute_cmd(&path, "git", &["add", "."]);
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "/target\n/foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -783,7 +788,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 tag = "v0.3.0"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd("mgit", &["sync", &input_path]);
@@ -865,7 +870,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd(
@@ -917,7 +922,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 tag = "v0.3.0"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // test checkout function
     // root path, checkout a new branch
@@ -927,7 +932,7 @@ tag = "v0.3.0"
         "git",
         &["checkout", "-B", "foobar", "origin/master", "--no-track"],
     )
-    .expect("git checkout -B foobar origin/master --no-track failed!");
+    .expect(failed_message::GIT_CHECKOUT);
 
     let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "foobar");
@@ -1026,7 +1031,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd(
@@ -1060,27 +1065,19 @@ branch = "master"
     // ignore and .gitrepos, for confliction test
     let ignore_file = path.join(".gitignore");
     let ingore_content = format!("{}\n{}\n{}", "/target", "/foobar-1", "/foobar-2");
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // create local commit
-    let _ = execute_cmd(&path, "git", &["add", "."]);
-    if let Err(_) = execute_cmd(&path, "git", &["config", "--global", "user.email"]) {
-        let _ = execute_cmd(
-            &path,
-            "git",
-            &["config", "--global", "user.email", "foobar@xmfunny.com"],
-        );
-        let _ = execute_cmd(&path, "git", &["config", "--global", "user.name", "foobar"]);
-    }
-
+    let _ = execute_cmd(&path, "git", &["add", ".", "-f"]);
+    check_git_author_identity(&path);
     let _ = execute_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     if let Ok(output) = execute_cmd(&path, "git", &["status"]) {
         assert_eq!(false, output.contains(".gitignore"));
         assert_eq!(false, output.contains(".gitrepos"));
     } else {
-        panic!("commit error.")
+        panic!("{}", failed_message::GIT_STATUS);
     }
 
     // root path, set checkout a new branch
@@ -1090,7 +1087,8 @@ branch = "master"
         "git",
         &["checkout", "-B", "foobar", "origin/master", "--no-track"],
     )
-    .unwrap();
+    .expect(failed_message::GIT_CHECKOUT);
+
     let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "foobar");
     assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
@@ -1117,8 +1115,8 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 tag = "v0.3.0"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
-    std::fs::write(&ignore_file, ingore_content.trim()).expect("Failed to write file .gitignore!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // sync repositories, with checkout
     execute_cargo_cmd("mgit", &["sync", &input_path, "--no-track"]);
@@ -1190,7 +1188,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd(
@@ -1198,10 +1196,10 @@ branch = "master"
         &["sync", &input_path, "--no-checkout", "--no-track"],
     );
 
-    execute_cmd(&path, "git", &["reset", "--hard", "v0.3.0"]).unwrap();
+    execute_cmd(&path, "git", &["reset", "--hard", "v0.3.0"]).expect(failed_message::GIT_RESET);
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // test checkout function
     // sync repositories, with checkout
@@ -1211,7 +1209,8 @@ branch = "master"
     let local_changes1 = get_local_changes(&path);
     assert_eq!(0, local_changes1.len());
 
-    let output = execute_cmd(&path, "git", &["stash", "list"]).unwrap();
+    let output =
+        execute_cmd(&path, "git", &["stash", "list"]).expect(failed_message::GIT_STASH_LIST);
     assert!(output.contains("stash@{0}"));
     assert!(!output.contains("stash@{1}"));
 
@@ -1275,7 +1274,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch = "master"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     execute_cargo_cmd(
@@ -1308,4 +1307,17 @@ branch = "master"
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+}
+
+pub fn check_git_author_identity(path: &PathBuf) {
+    if let Err(_) = execute_cmd(path, "git", &["config", "--global", "user.email"]) {
+        execute_cmd(
+            path,
+            "git",
+            &["config", "--global", "user.email", "foobar@xmfunny.com"],
+        )
+        .expect(failed_message::GIT_CONFIG);
+        execute_cmd(path, "git", &["config", "--global", "user.name", "foobar"])
+            .expect(failed_message::GIT_CONFIG);
+    }
 }
