@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd};
+use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
 use std::env;
 
 mod common;
@@ -44,7 +44,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch= "character_bert"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
     execute_cargo_cmd(
@@ -79,7 +79,7 @@ branch= "character_bert"
         r#"branch = "master""#,
     );
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
     execute_cargo_cmd("mgit", &["track", &input_path]);
@@ -150,7 +150,7 @@ remote = "https://gitee.com/icze1i0n/rust-sbert.git"
 branch= "character_bert"
 "#;
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
     execute_cargo_cmd(
@@ -185,7 +185,7 @@ branch= "character_bert"
         r#"branch = "master""#,
     );
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect("Failed to write file .gitrepos!");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
     execute_cargo_cmd(

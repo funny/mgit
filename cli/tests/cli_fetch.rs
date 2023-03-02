@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd};
+use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
 use std::env;
 
 mod common;
@@ -32,10 +32,11 @@ fn cli_fetch_simple() {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        let _ = execute_cmd(&dir, "git", &["init"]);
+        execute_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
 
         // add remote
-        let _ = execute_cmd(&dir, "git", &["remote", "add", "origin", remote]);
+        execute_cmd(&dir, "git", &["remote", "add", "origin", remote])
+            .expect(failed_message::GIT_ADD_REMOTE);
 
         assert!(!dir.join(".git/FETCH_HEAD").is_file());
     }
