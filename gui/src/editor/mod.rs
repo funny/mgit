@@ -347,17 +347,19 @@ pub fn check_dependencies() -> Result<(), String> {
                 .output()
                 .expect("command failed to start");
 
-            let mut wrong_ver = false;
+            let wrong_ver = {
+                if !output.status.success() {
+                    true
+                } else {
+                    let expect_version =
+                        semver::VersionReq::parse(MGIT_VERSION).expect("semver error");
+                    let s = String::from_utf8(output.stdout).expect("mgit error");
+                    let version = s.replace("mgit", "");
+                    let version = semver::Version::parse(&version.trim()).expect("semver error");
 
-            if !output.status.success() {
-                wrong_ver = true;
-            } else {
-                let stdout = String::from_utf8(output.stdout).unwrap();
-                if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
-                    wrong_ver = true;
+                    !expect_version.matches(&version)
                 }
-            }
-
+            };
             if wrong_ver {
                 err_msg.push_str(&format!("Please update mgit.exe to {}", MGIT_VERSION));
             }
@@ -393,16 +395,19 @@ pub fn check_dependencies() -> Result<(), String> {
                 .output()
                 .expect("command failed to start");
 
-            let mut wrong_ver = false;
+            let wrong_ver = {
+                if !output.status.success() {
+                    true
+                } else {
+                    let expect_version =
+                        semver::VersionReq::parse(MGIT_VERSION).expect("semver error");
+                    let s = String::from_utf8(output.stdout).expect("mgit error");
+                    let version = s.replace("mgit", "");
+                    let version = semver::Version::parse(&version.trim()).expect("semver error");
 
-            if !output.status.success() {
-                wrong_ver = true;
-            } else {
-                let stdout = String::from_utf8(output.stdout).unwrap();
-                if stdout.trim() != format!("{} {}", MGIT_DIR, MGIT_VERSION) {
-                    wrong_ver = true;
+                    !expect_version.matches(&version)
                 }
-            }
+            };
 
             if wrong_ver {
                 err_msg.push_str(&format!("Please update mgit to {}", MGIT_VERSION));
