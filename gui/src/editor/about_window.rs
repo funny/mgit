@@ -3,7 +3,9 @@ use eframe::egui;
 use egui_extras::RetainedImage;
 
 #[derive(Default)]
-pub struct AboutWindow {}
+pub struct AboutWindow {
+    pub mgit_version: String,
+}
 
 impl super::WindowBase for AboutWindow {
     fn name(&self) -> String {
@@ -41,10 +43,13 @@ impl super::View for AboutWindow {
                 image.show(ui);
             }
 
-            ui.heading(std::env!("CARGO_PKG_NAME"));
+            // mgit version
+            let text = format!("mgit v{}", &self.mgit_version);
+            ui.label(text);
 
-            let version = format!("version {}", std::env!("CARGO_PKG_VERSION"));
-            ui.label(version);
+            // mgit gui version
+            let text = format!("mgit-gui v{}", std::env!("CARGO_PKG_VERSION"));
+            ui.label(text);
 
             ui.hyperlink_to(
                 format!("{} mgit on github", hex_code::GIT),

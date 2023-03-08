@@ -50,12 +50,9 @@ impl super::View for ErrorWindow {
 
             ui.hyperlink_to(
                 format!("mgit {} on github", MGIT_VERSION),
-                format!("https://github.com/funny/mgit/releases/tag/{}", MGIT_VERSION)
+                format!("https://github.com/funny/mgit/releases/"),
             );
-            ui.hyperlink_to(
-                format!("git official website"),
-                "https://git-scm.com/"
-            );
+            ui.hyperlink_to(format!("git official website"), "https://git-scm.com/");
         });
     }
 }
