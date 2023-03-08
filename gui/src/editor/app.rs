@@ -53,13 +53,29 @@ impl App {
 
         let mut app = App::default();
 
-        if let Err(err_msg) = check_dependencies() {
-            app.error_is_open = true;
-            app.error_window = ErrorWindow::new(err_msg);
-        } else {
+        let (is_dependencies_valid, err_msg) = match get_mgit_version() {
+            Ok(version) => {
+                // get version
+                app.about_window.mgit_version = version;
+                // check mgit and git valid
+                match check_mgit_version_vaild(&app.about_window.mgit_version) {
+                    Ok(_) => match check_git_valid() {
+                        Ok(_) => (true, String::new()),
+                        Err(msg) => (false, msg),
+                    },
+                    Err(msg) => (false, msg),
+                }
+            }
+            Err(msg) => (false, msg),
+        };
+
+        if is_dependencies_valid {
             app.error_is_open = false;
             app.load_setting();
             app.execute_cmd(CommandType::Refresh);
+        } else {
+            app.error_is_open = true;
+            app.error_window = ErrorWindow::new(err_msg);
         }
 
         app
