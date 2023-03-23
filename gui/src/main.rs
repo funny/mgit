@@ -1,5 +1,5 @@
 // hide console window on Windows in release
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use editor::{
     defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
     load_icon, App,
