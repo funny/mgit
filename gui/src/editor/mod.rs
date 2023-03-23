@@ -393,7 +393,10 @@ pub fn check_mgit_version_vaild(version: &str) -> Result<(), String> {
 
     match expect_version.matches(&current_version) {
         true => Ok(()),
-        false => Err(format!("Please update mgit.exe to {}", MGIT_VERSION)),
+        false => Err(format!(
+            "mgit version {} is required, current version is {}\n",
+            MGIT_VERSION, version
+        )),
     }
 }
 pub fn check_git_valid() -> Result<(), String> {
@@ -411,8 +414,34 @@ pub fn check_git_valid() -> Result<(), String> {
         .output()
         .expect("command failed to start");
 
-    match output.status.success() {
+    if !output.status.success() {
+        return Err(String::from("git is not found!\n"));
+    }
+
+    // make sure git version = GIT_VERSION
+    let s = String::from_utf8(output.stdout).expect("mgit error");
+    let version = s
+        .replace("git", "")
+        .replace("version", "")
+        .trim()
+        .to_string();
+
+    #[cfg(target_os = "windows")]
+    let version = {
+        match version.find(".windows") {
+            Some(pos) => &version[..pos],
+            None => &version[..],
+        }
+    };
+
+    let expect_version = semver::VersionReq::parse(GIT_VERSION).expect("semver error");
+    let current_version = semver::Version::parse(version).expect("semver error");
+
+    match expect_version.matches(&current_version) {
         true => Ok(()),
-        false => Err(String::from("git is not found!\n")),
+        false => Err(format!(
+            "git version {} is required, current version is {}\n",
+            GIT_VERSION, version
+        )),
     }
 }
