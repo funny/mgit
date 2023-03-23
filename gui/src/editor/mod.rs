@@ -394,7 +394,7 @@ pub fn check_mgit_version_vaild(version: &str) -> Result<(), String> {
     match expect_version.matches(&current_version) {
         true => Ok(()),
         false => Err(format!(
-            "mgit version {} is required, you version: {}\n",
+            "mgit version {} is required, current version is {}\n",
             MGIT_VERSION, version
         )),
     }
@@ -440,7 +440,7 @@ pub fn check_git_valid() -> Result<(), String> {
     match expect_version.matches(&current_version) {
         true => Ok(()),
         false => Err(format!(
-            "git version {} is required, you version: {}\n",
+            "git version {} is required, current version is {}\n",
             GIT_VERSION, version
         )),
     }
