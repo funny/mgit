@@ -419,29 +419,21 @@ pub fn check_git_valid() -> Result<(), String> {
     }
 
     // make sure git version = GIT_VERSION
-    let s = String::from_utf8(output.stdout).expect("mgit error");
-    let version = s
-        .replace("git", "")
-        .replace("version", "")
-        .trim()
-        .to_string();
+    let version_desc = String::from_utf8(output.stdout).expect("mgit error");
+    let re = regex::Regex::new(r"(?P<version>(\d+\.\d+\.\d+))").unwrap();
+    if let Some(caps) = re.captures(&version_desc) {
+        let version = caps["version"].to_string();
+        let expect_version = semver::VersionReq::parse(GIT_VERSION).expect("semver error");
+        let current_version = semver::Version::parse(&version).expect("semver error");
 
-    #[cfg(target_os = "windows")]
-    let version = {
-        match version.find(".windows") {
-            Some(pos) => &version[..pos],
-            None => &version[..],
+        match expect_version.matches(&current_version) {
+            true => Ok(()),
+            false => Err(format!(
+                "git version {} is required, current version is {}\n",
+                GIT_VERSION, version
+            )),
         }
-    };
-
-    let expect_version = semver::VersionReq::parse(GIT_VERSION).expect("semver error");
-    let current_version = semver::Version::parse(version).expect("semver error");
-
-    match expect_version.matches(&current_version) {
-        true => Ok(()),
-        false => Err(format!(
-            "git version {} is required, current version is {}\n",
-            GIT_VERSION, version
-        )),
+    } else {
+        Err(String::from("failed to get git version\n"))
     }
 }
