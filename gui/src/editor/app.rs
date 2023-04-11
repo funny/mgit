@@ -282,6 +282,10 @@ impl App {
                 if let Some(thread) = self.toml_user_settings.sync_thread {
                     options = format!("{} --thread {}", options, thread);
                 }
+                // option --depth <num>
+                if let Some(depth) = self.toml_user_settings.sync_depth {
+                    options = format!("{} --depth {}", options, depth);
+                }
                 // option --ignore
                 if let Some(ignore_paths) = &self.get_ignore() {
                     let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
@@ -331,6 +335,10 @@ impl App {
                 // option --thread <num>
                 if let Some(thread) = self.toml_user_settings.sync_thread {
                     options = format!("{} --thread {}", options, thread);
+                }
+                // option --depth <num>
+                if let Some(depth) = self.toml_user_settings.sync_depth {
+                    options = format!("{} --depth {}", options, depth);
                 }
                 // option --ignore
                 if let Some(ignore_paths) = &self.get_ignore() {

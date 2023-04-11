@@ -10,7 +10,9 @@ pub struct OptionsWindow {
     pub sync_no_checkout: bool,
     pub sync_no_track: bool,
     pub sync_thread: u32,
+    pub sync_depth: u32,
     pub fetch_thread: u32,
+    pub fetch_depth: u32,
 }
 
 impl Default for OptionsWindow {
@@ -26,8 +28,10 @@ impl Default for OptionsWindow {
             sync_no_checkout: false,
             sync_no_track: false,
             sync_thread: 4,
+            sync_depth: 0,
 
             fetch_thread: 4,
+            fetch_depth: 0,
         }
     }
 }
@@ -62,8 +66,14 @@ impl OptionsWindow {
         if let Some(item) = toml_setting.sync_thread {
             self.sync_thread = item;
         }
+        if let Some(item) = toml_setting.sync_depth {
+            self.sync_depth = item;
+        }
         if let Some(item) = toml_setting.fetch_thread {
             self.fetch_thread = item;
+        }
+        if let Some(item) = toml_setting.fetch_depth {
+            self.fetch_depth = item;
         }
     }
 }
@@ -170,9 +180,19 @@ impl super::View for OptionsWindow {
                             ui.end_row();
 
                             ui.label("thread");
-                            ui.add(
+                            ui.add_sized(
+                                [40.0, 20.0],
                                 egui::DragValue::new(&mut self.sync_thread)
                                     .clamp_range(1..=20)
+                                    .speed(1.0),
+                            );
+                            ui.end_row();
+
+                            ui.label("depth");
+                            ui.add_sized(
+                                [40.0, 20.0],
+                                egui::DragValue::new(&mut self.sync_depth)
+                                    .clamp_range(0..=99999)
                                     .speed(1.0),
                             );
                         });
@@ -188,9 +208,19 @@ impl super::View for OptionsWindow {
                         .striped(false)
                         .show(ui, |ui| {
                             ui.label("thread");
-                            ui.add(
+                            ui.add_sized(
+                                [40.0, 20.0],
                                 egui::DragValue::new(&mut self.fetch_thread)
                                     .clamp_range(1..=20)
+                                    .speed(1.0),
+                            );
+                            ui.end_row();
+
+                            ui.label("depth");
+                            ui.add_sized(
+                                [40.0, 20.0],
+                                egui::DragValue::new(&mut self.fetch_depth)
+                                    .clamp_range(0..=99999)
                                     .speed(1.0),
                             );
                         });

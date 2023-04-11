@@ -6,7 +6,7 @@ pub const DEFAULT_HEIGHT: f32 = 740.0;
 pub const MENU_BOX_WIDTH: f32 = 200.0;
 
 pub const MGIT_DIR: &str = "mgit";
-pub const MGIT_VERSION: &str = ">= 1.1.3";
+pub const MGIT_VERSION: &str = ">= 1.1.5";
 pub const GIT_VERSION: &str = ">= 2.22.0";
 
 pub mod resource {

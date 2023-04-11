@@ -33,7 +33,9 @@ pub struct TomlUserSettings {
     pub sync_no_checkout: Option<bool>,
     pub sync_no_track: Option<bool>,
     pub sync_thread: Option<u32>,
+    pub sync_depth: Option<u32>,
     pub fetch_thread: Option<u32>,
+    pub fetch_depth: Option<u32>,
 }
 
 impl Default for TomlProjectSettings {
@@ -136,8 +138,9 @@ impl Default for TomlUserSettings {
             sync_no_checkout: Some(false),
             sync_no_track: Some(false),
             sync_thread: Some(4),
-
+            sync_depth: None,
             fetch_thread: Some(4),
+            fetch_depth: None,
         }
     }
 }
@@ -174,13 +177,25 @@ impl TomlUserSettings {
     /// save_option from options window
     pub fn save_options(&mut self, options_window: &OptionsWindow) {
         self.init_force = Some(options_window.init_force);
+
         self.snapshot_force = Some(options_window.snapshot_force);
         self.snapshot_branch = Some(options_window.snapshot_branch);
+
         self.sync_type = Some(options_window.sync_type.clone());
         self.sync_no_checkout = Some(options_window.sync_no_checkout);
         self.sync_no_track = Some(options_window.sync_no_track);
         self.sync_thread = Some(options_window.sync_thread);
+        self.sync_depth = match options_window.sync_depth > 0 {
+            true => Some(options_window.sync_depth),
+            false => None,
+        };
+
         self.fetch_thread = Some(options_window.fetch_thread);
+        self.fetch_depth = match options_window.fetch_depth > 0 {
+            true => Some(options_window.fetch_depth),
+            false => None,
+        };
+
         self.save();
     }
 
