@@ -88,6 +88,10 @@ enum Commands {
         #[arg(long, action = ArgAction::SetTrue)]
         no_checkout: bool,
 
+        /// Deepen history of shallow clone
+        #[arg(short, long, value_name = "NUMBER")]
+        depth: Option<usize>,
+
         /// Ignore specified repositories for sync
         #[arg(long)]
         ignore: Option<Vec<String>>,
@@ -109,6 +113,10 @@ enum Commands {
         /// Do not report git status
         #[arg(long, action = ArgAction::SetTrue)]
         silent: bool,
+
+        /// Deepen history of shallow clone
+        #[arg(short, long, value_name = "NUMBER")]
+        depth: Option<usize>,
 
         /// Ignore specified repositories for fetch
         #[arg(long)]
@@ -177,6 +185,7 @@ fn main() {
             silent,
             no_track,
             no_checkout,
+            depth,
             ignore,
         } => {
             let stash_mode = match (stash, hard) {
@@ -200,6 +209,7 @@ fn main() {
                 silent,
                 no_track,
                 no_checkout,
+                depth,
                 ignore,
             );
         }
@@ -209,9 +219,10 @@ fn main() {
             config,
             thread,
             silent,
+            depth,
             ignore,
         } => {
-            commands::fetch::exec(path, config, thread, silent, ignore);
+            commands::fetch::exec(path, config, thread, silent, depth, ignore);
         }
 
         Commands::Clean { path, config } => {

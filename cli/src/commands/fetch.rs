@@ -1,6 +1,6 @@
 use super::{
     cmp_local_remote, display_path, exclude_ignore, execute_cmd_with_progress, fmt_msg_spinner,
-    load_config, TomlRepo,
+    load_config, RemoteRef, TomlRepo,
 };
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -18,6 +18,7 @@ pub fn exec(
     config: Option<PathBuf>,
     num_threads: usize,
     silent: bool,
+    depth: Option<usize>,
     ignore: Option<Vec<String>>,
 ) {
     let cwd = env::current_dir().unwrap();
@@ -119,6 +120,7 @@ pub fn exec(
                         let execute_result = execute_fetch_with_progress(
                             input_path,
                             toml_repo,
+                            depth,
                             &prefix,
                             &progress_bar,
                         );
@@ -152,7 +154,7 @@ pub fn exec(
                                     message = format!("{}: {}", message, &cmp_msg)
                                 };
 
-                                // show meeshage in progress bar
+                                // show message in progress bar
                                 progress_bar.finish_with_message(fmt_msg_spinner(&message));
                                 Ok(())
                             }
@@ -166,7 +168,7 @@ pub fn exec(
                                         .magenta(),
                                 );
 
-                                // show meeshage in progress bar
+                                // show message in progress bar
                                 progress_bar.finish_with_message(fmt_msg_spinner(&message));
                                 Err((toml_repo, e))
                             }
@@ -224,6 +226,7 @@ pub fn exec(
 fn execute_fetch_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
+    depth: Option<usize>,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
@@ -232,14 +235,33 @@ fn execute_fetch_with_progress(
 
     // get remote name from url
     let remote_name = toml_repo.get_remote_name(full_path.as_path())?;
+    let mut args = vec!["fetch", &remote_name];
 
-    let args = [
-        "fetch",
-        &remote_name,
-        "--prune",
-        "--recurse-submodules=on-demand",
-        "--progress",
-    ];
+    if let Some(depth) = depth {
+        // priority: commit/tag/branch(default-branch)
+        let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+        match remote_ref {
+            RemoteRef::Commit(commit) => {
+                args.push(Box::leak(commit.into_boxed_str()));
+            }
+            RemoteRef::Tag(tag) => {
+                args.push("tag");
+                args.push(Box::leak(tag.into_boxed_str()));
+                args.push("--no-tags");
+            }
+            RemoteRef::Branch(_) => {
+                let branch = toml_repo.branch.as_ref().expect("invalid-branch");
+                args.push(branch);
+            }
+        };
+
+        args.push("--depth");
+        args.push(Box::leak(depth.to_string().into_boxed_str()));
+    }
+
+    args.push("--prune");
+    args.push("--recurse-submodules=on-demand");
+    args.push("--progress");
 
     let mut command = Command::new("git");
     let full_command = command.args(args).current_dir(full_path);
