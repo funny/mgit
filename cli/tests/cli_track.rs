@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
+use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
 use std::env;
 
 mod common;
@@ -47,7 +47,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &["sync", &input_path, "--no-checkout", "--no-track"],
     );
@@ -60,19 +60,19 @@ branch= "character_bert"
     let invald_name = "invalid".to_string();
 
     // root: master untracked
-    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
-    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
-    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
         r#"commit = "dc1d3dbb0383f72fd4b7adcd1a4d54abf557175d""#,
@@ -82,27 +82,26 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    execute_cargo_cmd("mgit", &["track", &input_path]);
+    exec_cargo_cmd("mgit", &["track", &input_path]);
 
     // root: foobar untracked,  checkout failed
-    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    let tracking_branch =
-        execute_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+    let tracking_branch = exec_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/master");
 
     // foobar-1: commits/90296ef untracked
-    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
     let tracking_branch =
-        execute_cmd(foobar_1_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+        exec_cmd(foobar_1_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/attention_highlight");
 
     // foobar-2: tags/1.0.3 untracked
-    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
     let tracking_branch =
-        execute_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+        exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");
 
     // clean-up
@@ -153,7 +152,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &["sync", &input_path, "--no-checkout", "--no-track"],
     );
@@ -166,19 +165,19 @@ branch= "character_bert"
     let invald_name = "invalid".to_string();
 
     // root: master untracked
-    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
-    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
-    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(foobar_2_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
         r#"commit = "dc1d3dbb0383f72fd4b7adcd1a4d54abf557175d""#,
@@ -188,7 +187,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &[
             "track",
@@ -201,20 +200,20 @@ branch= "character_bert"
     );
 
     // root: foobar untracked,  checkout failed
-    let branch = execute_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(root_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
-    let branch = execute_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
-    assert!(execute_cmd(foobar_1_path, "git", &tracking_args).is_err());
+    assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: tags/1.0.3 untracked
-    let branch = execute_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
+    let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
     assert_eq!(branch.trim(), "master");
     let tracking_branch =
-        execute_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
+        exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");
 
     // clean-up

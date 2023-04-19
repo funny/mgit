@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
+use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
 use std::env;
 use std::path::PathBuf;
 
@@ -101,7 +101,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    execute_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
+    exec_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -190,7 +190,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    execute_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
+    exec_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -275,7 +275,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &[
             "clean",
@@ -337,10 +337,10 @@ pub fn create_repos_tree(path: &PathBuf, rel_paths: &[&str]) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        execute_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
+        exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
 
         // add remote
-        execute_cmd(&dir, "git", &["remote", "add", "origin", remote])
+        exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
             .expect(failed_message::GIT_ADD_REMOTE);
 
         // create some files

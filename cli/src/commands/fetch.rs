@@ -1,10 +1,7 @@
-use super::{
-    cmp_local_remote, display_path, exclude_ignore, execute_cmd_with_progress, fmt_msg_spinner,
-    load_config, RemoteRef, TomlRepo,
-};
+use super::RemoteRef;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
+use clap::ArgMatches;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use owo_colors::OwoColorize;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::{
     env,
@@ -13,225 +10,201 @@ use std::{
     sync::Arc,
 };
 
-pub fn exec(
-    path: Option<String>,
-    config: Option<PathBuf>,
-    num_threads: usize,
-    silent: bool,
-    depth: Option<usize>,
-    ignore: Option<Vec<String>>,
-) {
-    let cwd = env::current_dir().unwrap();
-    let cwd_str = Some(String::from(cwd.to_string_lossy()));
-    let input = path.or(cwd_str).unwrap();
+use crate::{
+    config::{
+        repo::{cmp_local_remote, exclude_ignore, TomlRepo},
+        repos::{load_config, TomlConfig},
+    },
+    utils::{cmd, logger},
+};
 
-    // starting fetch repos
-    println!("fetch repos in {}", input.bold().magenta());
-    let input_path = Path::new(&input);
+pub(crate) fn exec(args: &ArgMatches) {
+    // get input path
+    let input_path = match args.get_one::<String>("path") {
+        Some(path) => PathBuf::from(path),
+        None => env::current_dir().unwrap(),
+    };
 
-    // check if input is a valid directory
+    // start fetching repos
+    logger::command_start("fetch repos", &input_path);
+
+    // if directory doesn't exist, finsh clean
     if !input_path.is_dir() {
-        println!("Directory {} not found!", input.bold().magenta());
+        logger::dir_not_found(&input_path);
         return;
     }
 
+    let thread_count = args.get_one::<usize>("thread").unwrap_or(&4);
+    let silent = args.get_one::<bool>("silent").unwrap_or(&false);
+    let depth = args.get_one::<usize>("depth");
+
+    // get ignore
+    let ignore = match args.get_many::<String>("ignore") {
+        Some(r) => {
+            let ignore = r.collect::<Vec<&String>>();
+            Some(ignore)
+        }
+        _ => None,
+    };
+
     // set config file path
-    let config_file = match config {
-        Some(r) => r,
+    let config_file = match args.get_one::<PathBuf>("config") {
+        Some(r) => r.to_owned(),
         _ => input_path.join(".gitrepos"),
     };
 
     // check if .gitrepos exists
     if !config_file.is_file() {
-        println!(
-            "{} not found, try {} instead!",
-            ".gitrepos".bold().magenta(),
-            "init".bold().magenta()
-        );
+        logger::config_file_not_found();
         return;
     }
 
-    // load .gitrepos
-    if let Some(toml_config) = load_config(&config_file) {
-        let default_branch = toml_config.default_branch;
+    // load config file(like .gitrepos)
+    let Some(toml_config) = load_config(&config_file) else{
+        logger::new("load config file failed!");
+        return;
+    };
 
-        // handle fetch
-        if let Some(toml_repos) = toml_config.repos {
-            // ignore specified repositories
-            let mut toml_repos = toml_repos;
-            exclude_ignore(&mut toml_repos, ignore);
+    inner_exec(
+        input_path,
+        toml_config,
+        *thread_count,
+        *silent,
+        depth,
+        ignore,
+    )
+}
 
-            let repos_count = toml_repos.len();
+fn inner_exec(
+    input_path: impl AsRef<Path>,
+    toml_config: TomlConfig,
+    thread_count: usize,
+    silent: bool,
+    depth: Option<&usize>,
+    ignore: Option<Vec<&String>>,
+) {
+    let Some(mut toml_repos) = toml_config.repos else {
+        return;
+    };
+    let input_path = input_path.as_ref();
+    let default_branch = toml_config.default_branch;
 
-            // multi_progress manages multiple progress bars from different threads
-            // use Arc to share the MultiProgress across more than 1 thread
-            let multi_progress = Arc::new(MultiProgress::new());
-            // create total progress bar and set progress style
-            let total_bar = multi_progress.add(ProgressBar::new(repos_count as u64));
-            total_bar.set_style(
-                ProgressStyle::with_template(
-                    "[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}",
-                )
-                .unwrap()
-                .progress_chars("=>-"),
-            );
-            total_bar.enable_steady_tick(std::time::Duration::from_millis(500));
+    // ignore specified repositories
+    exclude_ignore(&mut toml_repos, ignore);
 
-            // user a counter
-            let counter = RelaxedCounter::new(1);
+    let repos_count = toml_repos.len();
 
-            // Clone Arc<MultiProgress> and spawn a thread.
-            // need to do this in a thread as the `.map()` we do below also blocks.
-            let multi_progress_wait = multi_progress.clone();
+    // multi_progress manages multiple progress bars from different threads
+    // use Arc to share the MultiProgress across more than 1 thread
+    let multi_progress = Arc::new(MultiProgress::new());
+    // create total progress bar and set progress style
+    let total_bar = multi_progress.add(ProgressBar::new(repos_count as u64));
+    total_bar.set_style(
+        ProgressStyle::with_template(
+            "[{elapsed_precise}] {percent}% [{bar:30.green/white}] {pos}/{len}",
+        )
+        .unwrap()
+        .progress_chars("=>-"),
+    );
+    total_bar.enable_steady_tick(std::time::Duration::from_millis(500));
 
-            // create thread pool, and set the number of thread to use by using `.num_threads(count)`
-            let thread_pool = match rayon::ThreadPoolBuilder::new()
-                .num_threads(num_threads)
-                .build()
-            {
-                Ok(r) => r,
-                Err(e) => {
-                    println!("{}", e);
-                    return;
-                }
-            };
+    // user a counter
+    let counter = RelaxedCounter::new(1);
 
-            // pool.install means that `.par_iter()` will use the thread pool we've built above.
-            let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
-                let res = toml_repos
-                    .par_iter()
-                    .map(|toml_repo| {
-                        let idx = counter.inc();
-                        let prefix = format!("[{:02}/{:02}]", idx, repos_count);
+    // Clone Arc<MultiProgress> and spawn a thread.
+    // need to do this in a thread as the `.map()` we do below also blocks.
+    let multi_progress_wait = multi_progress.clone();
 
-                        // create progress bar for each repo
-                        let progress_bar =
-                            multi_progress_wait.insert(idx, ProgressBar::new_spinner());
-                        progress_bar.set_style(
-                            ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
-                                .unwrap()
-                                .tick_chars("/-\\| "),
-                        );
-                        progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
-                        let message = format!("{:>9} waiting...", &prefix);
-                        progress_bar.set_message(fmt_msg_spinner(&message));
+    // create thread pool, and set the number of thread to use by using `.num_threads(count)`
+    let thread_builder = rayon::ThreadPoolBuilder::new().num_threads(thread_count);
+    let Ok(thread_pool) = thread_builder.build() else
+    {
+        logger::new("create thread pool failed!");
+        return;
+    };
 
-                        // execute fetch command with progress
-                        let execute_result = execute_fetch_with_progress(
-                            input_path,
-                            toml_repo,
-                            depth,
-                            &prefix,
-                            &progress_bar,
-                        );
+    // pool.install means that `.par_iter()` will use the thread pool we've built above.
+    let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
+        let res = toml_repos
+            .par_iter()
+            .map(|toml_repo| {
+                let idx = counter.inc();
+                let prefix = format!("[{:02}/{:02}]", idx, repos_count);
 
-                        // handle result
-                        let result = match execute_result {
-                            Ok(_) => {
-                                // check if show compare message betweent local and remote
-                                let mut message = format!(
-                                    "{} {} {}",
-                                    "√".bold().green(),
-                                    &prefix,
-                                    display_path(toml_repo.local.as_ref().unwrap())
-                                        .bold()
-                                        .magenta()
-                                );
+                // create progress bar for each repo
+                let progress_bar = multi_progress_wait.insert(idx, ProgressBar::new_spinner());
+                progress_bar.set_style(
+                    ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
+                        .unwrap()
+                        .tick_chars("/-\\| "),
+                );
+                progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
+                let message = logger::fmt_spinner_start(&prefix, " waiting...");
+                progress_bar.set_message(logger::truncate_spinner_msg(&message));
 
-                                // if not silent, show compare stat betweent local and remote
-                                if !silent {
-                                    // get compare stat betwwen local and specified commit/tag/branch/
-                                    let cmp_msg = match cmp_local_remote(
-                                        input_path,
-                                        toml_repo,
-                                        &default_branch,
-                                        false,
-                                    ) {
-                                        Ok(r) => r.unwrap(),
-                                        _ => String::new(),
-                                    };
+                // execute fetch command with progress
+                let exec_result =
+                    exec_fetch_with_progress(input_path, toml_repo, depth, &prefix, &progress_bar);
 
-                                    message = format!("{}: {}", message, &cmp_msg)
-                                };
+                // handle result
+                let rel_path = toml_repo.local.as_ref().unwrap();
+                let result = match exec_result {
+                    Ok(_) => {
+                        let mut msg = logger::fmt_spinner_finished_prefix(prefix, rel_path, true);
 
-                                // show message in progress bar
-                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
-                                Ok(())
-                            }
-                            Err(e) => {
-                                let message = format!(
-                                    "{} {} {}",
-                                    "x".bold().red(),
-                                    &prefix,
-                                    display_path(toml_repo.local.as_ref().unwrap())
-                                        .bold()
-                                        .magenta(),
-                                );
-
-                                // show message in progress bar
-                                progress_bar.finish_with_message(fmt_msg_spinner(&message));
-                                Err((toml_repo, e))
-                            }
+                        // if not silent, show compare stat betweent local and remote
+                        if !silent {
+                            match cmp_local_remote(input_path, toml_repo, &default_branch, false) {
+                                Ok(r) => msg = format!("{}: {}", message, r.unwrap()),
+                                _ => {}
+                            };
                         };
 
-                        // update total progress bar
-                        total_bar.inc(1);
-
-                        result
-                    })
-                    // catch erroring repo
-                    .filter_map(Result::err)
-                    // collect the results into Vec
-                    .collect();
-
-                total_bar.finish();
-
-                res
-            });
-
-            // show sync stat
-            println!("\n");
-            if errors.is_empty() {
-                println!("fetch finished! 0 error(s).");
-            } else {
-                println!(
-                    "fetch finished! {} error(s).",
-                    errors.len().to_string().bold().red()
-                );
-            }
-
-            // show errors
-            if !errors.is_empty() {
-                println!("");
-                println!("Errors:",);
-                for (toml_repo, error) in errors {
-                    let mut err_msg = String::new();
-                    for e in error.chain() {
-                        err_msg += &e.to_string();
+                        progress_bar.finish_with_message(logger::truncate_spinner_msg(&msg));
+                        Ok(())
                     }
-                    eprintln!(
-                        "{} {}",
-                        display_path(toml_repo.local.as_ref().unwrap())
-                            .bold()
-                            .magenta(),
-                        err_msg.trim().red()
-                    );
-                    println!("");
-                }
-            }
-        }
+                    Err(e) => {
+                        let msg = logger::fmt_spinner_finished_prefix(prefix, rel_path, false);
+
+                        progress_bar.finish_with_message(logger::truncate_spinner_msg(&msg));
+                        Err((toml_repo, e))
+                    }
+                };
+
+                // update total progress bar
+                total_bar.inc(1);
+
+                result
+            })
+            .filter_map(Result::err)
+            .collect();
+
+        total_bar.finish();
+
+        res
+    });
+
+    logger::new("\n");
+    logger::error_statistics("fetch", errors.len());
+
+    // show errors
+    if !errors.is_empty() {
+        logger::new("Errors:");
+        errors.iter().for_each(|(toml_repo, error)| {
+            logger::error_detail(&toml_repo.local.as_ref().unwrap(), error);
+        });
     }
 }
 
-fn execute_fetch_with_progress(
-    input_path: &Path,
+pub(crate) fn exec_fetch_with_progress(
+    input_path: impl AsRef<Path>,
     toml_repo: &TomlRepo,
-    depth: Option<usize>,
+    depth: Option<&usize>,
     prefix: &str,
     progress_bar: &ProgressBar,
 ) -> anyhow::Result<()> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    let full_path = input_path.as_ref().join(rel_path);
 
     // get remote name from url
     let remote_name = toml_repo.get_remote_name(full_path.as_path())?;
@@ -266,5 +239,5 @@ fn execute_fetch_with_progress(
     let mut command = Command::new("git");
     let full_command = command.args(args).current_dir(full_path);
 
-    execute_cmd_with_progress(rel_path, full_command, prefix, progress_bar)
+    cmd::exec_cmd_with_progress(rel_path, full_command, prefix, progress_bar)
 }

@@ -1,9 +1,10 @@
 use super::*;
 use eframe::egui;
-use mgit::commands::{
-    cmp_local_remote, display_path, execute_cmd, get_current_branch, get_tracking_branch,
-    is_repository, load_config, norm_path,
-};
+
+use mgit::config::repo::cmp_local_remote;
+use mgit::config::repos::load_config;
+use mgit::git;
+use mgit::utils::path::{display_path, norm_path};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
@@ -72,7 +73,7 @@ impl App {
         if is_dependencies_valid {
             app.error_is_open = false;
             app.load_setting();
-            app.execute_cmd(CommandType::Refresh);
+            app.exec_cmd(CommandType::Refresh);
         } else {
             app.error_is_open = true;
             app.error_window = ErrorWindow::new(err_msg);
@@ -215,7 +216,7 @@ impl App {
         }
     }
 
-    fn execute_cmd(&mut self, command_type: CommandType) {
+    fn exec_cmd(&mut self, command_type: CommandType) {
         // to show in ui
         if self.config_file.is_empty() {
             self.config_file = format!("{}/.gitrepos", &self.project_path);
@@ -231,7 +232,7 @@ impl App {
                 };
 
                 self.clear_toml_config();
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "init",
                     &self.project_path,
                     &options,
@@ -264,7 +265,7 @@ impl App {
                 }
 
                 self.clear_toml_config();
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "snapshot",
                     &self.project_path,
                     &options,
@@ -299,7 +300,7 @@ impl App {
                 options = format!("{} --silent", options);
 
                 self.reset_repo_state(StateType::Updating);
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "fetch",
                     &self.project_path,
                     &options,
@@ -354,7 +355,7 @@ impl App {
                 options = format!("{} --silent", options);
 
                 self.reset_repo_state(StateType::Updating);
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "sync",
                     &self.project_path,
                     &options,
@@ -379,7 +380,7 @@ impl App {
                 }
 
                 self.reset_repo_state(StateType::Updating);
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "track",
                     &self.project_path,
                     &options,
@@ -395,7 +396,7 @@ impl App {
                 };
 
                 self.reset_repo_state(StateType::Updating);
-                execute_cmd_with_send(
+                exec_cmd_with_send(
                     "clean",
                     &self.project_path,
                     &options,
@@ -442,14 +443,14 @@ impl App {
         // show clean dialog
         self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
         if self.clean_dialog.is_ok() {
-            self.execute_cmd(CommandType::Clean);
+            self.exec_cmd(CommandType::Clean);
         }
 
         // show sync hard dialog
         self.sync_hard_dialog
             .show(ctx, eframe, &mut self.sync_hard_is_open);
         if self.sync_hard_dialog.is_ok() {
-            self.execute_cmd(CommandType::SyncHard);
+            self.exec_cmd(CommandType::SyncHard);
         }
     }
 
@@ -482,7 +483,7 @@ impl App {
                 ui.set_min_width(MENU_BOX_WIDTH);
                 // init button
                 if ui.button("  Init").clicked() {
-                    self.execute_cmd(CommandType::Init);
+                    self.exec_cmd(CommandType::Init);
                     ui.close_menu();
                 }
 
@@ -495,26 +496,26 @@ impl App {
                         .save_file()
                     {
                         self.config_file = norm_path(&path.to_str().unwrap().to_string());
-                        self.execute_cmd(CommandType::Snapshot);
+                        self.exec_cmd(CommandType::Snapshot);
                     }
                     ui.close_menu();
                 }
 
                 // fetch button
                 if ui.button("  Fetch").clicked() {
-                    self.execute_cmd(CommandType::Fetch);
+                    self.exec_cmd(CommandType::Fetch);
                     ui.close_menu();
                 }
 
                 // sync button
                 if ui.button("  Sync").clicked() {
-                    self.execute_cmd(CommandType::Sync);
+                    self.exec_cmd(CommandType::Sync);
                     ui.close_menu();
                 }
 
                 // track button
                 if ui.button("  Track").clicked() {
-                    self.execute_cmd(CommandType::Track);
+                    self.exec_cmd(CommandType::Track);
                     ui.close_menu();
                 }
 
@@ -527,7 +528,7 @@ impl App {
 
                 // refresh button
                 if ui.button("  Refresh").clicked() {
-                    self.execute_cmd(CommandType::Refresh);
+                    self.exec_cmd(CommandType::Refresh);
                     ui.close_menu();
                 }
             });
@@ -570,7 +571,7 @@ impl App {
                 egui::Button::new(format!("  {}\nFetch", hex_code::FETCH)),
             );
             if fetch_button_response.clicked() {
-                self.execute_cmd(CommandType::Fetch);
+                self.exec_cmd(CommandType::Fetch);
             }
 
             // sync button
@@ -579,7 +580,7 @@ impl App {
                 egui::Button::new(format!(" {}\nSync", hex_code::SYNC)),
             );
             if sync_button_response.clicked() {
-                self.execute_cmd(CommandType::Sync);
+                self.exec_cmd(CommandType::Sync);
             }
 
             // sync hard button
@@ -598,7 +599,7 @@ impl App {
                 egui::Button::new(format!("   {}\nRefresh", hex_code::REFRESH)),
             );
             if refresh_button_response.clicked() {
-                self.execute_cmd(CommandType::Refresh);
+                self.exec_cmd(CommandType::Refresh);
             }
         });
     }
@@ -784,7 +785,7 @@ impl App {
                         self.push_recent_config();
                     }
 
-                    self.execute_cmd(CommandType::Refresh);
+                    self.exec_cmd(CommandType::Refresh);
                 }
                 ui.end_row();
             });
@@ -952,7 +953,7 @@ impl App {
 
                 if self.remote_ref_edit_idx == idx as i32 {
                     let full_path = Path::new(&self.project_path).join(&rel_path);
-                    let remote_branches = get_remote_branches(&full_path);
+                    let remote_branches = git::get_remote_branches(&full_path);
 
                     egui::Window::new(format!("{} config", &rel_path))
                         .fixed_pos(current_pos)
@@ -1216,14 +1217,14 @@ fn get_repo_states_thread(
                 let full_path = input_path.join(repo.to_owned().local.unwrap());
 
                 let mut is_ok = true;
-                if let Err(e) = is_repository(&full_path) {
+                if let Err(e) = git::is_repository(&full_path) {
                     repo_state.err_msg = e.to_string();
                     is_ok = false;
                 }
 
                 if is_ok {
                     // get current branch
-                    match get_current_branch(&full_path) {
+                    match git::get_current_branch(&full_path) {
                         Ok(res) => {
                             repo_state.track_state = StateType::Normal;
                             repo_state.current_branch = res;
@@ -1237,7 +1238,7 @@ fn get_repo_states_thread(
 
                 if is_ok {
                     // get tracking branch
-                    match get_tracking_branch(&full_path) {
+                    match git::get_tracking_branch(&full_path) {
                         Ok(res) => {
                             repo_state.tracking_branch = res;
                         }
@@ -1299,7 +1300,7 @@ fn get_repo_states_thread(
     });
 }
 
-fn execute_cmd_with_send(
+fn exec_cmd_with_send(
     cmd: &str,
     project: &str,
     option: &str,
@@ -1334,16 +1335,4 @@ fn execute_cmd_with_send(
         send.send((command_type, (usize::MAX, RepoState::default())))
             .unwrap();
     });
-}
-
-fn get_remote_branches(full_path: &Path) -> Vec<String> {
-    let mut branches = Vec::new();
-    let args = ["branch", "-r"];
-    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
-        for file in output.trim().lines() {
-            let branch = file.trim().replace("origin/", "");
-            branches.push(branch);
-        }
-    }
-    branches
 }

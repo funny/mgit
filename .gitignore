@@ -2,5 +2,6 @@
 .vscode/
 
 target
+cli/target
 Cargo.lock
-test_repo
+

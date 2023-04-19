@@ -1,24 +1,12 @@
-use anyhow::Context;
-use console::strip_ansi_codes;
-use indicatif::ProgressBar;
-use owo_colors::OwoColorize;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::fs;
-use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use toml_edit;
+use clap::{ArgAction, ArgMatches, Parser, Subcommand};
+use std::path::PathBuf;
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
-pub mod clean;
-pub mod fetch;
-pub mod snapshot;
-pub mod sync;
-pub mod track;
+mod clean;
+mod fetch;
+mod init;
+mod snapshot;
+mod sync;
+mod track;
 
 #[derive(PartialEq, Clone)]
 pub enum StashMode {
@@ -45,501 +33,157 @@ pub enum RemoteRef {
     Branch(String),
 }
 
-/// this type is used to deserialize `.gitrepos` files.
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct TomlConfig {
-    pub version: Option<String>,
-    pub default_branch: Option<String>,
-    pub default_remote: Option<String>,
-    pub repos: Option<Vec<TomlRepo>>,
+#[derive(Parser)]
+#[command(
+    author,
+    version,
+    about,
+    long_about = None,
+    propagate_version = true,
+    arg_required_else_help(true)
+)]
+
+pub(crate) struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "kebab-case")]
-pub struct TomlRepo {
-    pub local: Option<String>,
-    pub remote: Option<String>,
-    pub branch: Option<String>,
-    pub tag: Option<String>,
-    pub commit: Option<String>,
+#[derive(Subcommand)]
+enum Commands {
+    /// Init git repos
+    Init {
+        /// The init directory
+        path: Option<String>,
+
+        /// Force remove git repos without prompt
+        #[arg(long, action = ArgAction::SetTrue)]
+        force: bool,
+    },
+
+    /// Snapshot git repos
+    Snapshot {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
+        /// snapshot by branch
+        #[arg(long, action = ArgAction::SetTrue)]
+        branch: bool,
+
+        /// Force remove git repos without prompt
+        #[arg(long, action = ArgAction::SetTrue)]
+        force: bool,
+
+        /// Ignore specified repositories for snapshot
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
+    },
+
+    /// Sync git repos
+    Sync {
+        /// The sync directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(short, long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
+        /// Stash local changes after sync
+        #[arg(long, action = ArgAction::SetTrue)]
+        stash: bool,
+
+        /// Discard local changes after sync
+        #[arg(long, action = ArgAction::SetTrue)]
+        hard: bool,
+
+        /// Sets the number of threads to be used
+        #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
+        thread: usize,
+
+        /// Do not report git status
+        #[arg(long, action = ArgAction::SetTrue)]
+        silent: bool,
+
+        /// Do not track remote branch
+        #[arg(long, action = ArgAction::SetTrue)]
+        no_track: bool,
+
+        /// Do not checkout branch after sync
+        #[arg(long, action = ArgAction::SetTrue)]
+        no_checkout: bool,
+
+        /// Deepen history of shallow clone
+        #[arg(short, long, value_name = "NUMBER")]
+        depth: Option<usize>,
+
+        /// Ignore specified repositories for sync
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
+    },
+
+    /// Fetch git repos
+    Fetch {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
+        /// Sets the number of threads to be used
+        #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
+        thread: usize,
+
+        /// Do not report git status
+        #[arg(long, action = ArgAction::SetTrue)]
+        silent: bool,
+
+        /// Deepen history of shallow clone
+        #[arg(short, long, value_name = "NUMBER")]
+        depth: Option<usize>,
+
+        /// Ignore specified repositories for fetch
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
+    },
+
+    /// Clean unused git repos
+    Clean {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+    },
+
+    /// Track remote branch
+    Track {
+        /// The init directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
+
+        /// Ignore specified repositories for track
+        #[arg(long)]
+        ignore: Option<Vec<String>>,
+    },
 }
 
-impl Default for TomlConfig {
-    fn default() -> Self {
-        Self {
-            version: None,
-            default_branch: None,
-            default_remote: None,
-            repos: None,
-        }
-    }
-}
-
-impl TomlConfig {
-    // serialzie config file .gitrepos
-    pub fn serialize(&self) -> String {
-        let toml = toml_edit::ser::to_item(self).unwrap();
-        let mut out = String::new();
-
-        out.push_str("# This file is automatically @generated by mgit.\n");
-        out.push_str("# Editing it as you wish.\n");
-
-        // version = "x.y.z"
-        if let Some(item) = toml.get("version") {
-            out.push_str(&format!("version = {}\n", item));
-        }
-
-        // default-branch = "your_branch"
-        if let Some(item) = toml.get("default-branch") {
-            out.push_str(&format!("default-branch = {}\n", item));
-        }
-
-        // default-remote = "your_remote"
-        if let Some(item) = toml.get("default-remote") {
-            out.push_str(&format!("default-remote = {}\n", item));
-        }
-
-        out.push_str("\n");
-
-        // [[repos]]
-        if let Some(repos) = toml.get("repos") {
-            let list = repos.as_array().expect("repos must be an array");
-
-            for entry in list {
-                out.push_str("[[repos]]\n");
-                let table = entry.as_inline_table().expect("repo must be table");
-
-                // local = "your/local/path"
-                if let Some(item) = table.get("local") {
-                    out.push_str(&format!("local = {}\n", item));
-                }
-
-                // remote = "your://remote/url"
-                if let Some(item) = table.get("remote") {
-                    out.push_str(&format!("remote = {}\n", item));
-                }
-
-                // branch = "your_branch"
-                if let Some(item) = table.get("branch") {
-                    out.push_str(&format!("branch = {}\n", item));
-                }
-
-                // tag = "your_tag"
-                if let Some(item) = table.get("tag") {
-                    out.push_str(&format!("tag = {}\n", item));
-                }
-
-                // commit = "your_tag"
-                if let Some(item) = table.get("commit") {
-                    out.push_str(&format!("commit = {}\n", item));
-                }
-
-                out.push_str("\n");
-            }
-        }
-
-        out
-    }
-}
-
-impl TomlRepo {
-    pub fn get_remote_name(&self, path: &Path) -> Result<String, anyhow::Error> {
-        let remote_url = self
-            .remote
-            .as_ref()
-            .with_context(|| "remote url is null.")?;
-        find_remote_name_by_url(path, remote_url)
-    }
-
-    pub fn get_remote_ref(&self, path: &Path) -> Result<RemoteRef, anyhow::Error> {
-        let remote_name = &self.get_remote_name(path)?;
-        // priority: commit/tag/branch(default-branch)
-        let remote_ref = {
-            if let Some(commit) = &self.commit {
-                RemoteRef::Commit(commit.to_string())
-            } else if let Some(tag) = &self.tag {
-                RemoteRef::Tag(tag.to_string())
-            } else if let Some(branch) = &self.branch {
-                let branch = format!("{}/{}", remote_name, branch.to_string());
-                RemoteRef::Branch(branch)
-            } else {
-                return Err(anyhow::anyhow!("remote ref is invalid!"));
-            }
-        };
-        Ok(remote_ref)
-    }
-}
-
-/// normalize path if needed
-pub fn norm_path(path: &String) -> String {
-    let mut path = path.replace("\\", "/");
-    while path.ends_with("/") {
-        path.pop();
-    }
-    path
-}
-
-/// if path is empty, represent it by "."
-pub fn display_path(path: &String) -> String {
-    match path.is_empty() {
-        true => String::from("."),
-        false => path.clone(),
-    }
-}
-
-/// deserialize config file (.gitrepos) with full file path
-pub fn load_config(config_file: &PathBuf) -> Option<TomlConfig> {
-    let mut toml_config = None;
-    if config_file.is_file() {
-        // mac not recognize "."
-        let txt = fs::read_to_string(config_file)
-            .unwrap()
-            .replace("\".\"", "\"\"");
-
-        if let Ok(res) = toml::from_str(txt.as_str()) {
-            toml_config = Some(res);
-        }
-    }
-    toml_config
-}
-
-pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<String>>) {
-    if let Some(ignore_paths) = ignore {
-        for ignore_path in ignore_paths {
-            if let Some(idx) = toml_repos.iter().position(|r| {
-                if let Some(rel_path) = r.local.clone() {
-                    // consider "." as root path
-                    display_path(&rel_path) == ignore_path
-                } else {
-                    false
-                }
-            }) {
-                toml_repos.remove(idx);
-            }
-        }
-    }
-}
-
-pub fn is_repository(path: &Path) -> Result<(), anyhow::Error> {
-    if path.join(".git").is_dir() {
-        let args = ["rev-parse", "--show-cdup"];
-        if let Ok(output) = execute_cmd(path, "git", &args) {
-            if output.trim().is_empty() {
-                return Ok(());
-            }
-        }
-    }
-
-    Err(anyhow::anyhow!("repository not found!"))
-}
-
-pub fn is_remote_ref_valid(path: &Path, remote_ref: &String) -> Result<(), anyhow::Error> {
-    let args = ["branch", "--contains", remote_ref, "-r"];
-    match execute_cmd(path, "git", &args) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(anyhow::anyhow!(
-            "remote ref {} not found.",
-            remote_ref.blue()
-        )),
-    }
-}
-
-pub fn find_remote_name_by_url(path: &Path, url: &String) -> Result<String, anyhow::Error> {
-    is_repository(path)?;
-    let args = ["remote", "-v"];
-    let output = execute_cmd(path, "git", &args)?;
-
-    for line in output.trim().lines() {
-        if line.contains(url) {
-            if let Some(remote_name) = line.split(url).next() {
-                return Ok(remote_name.trim().to_string());
-            }
-        }
-    }
-
-    Err(anyhow::anyhow!("remote {} not found.", url.blue()))
-}
-
-pub fn find_remote_url_by_name(path: &Path, name: &String) -> Result<String, anyhow::Error> {
-    is_repository(path)?;
-    let args = ["remote", "get-url", &name];
-    let output = execute_cmd(path, "git", &args)?;
-
-    for remote_url in output.trim().lines() {
-        return Ok(remote_url.trim().to_string());
-    }
-
-    Err(anyhow::anyhow!("remote {} not found.", name.blue()))
-}
-
-pub fn get_current_commit(path: &Path) -> Result<String, anyhow::Error> {
-    is_repository(path)?;
-    let args = ["rev-parse", "HEAD"];
-    let output = execute_cmd(path, "git", &args)?;
-
-    for oid in output.trim().lines() {
-        return Ok(oid.to_string());
-    }
-
-    Err(anyhow::anyhow!("current commit not found."))
-}
-
-pub fn get_tracking_branch(path: &Path) -> Result<String, anyhow::Error> {
-    is_repository(path)?;
-    let args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
-
-    let output = execute_cmd(path, "git", &args)?;
-    if !output.trim().is_empty() {
-        return Ok(output.trim().to_string());
-    }
-
-    Err(anyhow::anyhow!("untracked."))
-}
-
-pub fn get_current_branch(path: &Path) -> Result<String, anyhow::Error> {
-    is_repository(path)?;
-    let args = ["branch", "--show-current"];
-    let output = execute_cmd(path, "git", &args)?;
-    for line in output.trim().lines() {
-        let branch = line.to_string();
-        // check if th branch exists
-        let branch_output = execute_cmd(path, "git", &["branch", "-l", &branch])?;
-        if branch_output.contains(&branch) {
-            return Ok(branch);
-        }
-    }
-    Err(anyhow::anyhow!("current branch not found."))
-}
-
-pub fn get_branch_log(path: &Path, branch: String) -> String {
-    let args = ["show-branch", "--sha1-name", &branch];
-    let output = execute_cmd(path, "git", &args).unwrap_or(String::new());
-    output.trim().to_string()
-}
-
-/// get full ahead/behind values between branches
-pub fn cmp_local_remote(
-    input_path: &Path,
-    toml_repo: &TomlRepo,
-    default_branch: &Option<String>,
-    use_tracking_remote: bool,
-) -> Result<Option<String>, anyhow::Error> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
-
-    let mut toml_repo = toml_repo.to_owned();
-    // use default branch when branch is null
-    if None == toml_repo.branch {
-        toml_repo.branch = default_branch.to_owned();
-    }
-
-    // priority: commit/tag/branch(default-branch)
-    let (remote_ref_str, remote_desc) = {
-        if use_tracking_remote {
-            let remote_ref_str = get_tracking_branch(full_path.as_path())?;
-            (remote_ref_str.clone(), remote_ref_str)
-        } else {
-            let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
-            let remote_ref_str = match remote_ref.clone() {
-                RemoteRef::Commit(commit) => commit,
-                RemoteRef::Tag(tag) => tag,
-                RemoteRef::Branch(branch) => branch,
-            };
-            let remote_desc = match remote_ref {
-                RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
-                RemoteRef::Tag(tag) => tag,
-                RemoteRef::Branch(branch) => branch,
-            };
-            (remote_ref_str, remote_desc)
-        }
+pub fn builtin_exec(cmd: &str) -> Option<fn(&ArgMatches)> {
+    let f = match cmd {
+        "init" => init::exec,
+        "snapshot" => snapshot::exec,
+        "fetch" => fetch::exec,
+        "sync" => sync::exec,
+        "track" => track::exec,
+        "clean" => clean::exec,
+        _ => return None,
     };
-
-    // if specified remote commit/tag/branch is null
-    if remote_desc.is_empty() {
-        return Ok(Some("not tracking".to_string()));
-    }
-
-    let mut changed_files: HashSet<String> = HashSet::new();
-
-    // get untracked files (uncommit)
-    let args = ["ls-files", ".", "--exclude-standard", "--others"];
-    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
-        for file in output.trim().lines() {
-            changed_files.insert(file.to_string());
-        }
-    }
-
-    // get tracked and changed files (uncommit)
-    let args = ["diff", "--name-only"];
-    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
-        for file in output.trim().lines() {
-            changed_files.insert(file.to_string());
-        }
-    }
-
-    // get cached(staged) files (uncommit)
-    let args = ["diff", "--cached", "--name-only"];
-    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
-        for file in output.trim().lines() {
-            changed_files.insert(file.to_string());
-        }
-    }
-
-    let mut changes_desc = String::new();
-    if !changed_files.is_empty() {
-        // format changes tooltip
-        changes_desc = ", ".to_string()
-            + &format!("changes({})", changed_files.len())
-                .red()
-                .to_string();
-    }
-
-    // get local branch
-    let branch = get_current_branch(full_path.as_path())?;
-
-    if branch.is_empty() {
-        return Ok(Some("init commit".to_string()));
-    }
-
-    // get rev-list between local branch and specified remote commit/tag/branch
-    let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
-    let args = ["rev-list", "--count", "--left-right", &branch_pair];
-    let mut commit_desc = String::new();
-
-    if let Ok(output) = execute_cmd(&full_path, "git", &args) {
-        let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
-
-        if let Some(caps) = re.captures(&output) {
-            // format commit tooltip
-            let (ahead, begind) = (&caps[1], &caps[2]);
-            commit_desc = match (ahead, begind) {
-                ("0", "0") => String::new(),
-                (_, "0") => {
-                    String::from(", ") + &format!("commits({}↑)", &caps[1]).yellow().to_string()
-                }
-                ("0", _) => {
-                    String::from(", ") + &format!("commits({}↓)", &caps[2]).yellow().to_string()
-                }
-                _ => {
-                    String::from(", ")
-                        + &format!("commits({}↑{}↓)", &caps[1], &caps[2])
-                            .yellow()
-                            .to_string()
-                }
-            };
-        }
-    } else {
-        // if git rev-list find "unknown revision" error
-        commit_desc = format!(", {}", "unknown revision".yellow());
-    }
-
-    // show diff overview
-    let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
-        format!(
-            "already update to date. {}",
-            get_branch_log(&full_path, branch).as_str().bright_black()
-        )
-    } else {
-        format!("{}{}{}", remote_desc.blue(), commit_desc, changes_desc,)
-    };
-
-    Ok(Some(desc))
-}
-
-pub fn execute_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
-    let mut command = std::process::Command::new(cmd);
-    let full_command = command.current_dir(path.to_path_buf()).args(args);
-
-    #[cfg(target_os = "windows")]
-    {
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        full_command.creation_flags(CREATE_NO_WINDOW);
-    }
-
-    let output = full_command
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .with_context(|| format!("Error starting command: {:?}", full_command))?;
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8(output.stderr)?;
-
-    match output.status.success() {
-        true => Ok(stdout),
-        false => Err(anyhow::anyhow!(stderr)),
-    }
-}
-
-fn execute_cmd_with_progress(
-    rel_path: &String,
-    command: &mut Command,
-    prefix: &str,
-    progress_bar: &ProgressBar,
-) -> anyhow::Result<()> {
-    let mut spawned = command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("Error starting command {:?}", command))?;
-
-    let mut last_line = format!(
-        "{:>9} {}: running...",
-        prefix,
-        display_path(rel_path).bold().magenta()
-    );
-
-    progress_bar.set_message(fmt_msg_spinner(&last_line));
-
-    // get message from stderr with "--progress" option
-    if let Some(ref mut stderr) = spawned.stderr {
-        let lines = BufReader::new(stderr).split(b'\r');
-        for line in lines {
-            let output = line.unwrap();
-            if output.is_empty() {
-                continue;
-            }
-            let line = std::str::from_utf8(&output).unwrap();
-            let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let full_line = format!(
-                "{:>9} {}: {}",
-                prefix,
-                display_path(rel_path).bold().magenta(),
-                plain_line.trim()
-            );
-
-            progress_bar.set_message(fmt_msg_spinner(&full_line));
-
-            last_line = plain_line;
-        }
-    }
-
-    let exit_code = spawned
-        .wait()
-        .context("Error waiting for process to finish")?;
-
-    if !exit_code.success() {
-        return Err(anyhow::anyhow!(
-            "Git exited with code {}: {}. With command : {:?}.",
-            exit_code.code().unwrap(),
-            last_line.trim(),
-            command
-        ));
-    }
-
-    Ok(())
-}
-
-pub fn get_terminal_width() -> usize {
-    match term_size::dimensions() {
-        Some((width, _)) => width - 10,
-        _ => 70,
-    }
-}
-
-pub fn fmt_msg_spinner(message: &String) -> String {
-    let max_width = get_terminal_width();
-    console::truncate_str(&message, max_width, "...").to_string()
+    Some(f)
 }

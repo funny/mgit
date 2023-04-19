@@ -1,4 +1,4 @@
-use crate::common::{execute_cargo_cmd, execute_cmd, failed_message};
+use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
 use std::env;
 use std::path::PathBuf;
 
@@ -24,8 +24,8 @@ fn cli_init_simple() {
     create_repos_tree1(&path);
 
     for repo_path in ["foobar-1", "foobar-2"] {
-        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
-        execute_cmd(
+        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
+        exec_cmd(
             &path.join(repo_path),
             "git",
             &["branch", "-u", "origin/master"],
@@ -35,7 +35,7 @@ fn cli_init_simple() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    execute_cargo_cmd("mgit", &["init", &input_path]);
+    exec_cargo_cmd("mgit", &["init", &input_path]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -81,9 +81,9 @@ fn cli_init_force1() {
     create_repos_tree2(&path);
 
     for repo_path in ["", "foobar-1", "foobar-2"] {
-        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
+        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
             .expect(failed_message::GIT_FETCH);
-        execute_cmd(
+        exec_cmd(
             &path.join(repo_path),
             "git",
             &["branch", "-u", "origin/master"],
@@ -93,7 +93,7 @@ fn cli_init_force1() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
+    exec_cargo_cmd("mgit", &["init", &input_path, "--force"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -157,9 +157,9 @@ fn cli_init_force2() {
         "foobar-2/foobar-2-2",
     ];
     for repo_path in repo_paths {
-        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
+        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
             .expect(failed_message::GIT_FETCH);
-        execute_cmd(
+        exec_cmd(
             &path.join(repo_path),
             "git",
             &["branch", "-u", "origin/master"],
@@ -168,7 +168,7 @@ fn cli_init_force2() {
     }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    execute_cargo_cmd("mgit", &["init", &input_path, "--force"]);
+    exec_cargo_cmd("mgit", &["init", &input_path, "--force"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -234,7 +234,7 @@ fn cli_snapshot_simple() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    execute_cargo_cmd("mgit", &["snapshot", &input_path]);
+    exec_cargo_cmd("mgit", &["snapshot", &input_path]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -273,9 +273,9 @@ fn cli_snapshot_branch() {
 
     create_repos_tree1(&path);
     for repo_path in ["foobar-1", "foobar-2"] {
-        execute_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
+        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
             .expect(failed_message::GIT_FETCH);
-        execute_cmd(
+        exec_cmd(
             &path.join(repo_path),
             "git",
             &["branch", "-u", "origin/master"],
@@ -284,7 +284,7 @@ fn cli_snapshot_branch() {
     }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    execute_cargo_cmd("mgit", &["snapshot", &input_path, "--branch"]);
+    exec_cargo_cmd("mgit", &["snapshot", &input_path, "--branch"]);
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -327,7 +327,7 @@ fn cli_snapshot_force() {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &["snapshot", &input_path, "--force", "--config", &config_file],
     );
@@ -398,7 +398,7 @@ fn cli_snapshot_ignore() {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    execute_cargo_cmd(
+    exec_cargo_cmd(
         "mgit",
         &[
             "snapshot",
@@ -459,10 +459,10 @@ pub fn create_repos_tree1(path: &PathBuf) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        execute_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
+        exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
 
         // add remote
-        execute_cmd(&dir, "git", &["remote", "add", "origin", remote])
+        exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
             .expect(failed_message::GIT_ADD_REMOTE);
 
         std::fs::write(
@@ -477,9 +477,9 @@ pub fn create_repos_tree2(path: &PathBuf) {
     create_repos_tree1(path);
 
     // set root git init
-    execute_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
     let root_remote = "https://gitee.com/ForthEspada/CS-Books.git";
-    execute_cmd(path, "git", &["remote", "add", "origin", root_remote])
+    exec_cmd(path, "git", &["remote", "add", "origin", root_remote])
         .expect(failed_message::GIT_ADD_REMOTE);
 
     std::fs::write(
@@ -519,10 +519,10 @@ pub fn create_repos_tree3(path: &PathBuf) {
 
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
             // create local git repositoris
-            execute_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
+            exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
 
             // add remote
-            execute_cmd(&dir, "git", &["remote", "add", "origin", remote])
+            exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
                 .expect(failed_message::GIT_ADD_REMOTE);
 
             std::fs::write(
@@ -534,8 +534,8 @@ pub fn create_repos_tree3(path: &PathBuf) {
     }
 
     // set root git init
-    execute_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
-    execute_cmd(path, "git", &["remote", "add", "origin", remote])
+    exec_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(path, "git", &["remote", "add", "origin", remote])
         .expect(failed_message::GIT_ADD_REMOTE);
     std::fs::write(
         path.join(".git/refs/heads/master"),

@@ -1,73 +1,94 @@
-use super::{
-    display_path, exclude_ignore, execute_cmd, get_current_branch, load_config, RemoteRef, TomlRepo,
-};
-use owo_colors::OwoColorize;
+use clap::ArgMatches;
 use std::{
     env,
     path::{Path, PathBuf},
 };
 
-pub fn exec(path: Option<String>, config: Option<PathBuf>, ignore: Option<Vec<String>>) {
-    let cwd = env::current_dir().unwrap();
-    let cwd_str = Some(String::from(cwd.to_string_lossy()));
-    let input = path.or(cwd_str).unwrap();
-    let input_path = Path::new(&input);
+use crate::{
+    config::{
+        repo::{exclude_ignore, TomlRepo},
+        repos::{load_config, TomlConfig},
+    },
+    git,
+    utils::logger,
+};
+
+use super::RemoteRef;
+
+pub(crate) fn exec(args: &ArgMatches) {
+    // get input path
+    let input_path = match args.get_one::<String>("path") {
+        Some(path) => PathBuf::from(path),
+        None => env::current_dir().unwrap(),
+    };
+
+    // starting clean repos
+    logger::new("Track status:");
 
     // if directory doesn't exist, finsh clean
     if !input_path.is_dir() {
-        println!("Directory {} not found!", input.bold().magenta());
+        logger::dir_not_found(&input_path);
         return;
     }
 
-    // start set track remote branch
-    println!("Track status:");
+    // get ignore
+    let ignore = match args.get_many::<String>("ignore") {
+        Some(r) => {
+            let ignore = r.collect::<Vec<&String>>();
+            Some(ignore)
+        }
+        _ => None,
+    };
 
     // set config file path
-    let config_file = match config {
-        Some(r) => r,
+    let config_file = match args.get_one::<PathBuf>("config") {
+        Some(r) => r.to_owned(),
         _ => input_path.join(".gitrepos"),
     };
 
     // check if .gitrepos exists
     if !config_file.is_file() {
-        println!(
-            "{} not found, try {} instead!",
-            ".gitrepos".bold().magenta(),
-            "init".bold().magenta()
-        );
+        logger::config_file_not_found();
         return;
     }
 
-    // load .gitrepos
-    if let Some(toml_config) = load_config(&config_file) {
-        let default_branch = toml_config.default_branch;
+    // load config file(like .gitrepos)
+    let Some(toml_config) = load_config(&config_file) else{
+        logger::new("load config file failed!");
+        return;
+    };
 
-        // handle track
-        if let Some(toml_repos) = toml_config.repos {
-            // ignore specified repositories
-            let mut toml_repos = toml_repos;
-            exclude_ignore(&mut toml_repos, ignore);
+    inner_exec(input_path, toml_config, ignore)
+}
 
-            for toml_repo in toml_repos {
-                if let Ok(res) = set_tracking_remote_branch(input_path, &toml_repo, &default_branch)
-                {
-                    println!("  {}", res);
-                }
-            }
+fn inner_exec(input_path: impl AsRef<Path>, toml_config: TomlConfig, ignore: Option<Vec<&String>>) {
+    // handle track
+    let Some(mut toml_repos) = toml_config.repos else {
+        return;
+    };
+
+    let default_branch = toml_config.default_branch;
+
+    // ignore specified repositories
+    exclude_ignore(&mut toml_repos, ignore);
+
+    for toml_repo in &toml_repos {
+        if let Ok(res) = set_tracking_remote_branch(&input_path, toml_repo, &default_branch) {
+            logger::new(format!("  {}", res));
         }
     }
 }
 
-pub fn set_tracking_remote_branch(
-    input_path: &Path,
+pub(crate) fn set_tracking_remote_branch(
+    input_path: impl AsRef<Path>,
     toml_repo: &TomlRepo,
     default_branch: &Option<String>,
 ) -> Result<String, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    let full_path = input_path.as_ref().join(rel_path);
 
     // get local current branch
-    let local_branch = get_current_branch(full_path.as_path())?;
+    let local_branch = git::get_current_branch(full_path.as_path())?;
 
     let mut toml_repo = toml_repo.to_owned();
     // use default branch when branch is null
@@ -89,35 +110,15 @@ pub fn set_tracking_remote_branch(
     };
 
     if toml_repo.commit.is_some() || toml_repo.tag.is_some() {
-        let res = format!(
-            "{}: {} {}",
-            display_path(rel_path).bold().magenta(),
-            remote_desc.blue(),
-            "untracked"
-        );
+        let res = logger::fmt_untrack_desc(rel_path, &remote_desc);
         return Ok(res);
     }
 
-    // git branch --set-upstream-to <name>
-    // true only when remote head is branch
-    let args = vec!["branch", "--set-upstream-to", &remote_ref_str];
-
-    if execute_cmd(&full_path, "git", &args).is_ok() {
-        let res = format!(
-            "{}: {} -> {}",
-            display_path(rel_path).bold().magenta(),
-            local_branch.blue(),
-            remote_desc.blue()
-        );
-        Ok(res)
-    } else {
-        let res = format!(
-            "{}: {} {} {}",
-            display_path(rel_path).bold().magenta(),
-            "track failed,".red(),
-            remote_desc.blue(),
-            "not found!".red()
-        );
-        Ok(res)
-    }
+    git::set_tracking_remote_branch(
+        full_path,
+        rel_path,
+        local_branch,
+        remote_ref_str,
+        remote_desc,
+    )
 }
