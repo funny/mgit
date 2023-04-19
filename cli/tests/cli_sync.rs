@@ -1394,3 +1394,70 @@ tag = "v0.3.0"
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
 }
+
+/// 测试内容：
+///     1、运行命令 mgit sync <path>
+///     2、更新配置文件中新的 url
+#[test]
+fn cli_sync_new_remote_url() {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target/tmp/cli_sync_new_remote_url");
+    let input_path = path.to_str().unwrap();
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let toml_string = r#"
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+commit = "fc8ba56c64b7b7e4dd2d171fd95ca620aa36d695"
+
+[[repos]]
+local = "foobar"
+remote = "https://gitee.com/ForthEspada/CS-Books.git"
+branch = "master"
+"#;
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+
+    // initialize the repositories tree
+    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+
+    let repo_paths = ["", "foobar"];
+    for repo_path in repo_paths {
+        let dir = path.join(repo_path);
+        let args = ["config", "--get", "remote.origin.url"];
+        let output = exec_cmd(&dir, "git", &args).unwrap_or(String::from("invalid url"));
+        assert_eq!(output.trim(), "https://gitee.com/ForthEspada/CS-Books.git");
+    }
+
+    let toml_string = r#"
+default-branch = "develop"
+
+[[repos]]
+local = "."
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+
+[[repos]]
+local = "foobar"
+remote = "https://gitee.com/icze1i0n/rust-sbert.git"
+branch = "master"
+"#;
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+
+    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    for repo_path in repo_paths {
+        let dir = path.join(repo_path);
+        let args = ["config", "--get", "remote.origin.url"];
+        let output = exec_cmd(&dir, "git", &args).unwrap_or(String::from("invalid url"));
+        assert_eq!(output.trim(), "https://gitee.com/icze1i0n/rust-sbert.git");
+    }
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
+}

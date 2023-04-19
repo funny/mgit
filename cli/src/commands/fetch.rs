@@ -15,6 +15,7 @@ use crate::{
         repo::{cmp_local_remote, exclude_ignore, TomlRepo},
         repos::{load_config, TomlConfig},
     },
+    git,
     utils::{cmd, logger},
 };
 
@@ -139,12 +140,12 @@ fn inner_exec(
                         .tick_chars("/-\\| "),
                 );
                 progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
-                let message = logger::fmt_spinner_start(&prefix, " waiting...");
-                progress_bar.set_message(logger::truncate_spinner_msg(&message));
+                let msg = logger::fmt_spinner_start(&prefix, " waiting...");
+                progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
                 // execute fetch command with progress
                 let exec_result =
-                    exec_fetch_with_progress(input_path, toml_repo, depth, &prefix, &progress_bar);
+                    inner_exec_with_progress(input_path, toml_repo, depth, &prefix, &progress_bar);
 
                 // handle result
                 let rel_path = toml_repo.local.as_ref().unwrap();
@@ -155,7 +156,7 @@ fn inner_exec(
                         // if not silent, show compare stat betweent local and remote
                         if !silent {
                             match cmp_local_remote(input_path, toml_repo, &default_branch, false) {
-                                Ok(r) => msg = format!("{}: {}", message, r.unwrap()),
+                                Ok(r) => msg = format!("{}: {}", msg, r.unwrap()),
                                 _ => {}
                             };
                         };
@@ -196,7 +197,23 @@ fn inner_exec(
     }
 }
 
-pub(crate) fn exec_fetch_with_progress(
+fn inner_exec_with_progress(
+    input_path: impl AsRef<Path>,
+    toml_repo: &TomlRepo,
+    depth: Option<&usize>,
+    prefix: &str,
+    progress_bar: &ProgressBar,
+) -> anyhow::Result<()> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = input_path.as_ref().join(rel_path);
+    let remote_url = toml_repo.remote.as_ref().unwrap();
+
+    git::update_remote_url(full_path, remote_url)?;
+
+    exec_fetch_with_progress(input_path, toml_repo, depth, &prefix, &progress_bar)
+}
+
+pub fn exec_fetch_with_progress(
     input_path: impl AsRef<Path>,
     toml_repo: &TomlRepo,
     depth: Option<&usize>,

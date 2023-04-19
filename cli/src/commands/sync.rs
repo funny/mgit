@@ -181,7 +181,7 @@ fn inner_exec(
                 };
 
                 // execute command according each repo status
-                let exec_result = exec_sync_with_progress(
+                let exec_result = inner_exec_with_progress(
                     input_path,
                     toml_repo,
                     &stash_mode,
@@ -292,7 +292,7 @@ fn inner_exec(
     }
 }
 
-fn exec_sync_with_progress(
+fn inner_exec_with_progress(
     input_path: &Path,
     toml_repo: &TomlRepo,
     stash_mode: &StashMode,
@@ -321,6 +321,9 @@ fn exec_sync_with_progress(
         exec_init_with_progress(input_path, &toml_repo, prefix, progress_bar)?;
         // git remote add url
         exec_add_remote_with_progress(input_path, &toml_repo, prefix, progress_bar)?;
+    } else {
+        let remote_url = toml_repo.remote.as_ref().unwrap();
+        git::update_remote_url(full_path, remote_url)?;
     }
 
     // use default branch when branch is null
@@ -432,7 +435,9 @@ fn exec_sync_with_progress(
         }
         StashMode::Hard => {
             // clean
-            exec_clean_with_progress(input_path, &toml_repo, prefix, progress_bar)?;
+            if !is_repo_none {
+                exec_clean_with_progress(input_path, &toml_repo, prefix, progress_bar)?;
+            }
 
             // checkout
             if !no_checkout {
