@@ -1,50 +1,80 @@
-use super::{
-    display_path, find_remote_url_by_name, get_current_commit, get_tracking_branch, is_repository,
-    norm_path, SnapshotType, TomlConfig, TomlRepo,
-};
+use clap::ArgMatches;
 use globset::GlobBuilder;
-use owo_colors::OwoColorize;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use walkdir::WalkDir;
 
-pub fn exec(
-    path: Option<String>,
-    config: Option<PathBuf>,
-    snapshot_type: SnapshotType,
-    force: bool,
-    ignore: Option<Vec<String>>,
-) {
-    let cwd = std::env::current_dir().unwrap();
-    let cwd_str = Some(String::from(cwd.to_string_lossy()));
-    let input = path.or(cwd_str).unwrap();
+use super::SnapshotType;
+use crate::config::repo::TomlRepo;
+use crate::config::repos::TomlConfig;
+use crate::git;
+use crate::utils::logger;
+use crate::utils::path::{display_path, norm_path};
 
-    //  start taking snapshot repos
-    println!("take snapshot in {}", input.bold().magenta());
-    let input_path = Path::new(&input);
+pub(crate) fn exec(args: &ArgMatches) {
+    // get input path
+    let input_path = match args.get_one::<String>("path") {
+        Some(path) => PathBuf::from(path),
+        None => env::current_dir().unwrap(),
+    };
 
-    // check if input is a valid directory
+    // start taking snapshot repos
+    logger::command_start("take snapshot", &input_path);
+
+    // if directory doesn't exist, finsh clean
     if !input_path.is_dir() {
-        println!("Directory {} not found!", input.bold().magenta());
+        logger::dir_not_found(&input_path);
         return;
     }
 
+    // get snapshot type
+    let snapshot_type = match args.get_one::<bool>("branch").unwrap_or(&false) {
+        true => SnapshotType::Branch,
+        false => SnapshotType::Commit,
+    };
+
+    // get force flag
+    let force = args.get_one::<bool>("force").unwrap_or(&false);
+
+    // get ignore
+    let ignore = match args.get_many::<String>("ignore") {
+        Some(r) => {
+            let ignore = r.collect::<Vec<&String>>();
+            Some(ignore)
+        }
+        _ => None,
+    };
+
     // set config file path
-    let config_file = match config {
-        Some(r) => r,
+    let config_file = match args.get_one::<PathBuf>("config") {
+        Some(r) => r.to_owned(),
         _ => input_path.join(".gitrepos"),
     };
 
     // check if .gitrepos exists
     if config_file.is_file() && !force {
-        println!(
-            "{} already inited, try {} instead!",
-            input,
-            "--force".bold().magenta()
-        );
+        logger::dir_already_inited(&input_path);
         return;
     }
 
+    inner_exec(input_path, &config_file, snapshot_type, ignore);
+}
+
+fn inner_exec(
+    input_path: impl AsRef<Path>,
+    config_file: impl AsRef<Path>,
+    snapshot_type: SnapshotType,
+    ignore: Option<Vec<&String>>,
+) {
+    exec_snapshot(input_path, config_file, snapshot_type, ignore);
+}
+
+pub(crate) fn exec_snapshot(
+    input_path: impl AsRef<Path>,
+    config_file: impl AsRef<Path>,
+    snapshot_type: SnapshotType,
+    ignore: Option<Vec<&String>>,
+) {
     let mut toml_config = TomlConfig {
         version: None,
         default_branch: Some(String::from("develop")),
@@ -59,9 +89,9 @@ pub fn exec(
         .unwrap()
         .compile_matcher();
 
-    println!("search and add git repos:");
+    logger::new("search and add git repos:");
     let mut count = 0;
-    let mut it = WalkDir::new(input_path).into_iter();
+    let mut it = WalkDir::new(&input_path).into_iter();
     let mut repos: Vec<TomlRepo> = Vec::new();
     loop {
         let entry = match it.next() {
@@ -75,7 +105,7 @@ pub fn exec(
             // get relative path
             let mut pb = path.to_path_buf();
             pb.pop();
-            let rel_path = pb.strip_prefix(input_path).unwrap();
+            let rel_path = pb.strip_prefix(&input_path).unwrap();
 
             // normalize path if needed
             let norm_path = norm_path(&rel_path.to_str().unwrap().to_string());
@@ -84,20 +114,20 @@ pub fn exec(
             let norm_str = display_path(&norm_path);
 
             // ignore specified path
-            if let Some(ignore_paths) = &ignore {
-                if ignore_paths.contains(&norm_str) {
+            if let Some(ignore_paths) = ignore.as_ref() {
+                if ignore_paths.contains(&&norm_str) {
                     continue;
                 }
             }
 
             // check repository valid
-            if is_repository(pb.as_path()).is_err() {
-                println!("Failed to open repo {}!", &norm_str);
+            if git::is_repository(pb.as_path()).is_err() {
+                logger::new(format!("Failed to open repo {}!", &norm_str));
                 continue;
             }
 
             // get remote
-            let remote = match find_remote_url_by_name(pb.as_path(), &"origin".to_string()) {
+            let remote = match git::find_remote_url_by_name(pb.as_path(), &"origin".to_string()) {
                 Ok(r) => Some(r),
                 _ => None,
             };
@@ -109,13 +139,13 @@ pub fn exec(
             match snapshot_type {
                 SnapshotType::Commit => {
                     // get local head commit id
-                    if let Ok(oid) = get_current_commit(pb.as_path()) {
+                    if let Ok(oid) = git::get_current_commit(pb.as_path()) {
                         commit = Some(oid);
                     }
                 }
                 SnapshotType::Branch => {
                     // get tracking brach
-                    if let Ok(refname) = get_tracking_branch(pb.as_path()) {
+                    if let Ok(refname) = git::get_tracking_branch(pb.as_path()) {
                         // split, like origin/master
                         if let Some((_, branch_ref)) = refname.split_once("/") {
                             branch = Some(branch_ref.trim().to_string());
@@ -133,7 +163,7 @@ pub fn exec(
                 commit,
             };
             repos.push(toml_repo);
-            println!("  + {}", norm_str);
+            logger::new(format!("  + {}", norm_str));
 
             // just skip go into .git/ folder and continue
             it.skip_current_dir();
@@ -143,7 +173,7 @@ pub fn exec(
         count += 1;
     }
 
-    println!("");
+    logger::new("");
 
     // keep list sort same on different device
     repos.sort_by(|a, b| {
@@ -154,10 +184,10 @@ pub fn exec(
             .cmp(&b.local.as_ref().unwrap().to_lowercase())
     });
     toml_config.repos = Some(repos);
-    println!("{} files scanned", count);
+    logger::new(format!("{} files scanned", count));
 
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
     fs::write(config_file, toml_string).expect("Failed to write file .gitrepos!");
-    println!("{} update", ".gitrepos".bold().magenta());
+    logger::update_config_succ();
 }

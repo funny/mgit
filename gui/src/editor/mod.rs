@@ -5,7 +5,8 @@ use self::error_window::ErrorWindow;
 use self::options_window::OptionsWindow;
 use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
-use mgit::commands::{TomlConfig, TomlRepo};
+use mgit::config::repo::TomlRepo;
+use mgit::config::repos::TomlConfig;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[cfg(target_os = "windows")]
