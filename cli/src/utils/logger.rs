@@ -120,9 +120,9 @@ pub fn fmt_untrack_desc(path: impl AsRef<Path>, desc: impl AsRef<str>) -> String
     )
 }
 
-pub fn truncate_spinner_msg(message: impl AsRef<str>) -> String {
+pub fn truncate_spinner_msg(msg: impl AsRef<str>) -> String {
     let max_width = get_terminal_width();
-    console::truncate_str(message.as_ref(), max_width, "...").to_string()
+    console::truncate_str(msg.as_ref(), max_width, "...").to_string()
 }
 
 pub fn fmt_spinner_start(prefix: impl AsRef<str>, desc: impl AsRef<str>) -> String {

@@ -1,6 +1,5 @@
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-
 use clap::{error::ErrorKind, ArgMatches, CommandFactory};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
@@ -166,8 +165,8 @@ fn inner_exec(
                         .tick_chars("/-\\| "),
                 );
                 progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
-                let message = format!("{:>9} waiting...", &prefix);
-                progress_bar.set_message(logger::truncate_spinner_msg(&message));
+                let msg = format!("{:>9} waiting...", &prefix);
+                progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
                 // get compare stat betwwen local and specified commit/tag/branch/
                 let cur_cmp_msg = match silent {
@@ -238,14 +237,14 @@ fn inner_exec(
                         Ok((toml_repo, track_msg))
                     }
                     Err(e) => {
-                        let message = logger::fmt_spinner_finished_prefix(
+                        let msg = logger::fmt_spinner_finished_prefix(
                             prefix,
                             toml_repo.local.as_ref().unwrap(),
                             false,
                         );
 
                         // show message in progress bar
-                        progress_bar.finish_with_message(logger::truncate_spinner_msg(&message));
+                        progress_bar.finish_with_message(logger::truncate_spinner_msg(&msg));
 
                         Err((toml_repo, e))
                     }
@@ -352,7 +351,7 @@ fn inner_exec_with_progress(
                 // stash
                 let stash_result =
                     exec_stash_with_progress(input_path, &toml_repo, prefix, progress_bar);
-                let stash_message = stash_result.unwrap_or("stash failed.".to_string());
+                let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
 
                 // checkout
                 let mut result: Result<(), anyhow::Error>;
@@ -376,7 +375,7 @@ fn inner_exec_with_progress(
                 }
 
                 // stash pop, whether checkout succ or failed, whether reset succ or failed
-                if stash_message.contains("WIP") {
+                if stash_msg.contains("WIP") {
                     let _ =
                         exec_stash_pop_with_progress(input_path, &toml_repo, prefix, progress_bar);
                 }
@@ -397,7 +396,7 @@ fn inner_exec_with_progress(
             let stash_result =
                 exec_stash_with_progress(input_path, &toml_repo, prefix, progress_bar);
 
-            let stash_message = stash_result.unwrap_or("stash failed.".to_string());
+            let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
 
             // checkout
             let mut result: Result<(), anyhow::Error> = Ok(());
@@ -405,7 +404,7 @@ fn inner_exec_with_progress(
             if !no_checkout {
                 result =
                     exec_checkout_with_progress(input_path, &toml_repo, true, prefix, progress_bar)
-                        .with_context(|| stash_message.clone());
+                        .with_context(|| stash_msg.clone());
 
                 reset_type = ResetType::Hard;
             }
@@ -419,13 +418,13 @@ fn inner_exec_with_progress(
                     prefix,
                     progress_bar,
                 )
-                .with_context(|| stash_message.clone());
+                .with_context(|| stash_msg.clone());
             }
 
             // undo if checkout failed or reset failed
             if let Err(e) = result {
                 // if reset failed, pop stash if stash something this time
-                if stash_message.contains("WIP") {
+                if stash_msg.contains("WIP") {
                     let _ =
                         exec_stash_pop_with_progress(input_path, &toml_repo, prefix, progress_bar);
                 }
@@ -465,8 +464,8 @@ fn exec_init_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "initialize...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "initialize...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     git::init(full_path)
 }
@@ -480,8 +479,8 @@ fn exec_add_remote_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "add remote...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "add remote...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     let url = toml_repo.remote.as_ref().unwrap();
     git::add_remote_url(full_path, url)
@@ -496,8 +495,8 @@ fn exec_clean_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "clean...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "clean...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     git::clean(full_path)
 }
@@ -512,8 +511,8 @@ fn exec_reset_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "reset...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "reset...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
@@ -540,8 +539,8 @@ fn exec_stash_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "stash...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "stash...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     git::stash(full_path)
 }
@@ -555,8 +554,8 @@ fn exec_stash_pop_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "pop stash...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "pop stash...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     git::stash_pop(full_path)
 }
@@ -571,8 +570,8 @@ fn exec_checkout_with_progress(
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.join(rel_path);
 
-    let message = logger::fmt_spinner_desc(prefix, rel_path, "checkout...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, "checkout...");
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
@@ -598,8 +597,8 @@ fn exec_checkout_with_progress(
     }
 
     let suffix = logger::fmt_checkouting(&branch);
-    let message = logger::fmt_spinner_desc(prefix, rel_path, suffix);
-    progress_bar.set_message(logger::truncate_spinner_msg(&message));
+    let msg = logger::fmt_spinner_desc(prefix, rel_path, suffix);
+    progress_bar.set_message(logger::truncate_spinner_msg(&msg));
 
     // check if local branch already exists
     let branch_exist = git::local_branch_already_exist(&full_path, &branch)?;
