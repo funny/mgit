@@ -233,3 +233,11 @@ pub fn set_tracking_remote_branch(
         Ok(res)
     }
 }
+
+pub fn update_remote_url(
+    path: impl AsRef<Path>,
+    url: impl AsRef<str>,
+) -> Result<String, anyhow::Error> {
+    let args = ["remote", "set-url", "origin", url.as_ref()];
+    exec_cmd(path, "git", &args)
+}
