@@ -12,12 +12,9 @@ fn main() {
         Err(e) => e.exit(),
     };
 
-    let (cmd, subcommand_args) = match args.subcommand() {
-        Some((cmd, args)) => (cmd, args),
-        _ => {
-            Cli::command().print_help().unwrap();
-            return;
-        }
+    let Some((cmd, subcommand_args)) =  args.subcommand() else {
+        Cli::command().print_help().unwrap();
+        return;
     };
 
     if let Some(exec) = builtin_exec(cmd) {

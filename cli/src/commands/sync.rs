@@ -37,24 +37,20 @@ pub(crate) fn exec(args: &ArgMatches) {
     let no_checkout = args.get_one::<bool>("no_checkout").unwrap_or(&false);
     let depth = args.get_one::<usize>("depth");
 
-    let ignore = match args.get_many::<String>("ignore") {
-        Some(r) => {
-            let ignore = r.collect::<Vec<&String>>();
-            Some(ignore)
-        }
-        _ => None,
-    };
+    let ignore = args.get_many::<String>("ignore").and_then(|r| {
+        let ignore = r.collect::<Vec<&String>>();
+        Some(ignore)
+    });
 
     let stash_mode = match (stash, hard) {
         (false, false) => StashMode::Normal,
         (true, false) => StashMode::Stash,
         (false, true) => StashMode::Hard,
-        _ => Cli::command()
-            .error(
-                ErrorKind::ArgumentConflict,
-                "'--stash' and '--hard' can't be used together.",
-            )
-            .exit(),
+        _ => {
+            let msg = "'--stash' and '--hard' can't be used together.";
+            let kind = ErrorKind::ArgumentConflict;
+            Cli::command().error(kind, msg).exit()
+        }
     };
 
     // set config file path
@@ -171,12 +167,8 @@ fn inner_exec(
                 // get compare stat betwwen local and specified commit/tag/branch/
                 let cur_cmp_msg = match silent {
                     true => String::new(),
-                    false => {
-                        match cmp_local_remote(input_path, toml_repo, &default_branch, false) {
-                            Ok(r) => r.unwrap(),
-                            _ => String::new(),
-                        }
-                    }
+                    false => cmp_local_remote(input_path, toml_repo, &default_branch, false)
+                        .map_or(String::new(), |r| r.unwrap()),
                 };
 
                 // execute command according each repo status
@@ -200,13 +192,9 @@ fn inner_exec(
                         // if not silent, show compare stat betweent local and remote
                         if !silent {
                             // get compare stat betwwen local and specified commit/tag/branch/
-                            let cmp_res =
-                                cmp_local_remote(input_path, toml_repo, &default_branch, false);
-
-                            let mut new_cmp_msg = match cmp_res {
-                                Ok(r) => r.unwrap(),
-                                _ => String::new(),
-                            };
+                            let mut new_cmp_msg =
+                                cmp_local_remote(input_path, toml_repo, &default_branch, false)
+                                    .map_or(String::new(), |r| r.unwrap());
 
                             if cur_cmp_msg != new_cmp_msg
                                 && new_cmp_msg.contains("already update to date.")
@@ -336,9 +324,7 @@ fn inner_exec_with_progress(
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref {
-        RemoteRef::Commit(commit) => commit,
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+        RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
 
     // check remote-ref valid
@@ -517,9 +503,7 @@ fn exec_reset_with_progress(
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref {
-        RemoteRef::Commit(commit) => commit,
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+        RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
 
     let reset_type = match reset_type {
@@ -576,9 +560,7 @@ fn exec_checkout_with_progress(
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref.clone() {
-        RemoteRef::Commit(commit) => commit,
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+        RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
     let branch = match remote_ref {
         RemoteRef::Commit(commit) => format!("commits/{}", &commit[..7]),

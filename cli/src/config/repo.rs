@@ -88,14 +88,11 @@ pub fn cmp_local_remote(
         } else {
             let remote_ref = toml_repo.get_remote_ref(&full_path)?;
             let remote_ref_str = match remote_ref.clone() {
-                RemoteRef::Commit(commit) => commit,
-                RemoteRef::Tag(tag) => tag,
-                RemoteRef::Branch(branch) => branch,
+                RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
             };
             let remote_desc = match remote_ref {
                 RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
-                RemoteRef::Tag(tag) => tag,
-                RemoteRef::Branch(branch) => branch,
+                RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
             };
             (remote_ref_str, remote_desc)
         }
