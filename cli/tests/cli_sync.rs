@@ -46,7 +46,7 @@ branch = "master"
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
-    let ingore_content = "/target\n/foobar";
+    let ingore_content = "foobar";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
@@ -119,7 +119,7 @@ branch = "master"
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
-    let ingore_content = "/target\n/foobar";
+    let ingore_content = "foobar";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
@@ -194,7 +194,7 @@ branch = "master"
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
-    let ingore_content = "/target\n/foobar";
+    let ingore_content = "foobar";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
@@ -285,7 +285,7 @@ branch = "master"
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
-    let ingore_content = "/target\n/foobar";
+    let ingore_content = "foobar";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
@@ -363,7 +363,7 @@ branch = "master"
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
-    let ingore_content = "/target\n/foobar";
+    let ingore_content = "foobar";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
@@ -452,11 +452,9 @@ branch = "master"
 
     assert!(input_path.is_dir());
 
-    let _ = exec_cmd(&path, "git", &["add", ".", "-f"]);
-
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
-    let ingore_content = "/target\n/foobar-1-1";
+    let ingore_content = "foobar-1-1";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
@@ -530,11 +528,9 @@ branch = "master"
     );
     assert!(input_path.is_dir());
 
-    let _ = exec_cmd(&path, "git", &["add", ".", "-f"]);
-
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
-    let ingore_content = "/target\n/foobar-1-1";
+    let ingore_content = "foobar-1-1";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
@@ -607,11 +603,9 @@ branch = "master"
     );
     assert!(input_path.is_dir());
 
-    let _ = exec_cmd(&path, "git", &["add", ".", "-f"]);
-
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
-    let ingore_content = "/target\n/foobar-1-1";
+    let ingore_content = "foobar-1-1";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
@@ -723,10 +717,9 @@ branch = "master"
 
     assert!(input_path.is_dir());
 
-    let _ = exec_cmd(&path, "git", &["add", ".", "-f"]);
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
-    let ingore_content = "/target\n/foobar-1-1";
+    let ingore_content = "foobar-1-1";
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
@@ -1062,7 +1055,7 @@ branch = "master"
 
     // ignore and .gitrepos, for confliction test
     let ignore_file = path.join(".gitignore");
-    let ingore_content = format!("{}\n{}\n{}", "/target", "/foobar-1", "/foobar-2");
+    let ingore_content = format!("{}\n{}", "/foobar-1", "/foobar-2");
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
