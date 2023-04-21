@@ -40,13 +40,10 @@ pub(crate) fn exec(args: &ArgMatches) {
     let depth = args.get_one::<usize>("depth");
 
     // get ignore
-    let ignore = match args.get_many::<String>("ignore") {
-        Some(r) => {
-            let ignore = r.collect::<Vec<&String>>();
-            Some(ignore)
-        }
-        _ => None,
-    };
+    let ignore = args.get_many::<String>("ignore").and_then(|r| {
+        let ignore = r.collect::<Vec<&String>>();
+        Some(ignore)
+    });
 
     // set config file path
     let config_file = match args.get_one::<PathBuf>("config") {

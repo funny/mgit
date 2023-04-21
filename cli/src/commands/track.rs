@@ -32,13 +32,10 @@ pub(crate) fn exec(args: &ArgMatches) {
     }
 
     // get ignore
-    let ignore = match args.get_many::<String>("ignore") {
-        Some(r) => {
-            let ignore = r.collect::<Vec<&String>>();
-            Some(ignore)
-        }
-        _ => None,
-    };
+    let ignore = args.get_many::<String>("ignore").and_then(|r| {
+        let ignore = r.collect::<Vec<&String>>();
+        Some(ignore)
+    });
 
     // set config file path
     let config_file = match args.get_one::<PathBuf>("config") {
@@ -99,14 +96,11 @@ pub(crate) fn set_tracking_remote_branch(
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref.clone() {
-        RemoteRef::Commit(commit) => commit,
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+        RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
     let remote_desc = match remote_ref {
         RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
-        RemoteRef::Tag(tag) => tag,
-        RemoteRef::Branch(branch) => branch,
+        RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
 
     if toml_repo.commit.is_some() || toml_repo.tag.is_some() {
