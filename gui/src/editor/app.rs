@@ -70,15 +70,14 @@ impl App {
             Err(msg) => (false, msg),
         };
 
-        if is_dependencies_valid {
-            app.error_is_open = false;
-            app.load_setting();
-            app.exec_cmd(CommandType::Refresh);
-        } else {
+        if !is_dependencies_valid {
             app.error_is_open = true;
             app.error_window = ErrorWindow::new(err_msg);
+            return app;
         }
 
+        app.load_setting();
+        app.exec_cmd(CommandType::Refresh);
         app
     }
 
@@ -1218,6 +1217,11 @@ fn get_repo_states_thread(
 
                 let mut is_ok = true;
                 if let Err(e) = git::is_repository(&full_path) {
+                    repo_state.err_msg = e.to_string();
+                    is_ok = false;
+                }
+
+                if let Err(e) = git::has_authenticity(&full_path) {
                     repo_state.err_msg = e.to_string();
                     is_ok = false;
                 }
