@@ -14,6 +14,10 @@ pub fn is_repository(path: impl AsRef<Path>) -> Result<(), anyhow::Error> {
     Err(anyhow::anyhow!("repository not found!"))
 }
 
+pub fn has_authenticity(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
+    exec_cmd(path, "git", &["ls-remote"])
+}
+
 pub fn is_remote_ref_valid(
     path: impl AsRef<Path>,
     remote_ref: impl AsRef<str>,
