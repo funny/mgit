@@ -27,6 +27,7 @@ Commands:
   fetch     Fetch git repos
   clean     Clean unused git repos
   track     Track remote branch
+  ls-files  List files
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -79,6 +80,7 @@ Options
 - **--stash** 在 sync 前暂存本地改动
 - **--hard** 在 sync 前忽略所有本地改动
 - **--ignore** 忽略不想生成 config 文件的目录，可多次使用
+- **--depth** 设置 sync 的深度
 
 ### fetch
 
@@ -94,6 +96,7 @@ Options
 - **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
 - **--silent** 在 sync 中启用静默播报模式
 - **--ignore** 忽略不想生成 config 文件的目录，可多次使用
+- **--depth** 设置 fetch 深度
 
 ### clean
 
@@ -119,6 +122,18 @@ Options
 
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 - **--ignore** 忽略不想生成 config 文件的目录，可多次使用
+
+### ls-files
+
+```shell
+mgit ls-files [OPTIONS] [PATH]
+```
+
+通过配置文件，浏览本地文件
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
 
 ## 图形界面工具 (GUI)
 
