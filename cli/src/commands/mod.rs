@@ -4,6 +4,7 @@ use std::path::PathBuf;
 mod clean;
 mod fetch;
 mod init;
+mod ls_files;
 mod snapshot;
 mod sync;
 mod track;
@@ -126,7 +127,7 @@ enum Commands {
 
     /// Fetch git repos
     Fetch {
-        /// The init directory
+        /// The fetch directory
         path: Option<String>,
 
         /// Use specified config file
@@ -152,7 +153,7 @@ enum Commands {
 
     /// Clean unused git repos
     Clean {
-        /// The init directory
+        /// The clean directory
         path: Option<String>,
 
         /// Use specified config file
@@ -162,7 +163,7 @@ enum Commands {
 
     /// Track remote branch
     Track {
-        /// The init directory
+        /// The track directory
         path: Option<String>,
 
         /// Use specified config file
@@ -172,6 +173,16 @@ enum Commands {
         /// Ignore specified repositories for track
         #[arg(long)]
         ignore: Option<Vec<String>>,
+    },
+
+    /// List tree
+    LsFiles {
+        /// The list directory
+        path: Option<String>,
+
+        /// Use specified config file
+        #[arg(long, value_name = "FILE")]
+        config: Option<PathBuf>,
     },
 }
 
@@ -183,6 +194,7 @@ pub fn builtin_exec(cmd: &str) -> Option<fn(&ArgMatches)> {
         "sync" => sync::exec,
         "track" => track::exec,
         "clean" => clean::exec,
+        "ls-files" => ls_files::exec,
         _ => return None,
     };
     Some(f)

@@ -14,6 +14,7 @@ pub fn is_repository(path: impl AsRef<Path>) -> Result<(), anyhow::Error> {
     Err(anyhow::anyhow!("repository not found!"))
 }
 
+#[allow(dead_code)]
 pub fn has_authenticity(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
     exec_cmd(path, "git", &["ls-remote"])
 }
@@ -243,5 +244,10 @@ pub fn update_remote_url(
     url: impl AsRef<str>,
 ) -> Result<String, anyhow::Error> {
     let args = ["remote", "set-url", "origin", url.as_ref()];
+    exec_cmd(path, "git", &args)
+}
+
+pub fn ls_files(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
+    let args = ["ls-files", "-s"];
     exec_cmd(path, "git", &args)
 }
