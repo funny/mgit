@@ -1,6 +1,7 @@
-use crate::options::*;
 use clap::{command, Args, Parser, Subcommand};
 use std::path::PathBuf;
+
+use crate::options::*;
 
 #[derive(Parser)]
 #[command(

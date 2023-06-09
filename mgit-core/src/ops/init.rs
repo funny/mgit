@@ -1,10 +1,10 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use crate::ops::{snapshot_repo, SnapshotOptions};
-use crate::option::CoreOptions;
+use crate::ops::snapshot_repo;
+use crate::ops::{SnapshotOptions, SnapshotType};
+use crate::options::CoreOptions;
 
-use super::SnapshotType;
 use crate::utils::logger;
 
 pub trait InitOptions {

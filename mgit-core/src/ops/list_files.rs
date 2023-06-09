@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::repos::load_config;
-use crate::utils::{logger, path::norm_path};
+use crate::utils::logger;
+use crate::utils::path::norm_path;
 
 pub trait ListFilesOptions {
     fn new_list_files_options(

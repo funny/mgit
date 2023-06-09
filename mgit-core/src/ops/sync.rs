@@ -6,12 +6,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::core::git;
-use crate::core::repo::{cmp_local_remote, exclude_ignore, TomlRepo};
+use crate::core::repo::TomlRepo;
+use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
-use crate::ops::track::set_tracking_remote_branch;
-use crate::ops::{clean_repo, fetch, CleanOptions, RemoteRef, ResetType, StashMode};
-use crate::option::CoreOptions;
+use crate::ops::{clean_repo, exec_fetch_with_progress, set_tracking_remote_branch};
+use crate::ops::{CleanOptions, RemoteRef, ResetType, StashMode};
+
+use crate::options::CoreOptions;
 use crate::utils::logger;
 
 pub trait SyncOptions {
@@ -302,7 +304,7 @@ fn inner_exec_with_progress(
     }
 
     // fetch
-    fetch::exec_fetch_with_progress(input_path, &toml_repo, depth, prefix, progress_bar)?;
+    exec_fetch_with_progress(input_path, &toml_repo, depth, prefix, progress_bar)?;
 
     // priority: commit/tag/branch(default-branch)
     let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;

@@ -1,6 +1,6 @@
 use mgit::ops;
 use mgit::ops::{InitOptions, SnapshotOptions, SnapshotType};
-use mgit::option::CoreOptions;
+use mgit::options::CoreOptions;
 use std::env;
 use std::path::PathBuf;
 

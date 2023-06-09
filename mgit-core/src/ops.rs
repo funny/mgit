@@ -7,12 +7,12 @@ mod sync;
 mod track;
 
 pub use clean::{clean_repo, CleanOptions};
-pub use fetch::{fetch_repos, FetchOptions};
+pub use fetch::{exec_fetch_with_progress, fetch_repos, FetchOptions};
 pub use init::{init_repo, InitOptions};
 pub use list_files::{list_files, ListFilesOptions};
 pub use snapshot::{snapshot_repo, SnapshotOptions};
 pub use sync::{sync_repo, SyncOptions};
-pub use track::{track, TrackOptions};
+pub use track::{set_tracking_remote_branch, track, TrackOptions};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StashMode {
@@ -40,17 +40,3 @@ pub enum RemoteRef {
     Tag(String),
     Branch(String),
 }
-
-// pub fn builtin_exec(cmd: &str) -> Option<fn(&ArgMatches)> {
-//     let f = match cmd {
-//         "init" => init::exec,
-//         "snapshot" => snapshot::exec,
-//         "fetch" => fetch::exec,
-//         "sync" => sync::exec,
-//         "track" => track::exec,
-//         "clean" => clean::exec,
-//         "ls-files" => ls_files::exec,
-//         _ => return None,
-//     };
-//     Some(f)
-// }

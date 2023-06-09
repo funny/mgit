@@ -1,5 +1,6 @@
-use crate::utils::{cmd::exec_cmd, logger};
 use std::path::Path;
+
+use crate::utils::{cmd::exec_cmd, logger};
 
 pub fn is_repository(path: impl AsRef<Path>) -> Result<(), anyhow::Error> {
     if path.as_ref().join(".git").is_dir() {

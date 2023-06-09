@@ -2,7 +2,7 @@
 
 pub mod core;
 pub mod ops;
-pub mod option;
+pub mod options;
 pub mod utils;
 
 #[cfg(feature = "test-helper")]

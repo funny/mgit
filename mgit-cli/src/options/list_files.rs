@@ -1,6 +1,6 @@
 use clap::Args;
 use mgit::ops::ListFilesOptions as CoreListFilesOptions;
-use mgit::option::CoreOptions;
+use mgit::options::CoreOptions;
 
 use crate::cli::BaseOptions;
 

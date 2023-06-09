@@ -1,11 +1,12 @@
-use crate::core::git;
-use crate::core::repo::{exclude_ignore, TomlRepo};
-use crate::core::repos::load_config;
 use std::path::{Path, PathBuf};
 
-use crate::utils::logger;
+use crate::core::git;
+use crate::core::repo::exclude_ignore;
+use crate::core::repo::TomlRepo;
+use crate::core::repos::load_config;
 
-use super::RemoteRef;
+use crate::ops::RemoteRef;
+use crate::utils::logger;
 
 pub trait TrackOptions {
     fn new_track_options(
@@ -62,7 +63,7 @@ pub fn track(options: impl TrackOptions) {
     }
 }
 
-pub(crate) fn set_tracking_remote_branch(
+pub fn set_tracking_remote_branch(
     input_path: impl AsRef<Path>,
     toml_repo: &TomlRepo,
     default_branch: &Option<String>,

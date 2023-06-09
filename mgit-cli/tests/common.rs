@@ -1,8 +1,6 @@
 use assert_cmd::prelude::*;
-use std::{
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
 #[allow(unused)]
 pub mod failed_message {

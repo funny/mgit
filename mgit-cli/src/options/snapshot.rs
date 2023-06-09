@@ -1,6 +1,6 @@
 use clap::{ArgAction, Args};
 use mgit::ops::{SnapshotOptions as CoreSnapshotOptions, SnapshotType};
-use mgit::option::CoreOptions;
+use mgit::options::CoreOptions;
 
 use crate::cli::BaseOptions;
 

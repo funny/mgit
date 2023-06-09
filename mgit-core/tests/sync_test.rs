@@ -1,6 +1,6 @@
 use mgit::ops;
 use mgit::ops::SyncOptions;
-use mgit::option::CoreOptions;
+use mgit::options::CoreOptions;
 use std::{collections::HashSet, env, path::PathBuf};
 
 use crate::common::{exec_cmd, failed_message};
