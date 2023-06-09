@@ -142,6 +142,28 @@ Options
 - 根据项目保存用户配置
 - ...
 
+## 构建
+
+### 从源码编译
+
+#### Linux
+
+1. ##### 安装依赖
+
+```bash
+sudo apt update
+sudo apt-get install -y \
+    gcc g++ \
+    cmake pkg-config \
+    libgtk-3-dev
+```
+
+2. ##### 使用 cargo 构建
+
+```bash
+cargo build [--release]
+```
+
 ## 参考
 
 - [git2](https://github.com/rust-lang/git2-rs)

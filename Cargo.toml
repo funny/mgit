@@ -1,8 +1,9 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 members = [
-    "cli",
-    "gui",
+    "mgit-core",
+    "mgit-cli",
+    "mgit-gui",
 ]
 
 [profile.release]
