@@ -2,6 +2,7 @@ use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
+use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -13,12 +14,23 @@ use crate::core::repos::load_config;
 use crate::ops::{clean_repo, exec_fetch_with_progress, set_tracking_remote_branch};
 use crate::ops::{CleanOptions, RemoteRef, ResetType, StashMode};
 
-use crate::options::CoreOptions;
 use crate::utils::logger;
 
-pub trait SyncOptions {
-    #[allow(clippy::too_many_arguments)]
-    fn new_sync_options(
+pub struct SyncOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
+    pub thread_count: usize,
+    pub silent: bool,
+    pub depth: Option<usize>,
+    pub ignore: Option<Vec<String>>,
+    pub hard: bool,
+    pub stash: bool,
+    pub no_track: bool,
+    pub no_checkout: bool,
+}
+
+impl SyncOptions {
+    pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
         thread_count: Option<usize>,
@@ -29,31 +41,35 @@ pub trait SyncOptions {
         stash: Option<bool>,
         no_track: Option<bool>,
         no_checkout: Option<bool>,
-    ) -> Self;
-
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
-    fn thread_count(&self) -> usize;
-    fn silent(&self) -> bool;
-    fn depth(&self) -> Option<usize>;
-    fn ignore(&self) -> Option<&Vec<String>>;
-    fn hard(&self) -> bool;
-    fn stash(&self) -> bool;
-    fn no_track(&self) -> bool;
-    fn no_checkout(&self) -> bool;
+    ) -> Self {
+        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
+        Self {
+            path,
+            config_path,
+            thread_count: thread_count.unwrap_or(4),
+            silent: silent.unwrap_or(false),
+            depth,
+            ignore,
+            hard: hard.unwrap_or(false),
+            stash: stash.unwrap_or(false),
+            no_track: no_track.unwrap_or(false),
+            no_checkout: no_checkout.unwrap_or(false),
+        }
+    }
 }
 
-pub fn sync_repo(options: impl SyncOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
-    let thread_count = options.thread_count();
-    let hard = options.hard();
-    let stash = options.stash();
-    let silent = options.silent();
-    let no_track = options.no_track();
-    let no_checkout = options.no_checkout();
-    let depth = options.depth();
-    let ignore = options.ignore();
+pub fn sync_repo(options: SyncOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
+    let thread_count = options.thread_count;
+    let hard = options.hard;
+    let stash = options.stash;
+    let silent = options.silent;
+    let no_track = options.no_track;
+    let no_checkout = options.no_checkout;
+    let depth = options.depth.as_ref().map(|d| *d);
+    let ignore = options.ignore.as_ref();
 
     logger::command_start("sync repos", path);
     let stash_mode = match (stash, hard) {
@@ -79,7 +95,7 @@ pub fn sync_repo(options: impl SyncOptions) {
     // remove unused repositories when use '--config' option
     // also if input_path not exists, skip this process
     if stash_mode == StashMode::Hard && path.is_dir() {
-        clean_repo(CoreOptions::new_clean_options(
+        clean_repo(CleanOptions::new(
             Some(path.clone()),
             Some(config_path.clone()),
         ));

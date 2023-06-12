@@ -1,6 +1,6 @@
 use globset::GlobBuilder;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use walkdir::WalkDir;
 
 use crate::core::git;
@@ -11,27 +11,40 @@ use crate::ops::SnapshotType;
 use crate::utils::logger;
 use crate::utils::path::{display_path, norm_path};
 
-pub trait SnapshotOptions {
-    fn new_snapshot_options(
+pub struct SnapshotOptions {
+    path: PathBuf,
+    config_path: PathBuf,
+    force: bool,
+    snapshot_type: SnapshotType,
+    ignore: Option<Vec<String>>,
+}
+
+impl SnapshotOptions {
+    pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
         force: Option<bool>,
         snapshot_type: Option<SnapshotType>,
         ignore: Option<Vec<String>>,
-    ) -> Self;
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
-    fn force(&self) -> bool;
-    fn snapshot_type(&self) -> &SnapshotType;
-    fn ignore(&self) -> Option<&Vec<String>>;
+    ) -> Self {
+        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
+        Self {
+            path,
+            config_path,
+            force: force.unwrap_or(false),
+            snapshot_type: snapshot_type.unwrap_or(SnapshotType::Commit),
+            ignore,
+        }
+    }
 }
 
-pub fn snapshot_repo(options: impl SnapshotOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
-    let force = options.force();
-    let snapshot_type = options.snapshot_type();
-    let ignore = options.ignore();
+pub fn snapshot_repo(options: SnapshotOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
+    let force = options.force;
+    let snapshot_type = &options.snapshot_type;
+    let ignore = &options.ignore;
 
     // start taking snapshot repos
     logger::command_start("take snapshot", &path);

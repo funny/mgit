@@ -2,22 +2,28 @@ use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::repos::load_config;
+use crate::ops::CleanOptions;
 use crate::utils::logger;
 use crate::utils::path::norm_path;
 
-pub trait ListFilesOptions {
-    fn new_list_files_options(
-        path: Option<impl AsRef<Path>>,
-        config_path: Option<impl AsRef<Path>>,
-    ) -> Self;
-
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
+pub struct ListFilesOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
 }
 
-pub fn list_files(options: impl ListFilesOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
+impl ListFilesOptions {
+    pub fn new(path: Option<impl AsRef<Path>>, config_path: Option<impl AsRef<Path>>) -> Self {
+        let clean_options = CleanOptions::new(path, config_path);
+        Self {
+            path: clean_options.path,
+            config_path: clean_options.config_path,
+        }
+    }
+}
+
+pub fn list_files(options: ListFilesOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
 
     // if directory doesn't exist, return
     if !path.is_dir() {

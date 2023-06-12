@@ -1,6 +1,5 @@
 use mgit::ops;
 use mgit::ops::SyncOptions;
-use mgit::options::CoreOptions;
 use std::{collections::HashSet, env, path::PathBuf};
 
 use crate::common::{exec_cmd, failed_message};
@@ -48,7 +47,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -77,7 +76,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -144,7 +143,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -178,7 +177,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -243,7 +242,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -276,7 +275,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // excute sync
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -358,7 +357,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -393,7 +392,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --stash
 
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -460,7 +459,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -490,7 +489,7 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --hard
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -565,7 +564,7 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         Some(config_file.clone()),
         None,
@@ -646,7 +645,7 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         Some(config_file.clone()),
         None,
@@ -726,7 +725,7 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         Some(config_file.clone()),
         None,
@@ -845,7 +844,7 @@ branch = "master"
     assert!(input_path.is_dir());
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         Some(config_file.clone()),
         None,
@@ -929,7 +928,7 @@ tag = "v0.3.0"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1023,7 +1022,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1097,7 +1096,7 @@ tag = "v0.3.0"
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1126,7 +1125,7 @@ tag = "v0.3.0"
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout and track
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1215,7 +1214,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1308,7 +1307,7 @@ tag = "v0.3.0"
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // sync repositories, with checkout
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1337,7 +1336,7 @@ tag = "v0.3.0"
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout, track and hard
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1403,7 +1402,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1423,7 +1422,7 @@ branch = "master"
 
     // test checkout function
     // sync repositories, with checkout
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1507,7 +1506,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1599,7 +1598,7 @@ tag = "v0.3.0"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1616,7 +1615,7 @@ tag = "v0.3.0"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1686,7 +1685,7 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -1722,7 +1721,7 @@ branch = "master"
 "#;
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,

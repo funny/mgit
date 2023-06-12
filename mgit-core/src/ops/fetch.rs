@@ -1,9 +1,9 @@
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-
 use rayon::iter::ParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 
+use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
@@ -16,31 +16,44 @@ use crate::core::repos::load_config;
 use crate::ops::RemoteRef;
 use crate::utils::{cmd, logger};
 
-pub trait FetchOptions {
-    fn new_fetch_options(
+pub struct FetchOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
+    pub thread_count: usize,
+    pub silent: bool,
+    pub depth: Option<usize>,
+    pub ignore: Option<Vec<String>>,
+}
+
+impl FetchOptions {
+    pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
         thread: Option<usize>,
         silent: Option<bool>,
         depth: Option<usize>,
         ignore: Option<Vec<String>>,
-    ) -> Self;
-
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
-    fn thread_count(&self) -> usize;
-    fn silent(&self) -> bool;
-    fn depth(&self) -> Option<usize>;
-    fn ignore(&self) -> Option<&Vec<String>>;
+    ) -> Self {
+        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
+        Self {
+            path,
+            config_path,
+            thread_count: thread.unwrap_or(4),
+            silent: silent.unwrap_or(false),
+            depth,
+            ignore,
+        }
+    }
 }
 
-pub fn fetch_repos(options: impl FetchOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
-    let thread_count = options.thread_count();
-    let silent = options.silent();
-    let depth = options.depth();
-    let ignore = options.ignore();
+pub fn fetch_repos(options: FetchOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
+    let thread_count = options.thread_count;
+    let silent = options.silent;
+    let depth = options.depth.as_ref().copied();
+    let ignore = options.ignore.as_ref();
 
     // start fetching repos
     logger::command_start("fetch repos", path);

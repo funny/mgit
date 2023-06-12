@@ -1,3 +1,4 @@
+use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::core::git;
@@ -8,22 +9,32 @@ use crate::core::repos::load_config;
 use crate::ops::RemoteRef;
 use crate::utils::logger;
 
-pub trait TrackOptions {
-    fn new_track_options(
+pub struct TrackOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
+    pub ignore: Option<Vec<String>>,
+}
+
+impl TrackOptions {
+    pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
         ignore: Option<Vec<String>>,
-    ) -> Self;
-
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
-    fn ignore(&self) -> Option<&Vec<String>>;
+    ) -> Self {
+        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
+        Self {
+            path,
+            config_path,
+            ignore,
+        }
+    }
 }
 
-pub fn track(options: impl TrackOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
-    let ignore = options.ignore();
+pub fn track(options: TrackOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
+    let ignore = options.ignore.as_ref();
 
     // starting clean repos
     logger::new("Track status:");

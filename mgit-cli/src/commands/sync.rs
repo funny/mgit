@@ -1,13 +1,15 @@
 use clap::{ArgAction, Args};
-use mgit::ops::SyncOptions as CoreSyncOptions;
-use mgit::options::CoreOptions;
-
-use crate::cli::BaseOptions;
+use mgit::ops::SyncOptions;
+use std::path::PathBuf;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
-pub(crate) struct SyncOptions {
-    #[clap(flatten)]
-    base: BaseOptions,
+pub(crate) struct SyncCommand {
+    /// The work directory
+    pub path: Option<PathBuf>,
+
+    /// Use specified config file
+    #[arg(long, value_name = "FILE")]
+    pub config: Option<PathBuf>,
 
     /// Stash local changes after sync
     #[arg(long, action = ArgAction::SetTrue)]
@@ -42,11 +44,11 @@ pub(crate) struct SyncOptions {
     ignore: Option<Vec<String>>,
 }
 
-impl From<SyncOptions> for CoreOptions {
-    fn from(value: SyncOptions) -> Self {
-        CoreOptions::new_sync_options(
-            value.base.path,
-            value.base.config,
+impl From<SyncCommand> for SyncOptions {
+    fn from(value: SyncCommand) -> Self {
+        SyncOptions::new(
+            value.path,
+            value.config,
             Some(value.thread),
             Some(value.silent),
             value.depth,

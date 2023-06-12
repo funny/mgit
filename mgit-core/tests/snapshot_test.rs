@@ -1,6 +1,5 @@
 use mgit::ops;
 use mgit::ops::{InitOptions, SnapshotOptions, SnapshotType};
-use mgit::options::CoreOptions;
 use std::env;
 use std::path::PathBuf;
 
@@ -41,7 +40,7 @@ fn cli_init_simple() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(CoreOptions::new_init_options(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None));
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -101,7 +100,7 @@ fn cli_init_force1() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(CoreOptions::new_init_options(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None));
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -178,7 +177,7 @@ fn cli_init_force2() {
     }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(CoreOptions::new_init_options(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None));
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -246,7 +245,7 @@ fn cli_snapshot_simple() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::snapshot_repo(CoreOptions::new_snapshot_options(
+    ops::snapshot_repo(SnapshotOptions::new(
         Some(path.clone()),
         None::<PathBuf>,
         None,
@@ -304,7 +303,7 @@ fn cli_snapshot_branch() {
     }
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::snapshot_repo(CoreOptions::new_snapshot_options(
+    ops::snapshot_repo(SnapshotOptions::new(
         Some(path.clone()),
         None::<PathBuf>,
         None,
@@ -355,7 +354,7 @@ fn cli_snapshot_force() {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    ops::snapshot_repo(CoreOptions::new_snapshot_options(
+    ops::snapshot_repo(SnapshotOptions::new(
         Some(path.clone()),
         Some(config_file.clone()),
         Some(true),
@@ -431,7 +430,7 @@ fn cli_snapshot_ignore() {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    ops::snapshot_repo(CoreOptions::new_snapshot_options(
+    ops::snapshot_repo(SnapshotOptions::new(
         Some(path.clone()),
         Some(config_file.clone()),
         Some(true),

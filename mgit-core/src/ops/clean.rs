@@ -1,22 +1,27 @@
 use globset::GlobBuilder;
+use std::env;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::core::repos::load_config;
 use crate::utils::logger;
 
-pub trait CleanOptions {
-    fn new_clean_options(
-        path: Option<impl AsRef<Path>>,
-        config_path: Option<impl AsRef<Path>>,
-    ) -> Self;
-    fn path(&self) -> &PathBuf;
-    fn config_path(&self) -> &PathBuf;
+pub struct CleanOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
 }
 
-pub fn clean_repo(options: impl CleanOptions) {
-    let path = options.path();
-    let config_path = options.config_path();
+impl CleanOptions {
+    pub fn new(path: Option<impl AsRef<Path>>, config_path: Option<impl AsRef<Path>>) -> Self {
+        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
+        Self { path, config_path }
+    }
+}
+
+pub fn clean_repo(options: CleanOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
 
     // starting clean repos
     logger::new("Clean Status:");

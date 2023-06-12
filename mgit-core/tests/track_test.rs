@@ -1,6 +1,5 @@
 use mgit::ops;
 use mgit::ops::{SyncOptions, TrackOptions};
-use mgit::options::CoreOptions;
 use std::env;
 use std::path::PathBuf;
 
@@ -54,7 +53,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -97,7 +96,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    ops::track(CoreOptions::new_track_options(
+    ops::track(TrackOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -173,7 +172,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    ops::sync_repo(CoreOptions::new_sync_options(
+    ops::sync_repo(SyncOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         None,
@@ -216,7 +215,7 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    ops::track(CoreOptions::new_track_options(
+    ops::track(TrackOptions::new(
         Some(input_path.clone()),
         None::<PathBuf>,
         Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),

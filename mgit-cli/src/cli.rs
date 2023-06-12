@@ -1,7 +1,6 @@
-use clap::{command, Args, Parser, Subcommand};
-use std::path::PathBuf;
+use clap::{command, Parser, Subcommand};
 
-use crate::options::*;
+use crate::commands::*;
 
 #[derive(Parser)]
 #[command(
@@ -20,34 +19,24 @@ pub(crate) struct Cli {
 #[derive(Subcommand, Debug)]
 pub(crate) enum Commands {
     /// Init git repos
-    Init(InitOptions),
+    Init(InitCommand),
 
     /// Fetch git repos
-    Fetch(FetchOptions),
+    Fetch(FetchCommand),
 
     /// Snapshot git repos
-    Snapshot(SnapshotOptions),
+    Snapshot(SnapshotCommand),
 
     /// Sync git repos
-    Sync(SyncOptions),
+    Sync(SyncCommand),
 
     /// Clean unused git repos
-    Clean(CleanOptions),
+    Clean(CleanCommand),
 
     /// List tree files
     #[command(name = "ls-files")]
-    ListFiles(ListFilesOptions),
+    ListFiles(ListFilesCommand),
 
     /// Track remote branch
-    Track(TrackOptions),
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
-pub(crate) struct BaseOptions {
-    /// The work directory
-    pub path: Option<PathBuf>,
-
-    /// Use specified config file
-    #[arg(long, value_name = "FILE")]
-    pub config: Option<PathBuf>,
+    Track(TrackCommand),
 }

@@ -1,6 +1,5 @@
 use mgit::ops;
 use mgit::ops::{FetchOptions, InitOptions};
-use mgit::options::CoreOptions;
 use std::env;
 use std::path::PathBuf;
 
@@ -48,9 +47,9 @@ fn cli_fetch_simple() {
     }
 
     // init command
-    ops::init_repo(CoreOptions::new_init_options(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None));
     // fetch command
-    ops::fetch_repos(CoreOptions::new_fetch_options(
+    ops::fetch_repos(FetchOptions::new(
         Some(path.clone()),
         None::<PathBuf>,
         None,
@@ -116,7 +115,7 @@ remote = "https://github.com/funny/mgit.git"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // fetch command
-    ops::fetch_repos(CoreOptions::new_fetch_options(
+    ops::fetch_repos(FetchOptions::new(
         Some(path.clone()),
         None::<PathBuf>,
         None,

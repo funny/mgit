@@ -1,13 +1,15 @@
 use clap::{ArgAction, Args};
-use mgit::ops::FetchOptions as CoreFetchOptions;
-use mgit::options::CoreOptions;
-
-use crate::cli::BaseOptions;
+use mgit::ops::FetchOptions;
+use std::path::PathBuf;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
-pub(crate) struct FetchOptions {
-    #[clap(flatten)]
-    base: BaseOptions,
+pub(crate) struct FetchCommand {
+    /// The work directory
+    pub path: Option<PathBuf>,
+
+    /// Use specified config file
+    #[arg(long, value_name = "FILE")]
+    pub config: Option<PathBuf>,
 
     /// Sets the number of threads to be used
     #[arg(short, long, default_value_t = 4, value_name = "NUMBER")]
@@ -26,11 +28,11 @@ pub(crate) struct FetchOptions {
     ignore: Option<Vec<String>>,
 }
 
-impl From<FetchOptions> for CoreOptions {
-    fn from(value: FetchOptions) -> Self {
-        CoreOptions::new_fetch_options(
-            value.base.path,
-            value.base.config,
+impl From<FetchCommand> for FetchOptions {
+    fn from(value: FetchCommand) -> Self {
+        FetchOptions::new(
+            value.path,
+            value.config,
             Some(value.thread),
             Some(value.silent),
             value.depth,

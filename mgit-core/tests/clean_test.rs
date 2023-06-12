@@ -1,6 +1,5 @@
 use mgit::ops;
 use mgit::ops::CleanOptions;
-use mgit::options::CoreOptions;
 use std::env;
 use std::path::PathBuf;
 
@@ -109,10 +108,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CoreOptions::new_clean_options(
-        Some(path.clone()),
-        None::<PathBuf>,
-    ));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -205,10 +201,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CoreOptions::new_clean_options(
-        Some(path.clone()),
-        None::<PathBuf>,
-    ));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -298,10 +291,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     let config_path = &path.join(".gitrepos");
-    ops::clean_repo(CoreOptions::new_clean_options(
-        Some(path.clone()),
-        Some(config_path),
-    ));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
