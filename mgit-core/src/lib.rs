@@ -2,8 +2,4 @@
 
 pub mod core;
 pub mod ops;
-pub mod options;
 pub mod utils;
-
-#[cfg(feature = "test-helper")]
-pub mod tests;

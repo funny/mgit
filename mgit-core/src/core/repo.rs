@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
-use crate::ops::RemoteRef;
+use crate::core::git::RemoteRef;
 use crate::utils::{logger, path::display_path};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

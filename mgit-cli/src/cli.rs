@@ -4,6 +4,7 @@ use crate::commands::*;
 
 #[derive(Parser)]
 #[command(
+    name = "mgit",
     author,
     version,
     about,

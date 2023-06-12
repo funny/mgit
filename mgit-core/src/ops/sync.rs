@@ -7,12 +7,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::core::git;
+use crate::core::git::{RemoteRef, ResetType, StashMode};
 use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
+use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch_with_progress, set_tracking_remote_branch};
-use crate::ops::{CleanOptions, RemoteRef, ResetType, StashMode};
 
 use crate::utils::logger;
 

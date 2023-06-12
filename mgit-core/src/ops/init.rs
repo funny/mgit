@@ -1,9 +1,10 @@
+use crate::ops::snapshot::SnapshotType;
 use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 
 use crate::ops::snapshot_repo;
-use crate::ops::{SnapshotOptions, SnapshotType};
+use crate::ops::SnapshotOptions;
 
 use crate::utils::logger;
 

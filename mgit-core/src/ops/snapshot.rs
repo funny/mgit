@@ -7,9 +7,14 @@ use crate::core::git;
 use crate::core::repo::TomlRepo;
 use crate::core::repos::TomlConfig;
 
-use crate::ops::SnapshotType;
 use crate::utils::logger;
 use crate::utils::path::{display_path, norm_path};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SnapshotType {
+    Commit,
+    Branch,
+}
 
 pub struct SnapshotOptions {
     path: PathBuf,

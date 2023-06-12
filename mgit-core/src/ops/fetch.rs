@@ -9,11 +9,11 @@ use std::process::Command;
 use std::sync::Arc;
 
 use crate::core::git;
+use crate::core::git::RemoteRef;
 use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
-use crate::ops::RemoteRef;
 use crate::utils::{cmd, logger};
 
 pub struct FetchOptions {

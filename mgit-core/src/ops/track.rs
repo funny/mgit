@@ -2,11 +2,11 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::core::git;
+use crate::core::git::RemoteRef;
 use crate::core::repo::exclude_ignore;
 use crate::core::repo::TomlRepo;
 use crate::core::repos::load_config;
 
-use crate::ops::RemoteRef;
 use crate::utils::logger;
 
 pub struct TrackOptions {
