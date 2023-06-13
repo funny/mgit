@@ -3,7 +3,7 @@ use mgit::ops::{SyncOptions, TrackOptions};
 use std::env;
 use std::path::PathBuf;
 
-use crate::common::{exec_cmd, failed_message};
+use crate::common::{exec_cmd, failed_message, DEFAULT_BRANCH};
 
 mod common;
 
@@ -75,17 +75,17 @@ branch= "character_bert"
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
@@ -104,20 +104,20 @@ branch= "character_bert"
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch = exec_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/master");
 
     // foobar-1: commits/90296ef untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_1_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/attention_highlight");
 
     // foobar-2: tags/1.0.3 untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");
@@ -194,17 +194,17 @@ branch= "character_bert"
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
@@ -223,17 +223,17 @@ branch= "character_bert"
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: tags/1.0.3 untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");

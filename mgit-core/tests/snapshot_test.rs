@@ -28,16 +28,6 @@ fn cli_init_simple() {
 
     create_repos_tree1(&path);
 
-    for repo_path in ["foobar-1", "foobar-2"] {
-        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"]).unwrap();
-        exec_cmd(
-            &path.join(repo_path),
-            "git",
-            &["branch", "-u", "origin/master"],
-        )
-        .expect(failed_message::GIT_BRANCH);
-    }
-
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
     ops::init_repo(InitOptions::new(Some(path.clone()), None));
@@ -63,7 +53,7 @@ branch = "master"
     assert_eq!(real_result.trim(), expect_result.trim());
 
     // clean-up
-    std::fs::remove_dir_all(&path).unwrap();
+    // std::fs::remove_dir_all(&path).unwrap();
 }
 
 /// 测试内容：
@@ -87,20 +77,9 @@ fn cli_init_force1() {
 
     create_repos_tree2(&path);
 
-    for repo_path in ["", "foobar-1", "foobar-2"] {
-        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
-            .expect(failed_message::GIT_FETCH);
-        exec_cmd(
-            &path.join(repo_path),
-            "git",
-            &["branch", "-u", "origin/master"],
-        )
-        .expect(failed_message::GIT_BRANCH);
-    }
-
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), Some(true)));
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -156,25 +135,7 @@ fn cli_init_force2() {
     std::fs::create_dir_all(path.clone()).unwrap();
 
     create_repos_tree3(&path);
-    let repo_paths = [
-        "",
-        "foobar-1",
-        "foobar-1/foobar-1-1",
-        "foobar-1/foobar-1-2",
-        "foobar-2",
-        "foobar-2/foobar-2-1",
-        "foobar-2/foobar-2-2",
-    ];
-    for repo_path in repo_paths {
-        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
-            .expect(failed_message::GIT_FETCH);
-        exec_cmd(
-            &path.join(repo_path),
-            "git",
-            &["branch", "-u", "origin/master"],
-        )
-        .expect(failed_message::GIT_BRANCH);
-    }
+
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
     ops::init_repo(InitOptions::new(Some(path.clone()), None));
@@ -291,16 +252,7 @@ fn cli_snapshot_branch() {
         .join("test_snapshot_branch");
 
     create_repos_tree1(&path);
-    for repo_path in ["foobar-1", "foobar-2"] {
-        exec_cmd(&path.join(repo_path), "git", &["fetch", "--all"])
-            .expect(failed_message::GIT_FETCH);
-        exec_cmd(
-            &path.join(repo_path),
-            "git",
-            &["branch", "-u", "origin/master"],
-        )
-        .expect(failed_message::GIT_BRANCH);
-    }
+
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
     ops::snapshot_repo(SnapshotOptions::new(
@@ -474,12 +426,12 @@ commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e"
 
 pub fn create_repos_tree1(path: &PathBuf) {
     if path.exists() {
-        std::fs::remove_dir_all(path).unwrap();
+        let _ = std::fs::remove_dir_all(path).unwrap();
     }
     std::fs::create_dir_all(path.clone()).unwrap();
 
     let remote = "https://gitee.com/ForthEspada/CS-Books.git";
-
+    let commit = "8d90314117b4cb86abb6c4d55130437c6d87a30d";
     let repo_names = ["foobar-1", "foobar-2"];
 
     for idx in 0..repo_names.len() {
@@ -488,33 +440,30 @@ pub fn create_repos_tree1(path: &PathBuf) {
 
         // create local git repositoris
         exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
-
-        // add remote
         exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
             .expect(failed_message::GIT_ADD_REMOTE);
-
-        std::fs::write(
-            dir.join(".git/refs/heads/master"),
-            "8d90314117b4cb86abb6c4d55130437c6d87a30d",
-        )
-        .unwrap();
+        exec_cmd(&dir, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+        exec_cmd(&dir, "git", &["switch", "-c", "master", commit])
+            .expect(failed_message::GIT_CHECKOUT);
+        exec_cmd(&dir, "git", &["branch", "-u", "origin/master"])
+            .expect(failed_message::GIT_BRANCH);
     }
 }
 
 pub fn create_repos_tree2(path: &PathBuf) {
     create_repos_tree1(path);
 
-    // set root git init
-    exec_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
-    let root_remote = "https://gitee.com/ForthEspada/CS-Books.git";
-    exec_cmd(path, "git", &["remote", "add", "origin", root_remote])
-        .expect(failed_message::GIT_ADD_REMOTE);
+    // create local git repositoris
+    let remote = "https://gitee.com/ForthEspada/CS-Books.git";
+    let commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e";
 
-    std::fs::write(
-        path.join(".git/refs/heads/master"),
-        "1e835f92604ee5d0b37fc32ea7694d57ff19815e",
-    )
-    .unwrap();
+    exec_cmd(&path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(&path, "git", &["remote", "add", "origin", remote])
+        .expect(failed_message::GIT_ADD_REMOTE);
+    exec_cmd(&path, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+    exec_cmd(&path, "git", &["switch", "-c", "master", commit])
+        .expect(failed_message::GIT_CHECKOUT);
+    exec_cmd(&path, "git", &["branch", "-u", "origin/master"]).expect(failed_message::GIT_BRANCH);
 }
 
 pub fn create_repos_tree3(path: &PathBuf) {
@@ -522,6 +471,7 @@ pub fn create_repos_tree3(path: &PathBuf) {
     create_repos_tree1(path);
 
     let remote = "https://gitee.com/ForthEspada/CS-Books.git";
+    let commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e";
 
     // get all dir
     for it in std::fs::read_dir(path).unwrap() {
@@ -548,26 +498,22 @@ pub fn create_repos_tree3(path: &PathBuf) {
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
             // create local git repositoris
             exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
-
-            // add remote
             exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
                 .expect(failed_message::GIT_ADD_REMOTE);
-
-            std::fs::write(
-                dir.join(".git/refs/heads/master"),
-                "1e835f92604ee5d0b37fc32ea7694d57ff19815e",
-            )
-            .unwrap();
+            exec_cmd(&dir, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+            exec_cmd(&dir, "git", &["switch", "-c", "master", commit])
+                .expect(failed_message::GIT_CHECKOUT);
+            exec_cmd(&dir, "git", &["branch", "-u", "origin/master"])
+                .expect(failed_message::GIT_BRANCH);
         }
     }
 
     // set root git init
-    exec_cmd(path, "git", &["init"]).expect(failed_message::GIT_INIT);
-    exec_cmd(path, "git", &["remote", "add", "origin", remote])
+    exec_cmd(&path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(&path, "git", &["remote", "add", "origin", remote])
         .expect(failed_message::GIT_ADD_REMOTE);
-    std::fs::write(
-        path.join(".git/refs/heads/master"),
-        "1e835f92604ee5d0b37fc32ea7694d57ff19815e",
-    )
-    .unwrap();
+    exec_cmd(&path, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+    exec_cmd(&path, "git", &["switch", "-c", "master", commit])
+        .expect(failed_message::GIT_CHECKOUT);
+    exec_cmd(&path, "git", &["branch", "-u", "origin/master"]).expect(failed_message::GIT_BRANCH);
 }

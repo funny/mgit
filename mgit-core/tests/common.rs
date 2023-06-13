@@ -1,6 +1,14 @@
 use std::{path::PathBuf, process::Stdio};
 
 #[allow(unused)]
+#[cfg(target_os = "macos")]
+pub const DEFAULT_BRANCH: &str = "main";
+
+#[allow(unused)]
+#[cfg(not(target_os = "macos"))]
+pub const DEFAULT_BRANCH: &str = "master";
+
+#[allow(unused)]
 pub mod failed_message {
     pub const GIT_INIT: &str = "git init failed";
     pub const GIT_ADD_REMOTE: &str = "git add remote failed";

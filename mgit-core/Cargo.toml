@@ -3,8 +3,6 @@ name = "mgit-core"
 version = "1.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 name = "mgit"
 
@@ -15,7 +13,7 @@ anyhow = "1.0.65"
 globset = "0.4.9"
 serde = { version = "1.0.145", features = ["derive"] }
 toml = "0.5.9"
-toml_edit = { version = "0.14.4", features = ["serde", "easy"]}
+toml_edit = { version = "0.14.4", features = ["serde", "easy"] }
 walkdir = "2.3.2"
 assert_cmd = "2.0.4"
 indicatif = "0.17.2"

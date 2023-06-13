@@ -2,7 +2,7 @@ use mgit::ops;
 use mgit::ops::SyncOptions;
 use std::{collections::HashSet, env, path::PathBuf};
 
-use crate::common::{exec_cmd, failed_message};
+use crate::common::{exec_cmd, failed_message, DEFAULT_BRANCH};
 
 mod common;
 
@@ -1045,17 +1045,17 @@ branch = "master"
     // check initial state
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = r#"
@@ -1237,17 +1237,17 @@ branch = "master"
     // check initial state
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // ignore and .gitrepos, for confliction test
