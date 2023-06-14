@@ -3,11 +3,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, path::Path};
 
-use crate::{
-    commands::RemoteRef,
-    git,
-    utils::{logger, path::display_path},
-};
+use crate::core::git;
+use crate::core::git::RemoteRef;
+use crate::utils::{logger, path::display_path};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]

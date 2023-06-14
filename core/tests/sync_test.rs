@@ -1,5 +1,8 @@
-use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
+use mgit::ops;
+use mgit::ops::SyncOptions;
 use std::{collections::HashSet, env, path::PathBuf};
+
+use crate::common::{exec_cmd, failed_message, DEFAULT_BRANCH};
 
 mod common;
 
@@ -17,7 +20,9 @@ mod common;
 fn cli_sync_simple() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_simple");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_simple");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -42,8 +47,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
-
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        Some(true),
+        None,
+    ));
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
@@ -61,7 +76,18 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+    ));
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -90,7 +116,9 @@ branch = "master"
 fn cli_sync_simple_tracking_invalid() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_simple_tracking_invalid");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_simple_tracking_invalid");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -115,7 +143,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -138,7 +177,18 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--no-checkout"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+    ));
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -165,7 +215,9 @@ branch = "master"
 fn cli_sync_stash() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_stash");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_stash");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -190,7 +242,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -212,7 +275,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // excute sync
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        Some(true),
+    ));
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -256,7 +330,9 @@ branch = "master"
 fn cli_sync_stash_tracking_invalid() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_stash_tracking_invalid");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_stash_tracking_invalid");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -281,7 +357,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -305,7 +392,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --stash
 
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--stash", "--no-checkout"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+        None,
+    ));
 
     // compaire changes after sync
     // nothing will be stash
@@ -334,7 +432,9 @@ branch = "master"
 fn cli_sync_hard() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_hard");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_hard");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -359,7 +459,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -378,7 +489,18 @@ branch = "master"
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --hard
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--no-checkout"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        Some(true),
+    ));
 
     // ignore "foobar" folder
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
@@ -411,7 +533,9 @@ branch = "master"
 fn cli_sync_simple_invalid_path() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_simple_invalid_path");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_simple_invalid_path");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -440,15 +564,18 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "sync",
-            input_path.to_str().unwrap(),
-            "--config",
-            config_file.to_str().unwrap(),
-        ],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        Some(config_file.clone()),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     assert!(input_path.is_dir());
 
@@ -487,7 +614,9 @@ branch = "master"
 fn cli_sync_stash_invalid_path() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_stash_invalid_path");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_stash_invalid_path");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -516,16 +645,19 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "sync",
-            input_path.to_str().unwrap(),
-            "--config",
-            config_file.to_str().unwrap(),
-            "--stash",
-        ],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        Some(config_file.clone()),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ));
+
     assert!(input_path.is_dir());
 
     // ignore "foobar" folder
@@ -562,7 +694,9 @@ branch = "master"
 fn cli_sync_hard_invalid_path() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_hard_invalid_path");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_hard_invalid_path");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -591,16 +725,19 @@ branch = "master"
     assert_eq!(false, input_path.is_dir());
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "sync",
-            input_path.to_str().unwrap(),
-            "--config",
-            config_file.to_str().unwrap(),
-            "--hard",
-        ],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        Some(config_file.clone()),
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
+
     assert!(input_path.is_dir());
 
     // ignore "foobar" folder
@@ -668,7 +805,9 @@ fn get_local_changes(input_path: &PathBuf) -> HashSet<String> {
 fn cli_sync_simple_repo_invalid() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_simple_repo_invalid");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_simple_repo_invalid");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -705,15 +844,18 @@ branch = "master"
     assert!(input_path.is_dir());
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "sync",
-            input_path.to_str().unwrap(),
-            "--config",
-            config_file.to_str().unwrap(),
-        ],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        Some(config_file.clone()),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     assert!(input_path.is_dir());
 
@@ -754,7 +896,9 @@ branch = "master"
 fn cli_sync_checkout_invalid_path() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_checkout_invalid_path");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_checkout_invalid_path");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -784,7 +928,18 @@ tag = "v0.3.0"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -835,7 +990,9 @@ tag = "v0.3.0"
 fn cli_sync_checkout_symple() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_checkout_symple");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_checkout_symple");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -865,10 +1022,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &["sync", &input_path, "--no-checkout", "--no-track"],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+    ));
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -880,17 +1045,17 @@ branch = "master"
     // check initial state
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = r#"
@@ -931,7 +1096,18 @@ tag = "v0.3.0"
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--no-track"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+    ));
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -949,7 +1125,18 @@ tag = "v0.3.0"
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout and track
-    exec_cargo_cmd("mgit", &["sync", &input_path]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     // test checkout and track function
     // root: master → origin/master
@@ -995,7 +1182,9 @@ tag = "v0.3.0"
 fn cli_sync_checkout_with_conflict() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_checkout_with_conflict");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_checkout_with_conflict");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -1025,10 +1214,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &["sync", &input_path, "--no-checkout", "--no-track"],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+    ));
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -1040,17 +1237,17 @@ branch = "master"
     // check initial state
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // ignore and .gitrepos, for confliction test
@@ -1110,7 +1307,18 @@ tag = "v0.3.0"
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // sync repositories, with checkout
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--no-track"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+    ));
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -1128,7 +1336,18 @@ tag = "v0.3.0"
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     // sync repositories, with checkout, track and hard
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // root: master → origin/master
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -1161,7 +1380,9 @@ tag = "v0.3.0"
 fn cli_sync_checkout_symple2() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_checkout_symple2");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_checkout_symple2");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -1181,10 +1402,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &["sync", &input_path, "--no-checkout", "--no-track"],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+    ));
 
     exec_cmd(&path, "git", &["reset", "--hard", "v0.3.0"]).expect(failed_message::GIT_RESET);
 
@@ -1193,7 +1422,18 @@ branch = "master"
 
     // test checkout function
     // sync repositories, with checkout
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--stash"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+    ));
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&path);
@@ -1266,19 +1506,22 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "sync",
-            &input_path,
-            "--ignore",
-            ".",
-            "--ignore",
-            "foobar-1",
-            "--ignore",
-            "foobar-2/foobar-2-1",
-        ],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        Some(
+            [".", "foobar-1", "foobar-2/foobar-2-1"]
+                .map(|x| x.to_string())
+                .to_vec(),
+        ),
+        None,
+        None,
+        None,
+        None,
+    ));
 
     let root_path = path.join(".git");
     let foobar_1_path = path.join("foobar-1/.git");
@@ -1323,7 +1566,9 @@ pub fn check_git_author_identity(path: &PathBuf) {
 fn cli_sync_with_depth() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_sync_with_depth");
+        .join("target")
+        .join("tmp")
+        .join("test_sync_with_depth");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -1353,13 +1598,35 @@ tag = "v0.3.0"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--depth", "1"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        Some(1),
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard", "--depth", "1"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        Some(1),
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     // get root repo commit count
     if let Ok(output) = exec_cmd(&path, "git", &["rev-list", "--all", "--count"]) {
@@ -1418,7 +1685,18 @@ branch = "master"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
 
     let repo_paths = ["", "foobar"];
     for repo_path in repo_paths {
@@ -1443,7 +1721,18 @@ branch = "master"
 "#;
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    exec_cargo_cmd("mgit", &["sync", &input_path, "--hard"]);
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        None,
+        None,
+        None,
+    ));
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
         let args = ["config", "--get", "remote.origin.url"];

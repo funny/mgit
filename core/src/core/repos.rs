@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
-use super::repo::TomlRepo;
+use crate::core::repo::TomlRepo;
 
 /// this type is used to deserialize `.gitrepos` files.
 #[derive(Serialize, Deserialize, Debug)]

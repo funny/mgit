@@ -1,5 +1,9 @@
-use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
+use mgit::ops;
+use mgit::ops::{FetchOptions, InitOptions};
 use std::env;
+use std::path::PathBuf;
+
+use crate::common::{exec_cmd, failed_message};
 
 mod common;
 
@@ -17,8 +21,9 @@ mod common;
 fn cli_fetch_simple() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_fetch_simple");
-    let input_path = path.to_str().unwrap();
+        .join("target")
+        .join("tmp")
+        .join("test_fetch_simple");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -42,9 +47,16 @@ fn cli_fetch_simple() {
     }
 
     // init command
-    exec_cargo_cmd("mgit", &["init", &input_path]);
+    ops::init_repo(InitOptions::new(Some(path.clone()), None));
     // fetch command
-    exec_cargo_cmd("mgit", &["fetch", &input_path]);
+    ops::fetch_repos(FetchOptions::new(
+        Some(path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
@@ -61,8 +73,9 @@ fn cli_fetch_simple() {
 fn cli_fetch_new_remote_url() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/cli_fetch_new_remote_url");
-    let input_path = path.to_str().unwrap();
+        .join("target")
+        .join("tmp")
+        .join("cli_fetch_new_remote_url");
 
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
@@ -102,7 +115,14 @@ remote = "https://github.com/funny/mgit.git"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // fetch command
-    exec_cargo_cmd("mgit", &["fetch", &input_path]);
+    ops::fetch_repos(FetchOptions::new(
+        Some(path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+    ));
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);

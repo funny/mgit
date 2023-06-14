@@ -5,3 +5,4 @@ target
 cli/target
 Cargo.lock
 
+.idea

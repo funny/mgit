@@ -1,8 +1,12 @@
-use assert_cmd::prelude::*;
-use std::{
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::{path::PathBuf, process::Stdio};
+
+#[allow(unused)]
+#[cfg(target_os = "macos")]
+pub const DEFAULT_BRANCH: &str = "main";
+
+#[allow(unused)]
+#[cfg(not(target_os = "macos"))]
+pub const DEFAULT_BRANCH: &str = "master";
 
 #[allow(unused)]
 pub mod failed_message {
@@ -37,12 +41,4 @@ pub fn exec_cmd(path: &PathBuf, cmd: &str, args: &[&str]) -> Result<String, anyh
         false => Err(anyhow::anyhow!(stderr)),
         true => Ok(stdout),
     }
-}
-
-pub fn exec_cargo_cmd(cmd: &str, args: &[&str]) {
-    Command::cargo_bin(cmd)
-        .unwrap()
-        .args(args)
-        .assert()
-        .success();
 }

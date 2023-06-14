@@ -1,4 +1,5 @@
 use console::Style;
+use log::{error, info};
 use std::path::Path;
 
 use crate::utils::path::display_path;
@@ -11,12 +12,12 @@ pub fn get_terminal_width() -> usize {
 }
 
 pub fn new(str: impl AsRef<str>) {
-    println!("{}", str.as_ref());
+    info!("{}", str.as_ref());
 }
 
 pub fn dir_not_found(path: impl AsRef<Path>) {
     let magenta_bold = Style::new().magenta().bold();
-    println!(
+    info!(
         "Directory {} not found!",
         magenta_bold.apply_to(path.as_ref().display())
     );
@@ -24,7 +25,7 @@ pub fn dir_not_found(path: impl AsRef<Path>) {
 
 pub fn dir_already_inited(path: impl AsRef<Path>) {
     let magenta_bold = Style::new().magenta().bold();
-    println!(
+    info!(
         "{} already inited, try {} instead!",
         path.as_ref().display(),
         magenta_bold.apply_to("--force")
@@ -33,12 +34,12 @@ pub fn dir_already_inited(path: impl AsRef<Path>) {
 
 pub fn update_config_succ() {
     let magenta_bold = Style::new().magenta().bold();
-    println!("{} update", magenta_bold.apply_to(".gitrepos"));
+    info!("{} update", magenta_bold.apply_to(".gitrepos"));
 }
 
 pub fn config_file_not_found() {
     let magenta_bold = Style::new().magenta().bold();
-    println!(
+    info!(
         "{} not found, try {} instead!",
         magenta_bold.apply_to(".gitrepos"),
         magenta_bold.apply_to("init")
@@ -46,7 +47,7 @@ pub fn config_file_not_found() {
 }
 
 pub fn remvoe_file_failed(path: impl AsRef<Path>, err: anyhow::Error) {
-    println!(
+    info!(
         "remove {} files error: {}",
         display_path(path.as_ref().to_str().unwrap()),
         err.to_string()
@@ -55,7 +56,7 @@ pub fn remvoe_file_failed(path: impl AsRef<Path>, err: anyhow::Error) {
 
 pub fn remvoe_file_succ(path: impl AsRef<Path>) {
     let magenta_bold = Style::new().magenta().bold();
-    println!(
+    info!(
         "  {}: removed ",
         magenta_bold.apply_to(display_path(path.as_ref().to_str().unwrap()))
     );
@@ -67,12 +68,12 @@ pub fn remove_none_repo_succ() {
 
 pub fn remove_one_repo_succ() {
     let green_bold = Style::new().green().bold();
-    println!("{} repository is removed.\n", green_bold.apply_to("1"));
+    info!("{} repository is removed.\n", green_bold.apply_to("1"));
 }
 
 pub fn remove_multi_repos_succ(count: u32) {
     let green_bold = Style::new().green().bold();
-    println!(
+    info!(
         "{} repositories are removed.\n",
         green_bold.apply_to(count.to_string())
     );
@@ -80,7 +81,7 @@ pub fn remove_multi_repos_succ(count: u32) {
 
 pub fn command_start(command: impl AsRef<str>, path: impl AsRef<Path>) {
     let magenta_bold = Style::new().magenta().bold();
-    println!(
+    info!(
         "{} in {}",
         command.as_ref(),
         magenta_bold.apply_to(path.as_ref().display())
@@ -90,14 +91,14 @@ pub fn command_start(command: impl AsRef<str>, path: impl AsRef<Path>) {
 pub fn error_statistics(prefix: impl AsRef<str>, count: usize) {
     let red_bold = Style::new().red().bold();
     match count {
-        0 => println!("{} finished! 0 error(s).", prefix.as_ref()),
-        _ => println!(
+        0 => info!("{} finished! 0 error(s).", prefix.as_ref()),
+        _ => info!(
             "{} finished! {} error(s).",
             prefix.as_ref(),
             red_bold.apply_to(count.to_string())
         ),
     }
-    println!("");
+    info!("");
 }
 
 pub fn error_detail(rel_path: impl AsRef<str>, error: &anyhow::Error) {
@@ -109,12 +110,12 @@ pub fn error_detail(rel_path: impl AsRef<str>, error: &anyhow::Error) {
         err_msg += &e.to_string();
     }
 
-    eprintln!(
+    error!(
         "{} {}",
         magenta_bold.apply_to(display_path(&rel_path)),
         red.apply_to(err_msg.trim())
     );
-    println!("");
+    info!("");
 }
 
 pub fn fmt_untrack_desc(path: impl AsRef<Path>, desc: impl AsRef<str>) -> String {

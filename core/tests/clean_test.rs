@@ -1,6 +1,9 @@
-use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
+use mgit::ops;
+use mgit::ops::CleanOptions;
 use std::env;
 use std::path::PathBuf;
+
+use crate::common::{exec_cmd, failed_message};
 
 mod common;
 
@@ -68,7 +71,11 @@ mod common;
 ///             └──2.txt
 #[test]
 fn cli_clean1() {
-    let path = env::current_dir().unwrap().join("target\\tmp\\test_clean1");
+    let path = env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("tmp")
+        .join("test_clean1");
     let rel_paths = [
         "foobar-1",
         "foobar-1/foobar-1-1",
@@ -99,9 +106,9 @@ local = "foobar-2/foobar-2-1"
 remote = "https://github.com/imgui-rs/imgui-rs.git"
 "#;
 
-    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    exec_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -152,7 +159,11 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 ///     ├─... (same as cli_clean1())
 #[test]
 fn cli_clean2() {
-    let path = env::current_dir().unwrap().join("target\\tmp\\test_clean2");
+    let path = env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("tmp")
+        .join("test_clean2");
     let rel_paths = [
         ".",
         "foobar-1",
@@ -190,7 +201,7 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    exec_cargo_cmd("mgit", &["clean", path.to_str().unwrap()]);
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);
@@ -242,7 +253,11 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 ///     ├─... (same as cli_clean1())
 #[test]
 fn cli_clean3() {
-    let path = env::current_dir().unwrap().join("target\\tmp\\test_clean3");
+    let path = env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("tmp")
+        .join("test_clean3");
     let rel_paths = [
         "foobar-1",
         "foobar-1/foobar-1-1",
@@ -275,15 +290,8 @@ remote = "https://github.com/imgui-rs/imgui-rs.git"
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "clean",
-            path.to_str().unwrap(),
-            "--config",
-            path.join("./.gitrepos").to_str().unwrap(),
-        ],
-    );
+    let config_path = &path.join(".gitrepos");
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)));
 
     for rel_path in rel_paths {
         let dir = path.join(&rel_path);

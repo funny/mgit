@@ -1,9 +1,9 @@
 use super::*;
 use eframe::egui;
 
-use mgit::config::repo::cmp_local_remote;
-use mgit::config::repos::load_config;
-use mgit::git;
+use mgit::core::git;
+use mgit::core::repo::cmp_local_remote;
+use mgit::core::repos::load_config;
 use mgit::utils::path::{display_path, norm_path};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
@@ -1323,7 +1323,7 @@ fn exec_cmd_with_send(
                 .expect("command failed to start");
         }
 
-        #[cfg(target_os = "macos")]
+        #[cfg(not(target_os = "windows"))]
         {
             let cur_path = std::env::current_exe().unwrap();
             let cur_path = cur_path.parent().unwrap().to_str().unwrap();

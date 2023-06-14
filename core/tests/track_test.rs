@@ -1,5 +1,9 @@
-use crate::common::{exec_cargo_cmd, exec_cmd, failed_message};
+use mgit::ops;
+use mgit::ops::{SyncOptions, TrackOptions};
 use std::env;
+use std::path::PathBuf;
+
+use crate::common::{exec_cmd, failed_message, DEFAULT_BRANCH};
 
 mod common;
 
@@ -17,7 +21,9 @@ mod common;
 fn cli_track_simple() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_track_simple");
+        .join("target")
+        .join("tmp")
+        .join("test_track_simple");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -47,10 +53,18 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    exec_cargo_cmd(
-        "mgit",
-        &["sync", &input_path, "--no-checkout", "--no-track"],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+    ));
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -61,17 +75,17 @@ branch= "character_bert"
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
@@ -82,24 +96,28 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    exec_cargo_cmd("mgit", &["track", &input_path]);
+    ops::track(TrackOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+    ));
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch = exec_cmd(root_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/master");
 
     // foobar-1: commits/90296ef untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_1_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/attention_highlight");
 
     // foobar-2: tags/1.0.3 untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");
@@ -122,7 +140,9 @@ branch= "character_bert"
 fn cli_track_ignore() {
     let path = env::current_dir()
         .unwrap()
-        .join("target/tmp/test_track_ignore");
+        .join("target")
+        .join("tmp")
+        .join("test_track_ignore");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -152,10 +172,18 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
-    exec_cargo_cmd(
-        "mgit",
-        &["sync", &input_path, "--no-checkout", "--no-track"],
-    );
+    ops::sync_repo(SyncOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(true),
+        Some(true),
+    ));
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -166,17 +194,17 @@ branch= "character_bert"
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: master untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
     let toml_string = toml_string.replace(
@@ -187,31 +215,25 @@ branch= "character_bert"
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    exec_cargo_cmd(
-        "mgit",
-        &[
-            "track",
-            &input_path,
-            "--ignore",
-            ".",
-            "--ignore",
-            "foobar-1",
-        ],
-    );
+    ops::track(TrackOptions::new(
+        Some(input_path.clone()),
+        None::<PathBuf>,
+        Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),
+    ));
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // foobar-1: master untracked
     let branch = exec_cmd(foobar_1_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_1_path, "git", &tracking_args).is_err());
 
     // foobar-2: tags/1.0.3 untracked
     let branch = exec_cmd(foobar_2_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
-    assert_eq!(branch.trim(), "master");
+    assert_eq!(branch.trim(), DEFAULT_BRANCH);
     let tracking_branch =
         exec_cmd(foobar_2_path, "git", &tracking_args).unwrap_or(invald_name.clone());
     assert_eq!(tracking_branch.trim(), "origin/character_bert");

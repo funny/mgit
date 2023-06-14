@@ -1,57 +1,55 @@
-use clap::ArgMatches;
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use crate::{
-    config::repos::{load_config, TomlConfig},
-    git,
-    utils::{logger, path::norm_path},
-};
+use crate::core::git;
+use crate::core::repos::load_config;
+use crate::ops::CleanOptions;
+use crate::utils::logger;
+use crate::utils::path::norm_path;
 
-pub(crate) fn exec(args: &ArgMatches) {
-    // get input path
-    let input_path = match args.get_one::<String>("path") {
-        Some(path) => PathBuf::from(path),
-        None => env::current_dir().unwrap(),
-    };
+pub struct ListFilesOptions {
+    pub path: PathBuf,
+    pub config_path: PathBuf,
+}
+
+impl ListFilesOptions {
+    pub fn new(path: Option<impl AsRef<Path>>, config_path: Option<impl AsRef<Path>>) -> Self {
+        let clean_options = CleanOptions::new(path, config_path);
+        Self {
+            path: clean_options.path,
+            config_path: clean_options.config_path,
+        }
+    }
+}
+
+pub fn list_files(options: ListFilesOptions) {
+    let path = &options.path;
+    let config_path = &options.config_path;
 
     // if directory doesn't exist, return
-    if !input_path.is_dir() {
-        logger::dir_not_found(&input_path);
+    if !path.is_dir() {
+        logger::dir_not_found(path);
         return;
     }
 
-    // set config file path
-    let config_file = match args.get_one::<PathBuf>("config") {
-        Some(r) => r.to_owned(),
-        _ => input_path.join(".gitrepos"),
-    };
-
     // check if .gitrepos exists
-    if !config_file.is_file() {
+    if !config_path.is_file() {
         logger::config_file_not_found();
         return;
     }
 
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(&config_file) else{
+    let Some(toml_config) = load_config(config_path) else{
         logger::new("load config file failed!");
         return;
     };
 
-    inner_exec(input_path, toml_config);
-}
-
-fn inner_exec(input_path: impl AsRef<Path>, toml_config: TomlConfig) {
     let Some( toml_repos) = toml_config.repos else {
         return;
     };
 
     for toml_repo in &toml_repos {
         let rel_path = toml_repo.local.as_ref().unwrap();
-        let full_path = input_path.as_ref().join(rel_path);
+        let full_path = path.join(rel_path);
 
         if let Ok(res) = git::ls_files(&full_path) {
             for line in res.trim().lines() {

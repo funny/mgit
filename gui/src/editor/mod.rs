@@ -5,8 +5,8 @@ use self::error_window::ErrorWindow;
 use self::options_window::OptionsWindow;
 use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
-use mgit::config::repo::TomlRepo;
-use mgit::config::repos::TomlConfig;
+use mgit::core::repo::TomlRepo;
+use mgit::core::repos::TomlConfig;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 #[cfg(target_os = "windows")]
@@ -357,7 +357,7 @@ pub fn get_mgit_version() -> Result<String, String> {
 
         if output.status.success() {
             let s = String::from_utf8(output.stdout).expect("mgit error");
-            let version = s.replace("mgit", "").trim().to_string();
+            let version = s.split_once(" ").unwrap().1.trim().to_string();
             return Ok(version);
         } else {
             err_msg.push_str("mgit --version failed.");
@@ -378,7 +378,7 @@ pub fn get_mgit_version() -> Result<String, String> {
 
         if output.status.success() {
             let s = String::from_utf8(output.stdout).expect("mgit error");
-            let version = s.replace("mgit", "").trim().to_string();
+            let version = s.split_once(" ").unwrap().1.trim().to_string();
             return Ok(version);
         } else {
             err_msg.push_str("mgit --version failed.");

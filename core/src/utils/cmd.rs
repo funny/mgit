@@ -1,13 +1,11 @@
 use anyhow::Context;
 use console::strip_ansi_codes;
 use indicatif::ProgressBar;
-use std::{
-    io::{BufRead, BufReader},
-    path::Path,
-    process::{Command, Stdio},
-};
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+use std::process::{Command, Stdio};
 
-use super::logger;
+use crate::utils::logger;
 
 pub fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
     let mut command = std::process::Command::new(cmd);
