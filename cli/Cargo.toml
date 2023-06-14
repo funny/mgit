@@ -8,7 +8,7 @@ name = "mgit"
 path = "src/main.rs"
 
 [dependencies]
-mgit-core = { path = "../mgit-core" }
+mgit-core = { path = "../core" }
 log = "0.4.17"
 log4rs = "1.2.0"
 anyhow = "1.0.65"

@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "mgit-core",
-    "mgit-cli",
-    "mgit-gui",
+    "core",
+    "cli",
+    "gui",
 ]
 
 [profile.release]
