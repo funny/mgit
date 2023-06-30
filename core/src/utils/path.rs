@@ -1,16 +1,26 @@
-/// normalize path if needed
-pub fn norm_path(path: impl AsRef<str>) -> String {
-    let mut path = path.as_ref().replace("\\", "/");
-    while path.ends_with("/") {
-        path.pop();
-    }
-    path
+use std::ops::Add;
+use std::path::Path;
+
+pub trait PathExtension {
+    /// normalize path if needed
+    fn norm_path(&self) -> String;
+
+    /// if path is empty, represent it by "."
+    fn display_path(&self) -> String;
 }
 
-/// if path is empty, represent it by "."
-pub fn display_path(path: impl AsRef<str>) -> String {
-    match path.as_ref().is_empty() {
-        true => String::from("."),
-        false => path.as_ref().to_string(),
+impl<T: AsRef<Path>> PathExtension for T {
+    fn norm_path(&self) -> String {
+        let mut path = self.as_ref().display().to_string().replace('\\', "/");
+        path = path.trim_end_matches('/').to_string();
+        path
+    }
+
+    fn display_path(&self) -> String {
+        let mut path = self.as_ref().display().to_string();
+        if path.is_empty() {
+            path = path.add(".");
+        }
+        path
     }
 }

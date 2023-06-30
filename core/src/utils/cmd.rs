@@ -1,11 +1,12 @@
-use anyhow::Context;
+use crate::core::repo::RepoId;
+use anyhow::{Context, Error};
 use console::strip_ansi_codes;
-use indicatif::ProgressBar;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::utils::logger;
+use crate::utils::progress::Progress;
+use crate::utils::StyleMessage as SMsg;
 
 pub fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
     let mut command = std::process::Command::new(cmd);
@@ -37,19 +38,21 @@ pub fn exec_cmd_with_progress(
     rel_path: impl AsRef<str>,
     command: &mut Command,
     prefix: &str,
-    progress_bar: &ProgressBar,
+    idx: usize,
+    progress: &impl Progress,
 ) -> anyhow::Result<()> {
     let mut spawned = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .with_context(|| format!("Error starting command {:?}", command))?;
+        .with_context(|| SMsg::new().plain_text(format!("Error starting command {:?}", command)))?;
 
-    let mut last_line = logger::fmt_spinner_desc(prefix, &rel_path, "running...");
-    progress_bar.set_message(logger::truncate_spinner_msg(&last_line));
+    let last_line = SMsg::spinner_info(prefix, &rel_path, "running...".into());
+    progress.repo_info(RepoId::new(idx, rel_path.as_ref()), last_line);
 
     // get message from stderr with "--progress" option
+    let mut last_line = SMsg::new();
     if let Some(ref mut stderr) = spawned.stderr {
         let lines = BufReader::new(stderr).split(b'\r');
         for line in lines {
@@ -59,10 +62,10 @@ pub fn exec_cmd_with_progress(
             }
             let line = std::str::from_utf8(&output).unwrap();
             let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let full_line = logger::fmt_spinner_desc(prefix, &rel_path, plain_line.trim());
+            let full_line = SMsg::spinner_info(prefix, &rel_path, plain_line.trim().into());
 
-            progress_bar.set_message(logger::truncate_spinner_msg(&full_line));
-            last_line = plain_line;
+            progress.repo_info(RepoId::new(idx, rel_path.as_ref()), full_line);
+            last_line = last_line.plain_text(plain_line);
         }
     }
 
@@ -71,13 +74,15 @@ pub fn exec_cmd_with_progress(
         .context("Error waiting for process to finish")?;
 
     if !exit_code.success() {
-        return Err(anyhow::anyhow!(
-            "Git exited with code {}: {}. With command : {:?}.",
-            exit_code.code().unwrap(),
-            last_line.trim(),
-            command
+        return Err(Error::msg("").context(
+            SMsg::new()
+                .plain_text(format!(
+                    "Git exited with code {}: ",
+                    exit_code.code().unwrap()
+                ))
+                .join(last_line)
+                .plain_text(format!(". With command : {:?}", command)),
         ));
     }
-
     Ok(())
 }

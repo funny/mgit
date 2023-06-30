@@ -4,7 +4,8 @@ use crate::core::git;
 use crate::core::repos::load_config;
 use crate::ops::CleanOptions;
 use crate::utils::logger;
-use crate::utils::path::norm_path;
+use crate::utils::path::PathExtension;
+use crate::utils::style_message::StyleMessage;
 
 pub struct ListFilesOptions {
     pub path: PathBuf,
@@ -27,19 +28,19 @@ pub fn list_files(options: ListFilesOptions) {
 
     // if directory doesn't exist, return
     if !path.is_dir() {
-        logger::dir_not_found(path);
+        logger::error(StyleMessage::dir_not_found(path));
         return;
     }
 
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::config_file_not_found();
+        logger::error(StyleMessage::config_file_not_found());
         return;
     }
 
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
-        logger::new("load config file failed!");
+        logger::error("load config file failed!");
         return;
     };
 
@@ -50,19 +51,20 @@ pub fn list_files(options: ListFilesOptions) {
     for toml_repo in &toml_repos {
         let rel_path = toml_repo.local.as_ref().unwrap();
         let full_path = path.join(rel_path);
+        let Ok(content) = git::ls_files(&full_path) else {
+            continue;
+        };
 
-        if let Ok(res) = git::ls_files(&full_path) {
-            for line in res.trim().lines() {
-                if let Some((left, right)) = line.rsplit_once("\t") {
-                    let split_str = match !rel_path.ends_with("\\") && !rel_path.ends_with("/") {
-                        true => "/",
-                        false => "",
-                    };
+        for line in content.trim().lines() {
+            if let Some((left, right)) = line.rsplit_once("\t") {
+                let split_str = match !rel_path.ends_with("\\") && !rel_path.ends_with("/") {
+                    true => "/",
+                    false => "",
+                };
 
-                    let path = format!("{}{}{}", rel_path, split_str, right);
-                    let path = norm_path(path);
-                    println!("{}\t{}", left, path);
-                }
+                let path = format!("{}{}{}", rel_path, split_str, right);
+                let path = path.norm_path();
+                println!("{}\t{}", left, path);
             }
         }
     }

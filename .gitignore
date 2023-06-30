@@ -6,3 +6,4 @@ cli/target
 Cargo.lock
 
 .idea
+env.sh
