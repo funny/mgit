@@ -45,19 +45,19 @@ pub fn exec_cmd(path: &PathBuf, cmd: &str, args: &[&str]) -> Result<String, anyh
 
 lazy_static! {
     static ref USE_GITEA: bool = use_gitea();
-    pub static ref MGIT_REPO: &'static str = match use_gitea() {
+    pub static ref MGIT_REPO: &'static str = match &USE_GITEA as &bool {
         true => "http://localhost:3000/mgit/mgit.git",
         false => "https://github.com/funny/mgit.git",
     };
-    pub static ref IMGUI_REPO: &'static str = match use_gitea() {
+    pub static ref IMGUI_REPO: &'static str = match &USE_GITEA as &bool {
         true => "http://localhost:3000/mgit/imgui-rs.git",
         false => "https://github.com/imgui-rs/imgui-rs.git",
     };
-    pub static ref SBERT_REPO: &'static str = match use_gitea() {
+    pub static ref SBERT_REPO: &'static str = match &USE_GITEA as &bool {
         true => "http://localhost:3000/mgit/rust-sbert.git",
         false => "https://gitee.com/icze1i0n/rust-sbert.git",
     };
-    pub static ref CSBOOKS_REPO: &'static str = match use_gitea() {
+    pub static ref CSBOOKS_REPO: &'static str = match &USE_GITEA as &bool {
         true => "http://localhost:3000/mgit/CS-Books.git",
         false => "https://gitee.com/ForthEspada/CS-Books.git",
     };
