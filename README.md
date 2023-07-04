@@ -183,17 +183,13 @@ git_compose/start_gitea.sh
 #### 2. 运行测试
 
 ```bash
-MGIT_USE_GITEA=true cargo test
-# or
-export MGIT_USE_GITEA=true
-cargo test
+cargo test --features=use_gitea
 ```
 
 #### 3. 基准
 
 ```bash
-export MGIT_USE_GITEA=true
-time cargo test
+time cargo test --features=use_gitea
 
 # cargo test  5.83s user 1.99s system 188% cpu 4.136 total
 ```

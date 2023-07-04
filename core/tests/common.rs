@@ -2,7 +2,6 @@ use lazy_static::lazy_static;
 use mgit::core::repo::RepoId;
 use mgit::utils::progress::Progress;
 use mgit::utils::style_message::StyleMessage;
-use std::str::FromStr;
 use std::{path::PathBuf, process::Stdio};
 
 #[allow(unused)]
@@ -116,16 +115,10 @@ impl TomlBuilder {
 }
 
 fn use_gitea() -> bool {
-    #[cfg(feature = "use_gitea")]
-    {
-        true
-    }
-    #[cfg(not(feature = "use_gitea"))]
-    {
-        false
-    }
+    cfg!(feature = "use_gitea")
 }
 
+#[allow(unused)]
 pub fn retry<T>(
     times: usize,
     sleep: std::time::Duration,
