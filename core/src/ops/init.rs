@@ -7,6 +7,7 @@ use crate::ops::snapshot_repo;
 use crate::ops::SnapshotOptions;
 
 use crate::utils::logger;
+use crate::utils::style_message::StyleMessage;
 
 pub struct InitOptions {
     pub path: PathBuf,
@@ -30,7 +31,7 @@ pub fn init_repo(options: InitOptions) {
     let snapshot_type = SnapshotType::Branch;
     let config_file = path.join(".gitrepos");
 
-    logger::command_start("init", path);
+    logger::info(StyleMessage::ops_start("init", path));
 
     snapshot_repo(SnapshotOptions::new(
         Some(path.to_path_buf()),

@@ -8,6 +8,7 @@ use crate::core::repo::TomlRepo;
 use crate::core::repos::load_config;
 
 use crate::utils::logger;
+use crate::utils::StyleMessage;
 
 pub struct TrackOptions {
     pub path: PathBuf,
@@ -37,20 +38,20 @@ pub fn track(options: TrackOptions) {
     let ignore = options.ignore.as_ref();
 
     // starting clean repos
-    logger::new("Track status:");
+    logger::info("Track status:");
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::dir_not_found(path);
+        logger::error(StyleMessage::dir_not_found(path));
         return;
     }
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::config_file_not_found();
+        logger::error(StyleMessage::config_file_not_found());
         return;
     }
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
-        logger::new("load config file failed!");
+        logger::error("load config file failed!");
         return;
     };
 
@@ -69,7 +70,7 @@ pub fn track(options: TrackOptions) {
 
     for toml_repo in &toml_repos {
         if let Ok(res) = set_tracking_remote_branch(path, toml_repo, &default_branch) {
-            logger::new(format!("  {}", res));
+            logger::info(format!("  {}", res));
         }
     }
 }
@@ -78,7 +79,7 @@ pub fn set_tracking_remote_branch(
     input_path: impl AsRef<Path>,
     toml_repo: &TomlRepo,
     default_branch: &Option<String>,
-) -> Result<String, anyhow::Error> {
+) -> Result<StyleMessage, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.as_ref().join(rel_path);
 
@@ -102,7 +103,7 @@ pub fn set_tracking_remote_branch(
     };
 
     if toml_repo.commit.is_some() || toml_repo.tag.is_some() {
-        let res = logger::fmt_untrack_desc(rel_path, &remote_desc);
+        let res = StyleMessage::git_untracked(rel_path, &remote_desc);
         return Ok(res);
     }
 

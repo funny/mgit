@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 
 use crate::core::repos::load_config;
 use crate::utils::logger;
+use crate::utils::style_message::StyleMessage;
 
 pub struct CleanOptions {
     pub path: PathBuf,
@@ -24,20 +25,21 @@ pub fn clean_repo(options: CleanOptions) {
     let config_path = &options.config_path;
 
     // starting clean repos
-    logger::new("Clean Status:");
+    logger::info("Clean Status:");
+
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::dir_not_found(&path);
+        logger::error(StyleMessage::dir_not_found(&path));
         return;
     }
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::config_file_not_found();
+        logger::error(StyleMessage::config_file_not_found());
         return;
     }
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(&config_path) else{
-        logger::new("load config file failed!");
+        logger::error("load config file failed!");
         return;
     };
 
@@ -96,22 +98,19 @@ pub fn clean_repo(options: CleanOptions) {
         // remove unused directory
         if contained_paths.len() > 0 {
             if let Err(e) = remove_unused_files(&input_path, &unused_path, &contained_paths) {
-                logger::remvoe_file_failed(&unused_path, e);
+                // logger::remove_file_failed(&unused_path, e);
+                logger::error(StyleMessage::remove_file_failed(&unused_path, e));
             };
         } else {
             let _ = std::fs::remove_dir_all(input_path.join(&unused_path));
         }
         count += 1;
 
-        logger::remvoe_file_succ(&unused_path);
+        logger::info(StyleMessage::remove_file_succ(&unused_path));
     }
 
     // show statistics info
-    match count {
-        0 => logger::remove_none_repo_succ(),
-        1 => logger::remove_one_repo_succ(),
-        n => logger::remove_multi_repos_succ(n),
-    }
+    logger::info(StyleMessage::remove_repo_succ(count));
 }
 
 fn find_contained_paths(unused_path: &PathBuf, config_repo_paths: &Vec<PathBuf>) -> Vec<PathBuf> {

@@ -8,7 +8,8 @@ use crate::core::repo::TomlRepo;
 use crate::core::repos::TomlConfig;
 
 use crate::utils::logger;
-use crate::utils::path::{display_path, norm_path};
+use crate::utils::path::PathExtension;
+use crate::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SnapshotType {
@@ -52,17 +53,17 @@ pub fn snapshot_repo(options: SnapshotOptions) {
     let ignore = &options.ignore;
 
     // start taking snapshot repos
-    logger::command_start("take snapshot", &path);
+    logger::info(StyleMessage::ops_start("take snapshot", &path));
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::dir_not_found(path);
+        logger::error(StyleMessage::dir_not_found(path));
         return;
     }
 
     // check if .gitrepos exists
     if config_path.is_file() && !force {
-        logger::dir_already_inited(path);
+        logger::error(StyleMessage::dir_already_inited(path));
         return;
     }
 
@@ -80,7 +81,8 @@ pub fn snapshot_repo(options: SnapshotOptions) {
         .unwrap()
         .compile_matcher();
 
-    logger::new("search and add git repos:");
+    logger::info("search and add git repos:");
+
     let mut count = 0;
     let input_path = path.to_owned();
     let mut it = WalkDir::new(&input_path).into_iter();
@@ -100,30 +102,24 @@ pub fn snapshot_repo(options: SnapshotOptions) {
             let rel_path = pb.strip_prefix(&input_path).unwrap();
 
             // normalize path if needed
-            let norm_path = norm_path(&rel_path.to_str().unwrap().to_string());
+            let norm_path = rel_path.norm_path();
 
             // if git in root path, represent it by "."
-            let norm_str = display_path(&norm_path);
+            let norm_str = norm_path.display_path();
 
             // ignore specified path
-            if let Some(ignore_paths) = ignore.as_ref() {
-                if ignore_paths.contains(&&norm_str) {
-                    continue;
-                }
+            if matches!(&ignore,Some(paths) if paths.contains(&norm_str)) {
+                continue;
             }
 
             // check repository valid
             if git::is_repository(pb.as_path()).is_err() {
-                logger::new(format!("Failed to open repo {}!", &norm_str));
+                logger::error(format!("Failed to open repo {}!", &norm_str));
                 continue;
             }
 
             // get remote
-            let remote = match git::find_remote_url_by_name(pb.as_path(), &"origin".to_string()) {
-                Ok(r) => Some(r),
-                _ => None,
-            };
-
+            let remote = git::find_remote_url_by_name(&pb, "origin").ok();
             let mut commit: Option<String> = None;
             let mut branch: Option<String> = None;
 
@@ -139,7 +135,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
                     // get tracking brach
                     if let Ok(refname) = git::get_tracking_branch(pb.as_path()) {
                         // split, like origin/master
-                        if let Some((_, branch_ref)) = refname.split_once("/") {
+                        if let Some((_, branch_ref)) = refname.split_once('/') {
                             branch = Some(branch_ref.trim().to_string());
                         }
                     }
@@ -155,7 +151,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
                 commit,
             };
             repos.push(toml_repo);
-            logger::new(format!("  + {}", norm_str));
+            logger::info(format!("  + {}", norm_str));
 
             // just skip go into .git/ folder and continue
             it.skip_current_dir();
@@ -164,8 +160,6 @@ pub fn snapshot_repo(options: SnapshotOptions) {
 
         count += 1;
     }
-
-    logger::new("");
 
     // keep list sort same on different device
     repos.sort_by(|a, b| {
@@ -176,10 +170,10 @@ pub fn snapshot_repo(options: SnapshotOptions) {
             .cmp(&b.local.as_ref().unwrap().to_lowercase())
     });
     toml_config.repos = Some(repos);
-    logger::new(format!("{} files scanned", count));
+    logger::info(format!("{} files scanned", count));
 
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
     fs::write(config_path, toml_string).expect("Failed to write file .gitrepos!");
-    logger::update_config_succ();
+    logger::info(StyleMessage::update_config_succ());
 }

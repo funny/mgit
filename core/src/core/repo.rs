@@ -5,7 +5,14 @@ use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
-use crate::utils::{logger, path::display_path};
+use crate::utils::path::PathExtension;
+use crate::utils::style_message::StyleMessage;
+
+#[derive(Debug)]
+pub struct RepoId {
+    pub id: usize,
+    pub repo: String,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
@@ -15,6 +22,15 @@ pub struct TomlRepo {
     pub branch: Option<String>,
     pub tag: Option<String>,
     pub commit: Option<String>,
+}
+
+impl RepoId {
+    pub fn new(id: usize, repo: impl AsRef<str>) -> Self {
+        Self {
+            id,
+            repo: repo.as_ref().to_string(),
+        }
+    }
 }
 
 impl TomlRepo {
@@ -51,7 +67,7 @@ pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<&String
             if let Some(idx) = toml_repos.iter().position(|r| {
                 if let Some(rel_path) = r.local.as_ref() {
                     // consider "." as root path
-                    display_path(rel_path) == *ignore_path
+                    rel_path.display_path() == *ignore_path
                 } else {
                     false
                 }
@@ -68,7 +84,7 @@ pub fn cmp_local_remote(
     toml_repo: &TomlRepo,
     default_branch: &Option<String>,
     use_tracking_remote: bool,
-) -> Result<Option<String>, anyhow::Error> {
+) -> Result<StyleMessage, anyhow::Error> {
     let rel_path = toml_repo.local.as_ref().unwrap();
     let full_path = input_path.as_ref().join(rel_path);
 
@@ -98,7 +114,7 @@ pub fn cmp_local_remote(
 
     // if specified remote commit/tag/branch is null
     if remote_desc.is_empty() {
-        return Ok(Some("not tracking".to_string()));
+        return Ok("not tracking".into());
     }
 
     let mut changed_files: HashSet<String> = HashSet::new();
@@ -124,22 +140,22 @@ pub fn cmp_local_remote(
         }
     }
 
-    let mut changes_desc = String::new();
+    let mut changes_desc = StyleMessage::new();
     if !changed_files.is_empty() {
         // format changes tooltip
-        changes_desc = logger::fmt_changes_desc(changed_files.len());
+        changes_desc = StyleMessage::git_changes(changed_files.len());
     }
 
     // get local branch
     let branch = git::get_current_branch(&full_path)?;
 
     if branch.is_empty() {
-        return Ok(Some("init commit".to_string()));
+        return Ok("init commit".into());
     }
 
     // get rev-list between local branch and specified remote commit/tag/branch
     let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
-    let mut commit_desc = String::new();
+    let mut commit_desc = StyleMessage::new();
 
     if let Ok(output) = git::get_rev_list_count(&full_path, branch_pair) {
         let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
@@ -147,20 +163,20 @@ pub fn cmp_local_remote(
         if let Some(caps) = re.captures(&output) {
             // format commit tooltip
             let (ahead, behind) = (&caps[1], &caps[2]);
-            commit_desc = logger::fmt_commit_desc(ahead, behind);
+            commit_desc = StyleMessage::git_commits(ahead, behind);
         }
     } else {
         // if git rev-list find "unknown revision" error
-        commit_desc = logger::fmt_unknown_revision_desc();
+        commit_desc = StyleMessage::git_unknown_revision();
     }
 
     // show diff overview
     let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
         let branch_log = git::get_branch_log(&full_path, branch);
-        logger::fmt_update_to_date_desc(branch_log)
+        StyleMessage::git_update_to_date(branch_log)
     } else {
-        logger::fmt_diff_desc(remote_desc, commit_desc, changes_desc)
+        StyleMessage::git_diff(remote_desc, commit_desc, changes_desc)
     };
 
-    Ok(Some(desc))
+    Ok(desc)
 }

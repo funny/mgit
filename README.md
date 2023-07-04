@@ -164,6 +164,55 @@ sudo apt-get install -y \
 cargo build [--release]
 ```
 
+## 测试
+
+### 使用Docker自建本地gitea服务器
+
+#### 1. 环境准备
+
+* 确保已经正确安装[`Docker`](https://www.docker.com/get-started/)
+* 确保已经正确安装`curl`、`git`、`jq`
+
+```bash
+# 位于项目根目录下执行
+git_compose/start_gitea.sh
+```
+
+> Windows 下请使用 `wsl2`
+
+#### 2. 运行测试
+
+```bash
+cargo test --features=use_gitea
+```
+
+#### 3. 基准
+
+```bash
+time cargo test --features=use_gitea
+
+# cargo test  5.83s user 1.99s system 188% cpu 4.136 total
+```
+
+### 使用常规测试
+
+#### 1. 环境准备
+
+`#` do nothing
+
+#### 2. 运行测试
+
+```bash
+cargo test
+```
+#### 3. 基准
+
+```bash
+time cargo test
+
+# cargo test  12.66s user 4.37s system 60% cpu 28.380 total
+```
+
 ## 参考
 
 - [git2](https://github.com/rust-lang/git2-rs)

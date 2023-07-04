@@ -7,7 +7,7 @@ mod sync;
 mod track;
 
 pub use clean::{clean_repo, CleanOptions};
-pub use fetch::{exec_fetch_with_progress, fetch_repos, FetchOptions};
+pub use fetch::{exec_fetch, fetch_repos, FetchOptions};
 pub use init::{init_repo, InitOptions};
 pub use list_files::{list_files, ListFilesOptions};
 pub use snapshot::{snapshot_repo, SnapshotOptions, SnapshotType};

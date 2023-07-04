@@ -4,7 +4,7 @@ use std::{fs, path::Path};
 use crate::core::repo::TomlRepo;
 
 /// this type is used to deserialize `.gitrepos` files.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct TomlConfig {
     pub version: Option<String>,
@@ -13,19 +13,8 @@ pub struct TomlConfig {
     pub repos: Option<Vec<TomlRepo>>,
 }
 
-impl Default for TomlConfig {
-    fn default() -> Self {
-        Self {
-            version: None,
-            default_branch: None,
-            default_remote: None,
-            repos: None,
-        }
-    }
-}
-
 impl TomlConfig {
-    // serialzie config file .gitrepos
+    // serialize config file .gitrepos
     pub fn serialize(&self) -> String {
         let toml = toml_edit::ser::to_item(self).unwrap();
         let mut out = String::new();
@@ -48,7 +37,7 @@ impl TomlConfig {
             out.push_str(&format!("default-remote = {}\n", item));
         }
 
-        out.push_str("\n");
+        out.push('\n');
 
         // [[repos]]
         if let Some(repos) = toml.get("repos") {
@@ -83,7 +72,7 @@ impl TomlConfig {
                     out.push_str(&format!("commit = {}\n", item));
                 }
 
-                out.push_str("\n");
+                out.push('\n');
             }
         }
 

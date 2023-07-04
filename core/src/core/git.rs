@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::utils::{cmd::exec_cmd, logger};
+use crate::utils::cmd::exec_cmd;
+use crate::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StashMode {
@@ -49,7 +50,9 @@ pub fn is_remote_ref_valid(
     let args = ["branch", "--contains", remote_ref, "-r"];
     match exec_cmd(path, "git", &args) {
         Ok(_) => Ok(()),
-        Err(_) => Err(anyhow::anyhow!(logger::fmt_remote_not_found(remote_ref))),
+        Err(_) => Err(anyhow::anyhow!(StyleMessage::git_remote_not_found(
+            remote_ref
+        ))),
     }
 }
 
@@ -71,7 +74,7 @@ pub fn find_remote_name_by_url(
         }
     }
 
-    Err(anyhow::anyhow!(logger::fmt_remote_not_found(url)))
+    Err(anyhow::anyhow!(StyleMessage::git_remote_not_found(url)))
 }
 
 pub fn find_remote_url_by_name(
@@ -88,7 +91,7 @@ pub fn find_remote_url_by_name(
         return Ok(remote_url.trim().to_string());
     }
 
-    Err(anyhow::anyhow!(logger::fmt_remote_not_found(name)))
+    Err(anyhow::anyhow!(StyleMessage::git_remote_not_found(name)))
 }
 
 pub fn get_current_commit(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
@@ -160,31 +163,23 @@ pub fn get_rev_list_count(
     exec_cmd(path, "git", &args)
 }
 
+// 由于不同平台、不同用户的全局git config配置会有不同的git init [defaultBranch]
+// 可能是main、master又或者用户自定义的
+// 此处固定将git init的初始分支命名为master，以避免产生歧义
 pub fn init(path: impl AsRef<Path>) -> anyhow::Result<()> {
-    let args = ["init"];
-    match exec_cmd(path, "git", &args) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
-    }
+    let args = ["init", "-b", "master"];
+    exec_cmd(path, "git", &args).map(|_| ())
 }
 
 pub fn add_remote_url(path: impl AsRef<Path>, url: impl AsRef<str>) -> anyhow::Result<()> {
     // git remote add origin {url}
     let args = ["remote", "add", "origin", url.as_ref()];
-
-    match exec_cmd(path, "git", &args) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
-    }
+    exec_cmd(path, "git", &args).map(|_| ())
 }
 
 pub fn clean(path: impl AsRef<Path>) -> anyhow::Result<()> {
     let args = ["clean", "-fd"];
-
-    match exec_cmd(path, "git", &args) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
-    }
+    exec_cmd(path, "git", &args).map(|_| ())
 }
 
 pub fn reset(
@@ -222,10 +217,7 @@ pub fn local_branch_already_exist(
 }
 
 pub fn checkout(path: impl AsRef<Path>, args: &[&str]) -> anyhow::Result<()> {
-    match exec_cmd(path, "git", &args) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!("Error: {}", e)),
-    }
+    exec_cmd(path, "git", &args).map(|_| ())
 }
 
 #[allow(dead_code)]
@@ -249,16 +241,14 @@ pub fn set_tracking_remote_branch(
     local_branch: impl AsRef<str>,
     remote_ref: impl AsRef<str>,
     remote_desc: impl AsRef<str>,
-) -> Result<String, anyhow::Error> {
+) -> Result<StyleMessage, anyhow::Error> {
     let args = ["branch", "--set-upstream-to", remote_ref.as_ref()];
 
-    if exec_cmd(full_path, "git", &args).is_ok() {
-        let res = logger::fmt_tracking_succ_desc(rel_path, local_branch, remote_desc);
-        Ok(res)
-    } else {
-        let res = logger::fmt_tracking_failed_desc(rel_path, remote_desc);
-        Ok(res)
-    }
+    let msg = match exec_cmd(full_path, "git", &args) {
+        Ok(_) => StyleMessage::git_tracking_succ(rel_path, local_branch, remote_desc),
+        Err(_) => StyleMessage::git_tracking_failed(rel_path, remote_desc),
+    };
+    Ok(msg)
 }
 
 pub fn update_remote_url(

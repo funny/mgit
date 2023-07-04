@@ -4,12 +4,12 @@ use eframe::egui;
 use mgit::core::git;
 use mgit::core::repo::cmp_local_remote;
 use mgit::core::repos::load_config;
-use mgit::utils::path::{display_path, norm_path};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
+use mgit::utils::path::PathExtension;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
@@ -87,7 +87,7 @@ impl App {
         if args.len() > 1 {
             let path = PathBuf::from(args[1].clone());
             if let Ok(path) = std::fs::canonicalize(path) {
-                let path = norm_path(&format!("{}", path.display()));
+                let path = (format!("{}", path.display())).norm_path();
 
                 let norm_path = path.replace("//?/", "");
                 return Some(norm_path);
@@ -151,7 +151,7 @@ impl App {
                                 .local
                                 .to_owned()
                                 .unwrap_or(String::from("invalid"));
-                            ignore_paths.contains(&display_path(&rel_path))
+                            ignore_paths.contains(&rel_path.display_path())
                         } else {
                             false
                         };
@@ -494,7 +494,7 @@ impl App {
                         .set_file_name(".gitrepos")
                         .save_file()
                     {
-                        self.config_file = norm_path(&path.to_str().unwrap().to_string());
+                        self.config_file = path.to_str().unwrap().to_string().norm_path();
                         self.exec_cmd(CommandType::Snapshot);
                     }
                     ui.close_menu();
@@ -661,7 +661,7 @@ impl App {
                 // button to pick folder
                 if ui.button(format!("{} open", hex_code::FOLDER)).clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                        self.project_path = norm_path(&path.display().to_string());
+                        self.project_path = path.display().to_string().norm_path();
                         is_project_changed = true;
                     }
                 }
@@ -699,7 +699,7 @@ impl App {
 
                 // if project_path changed , auto change config_file,
                 if is_project_changed {
-                    self.project_path = norm_path(&self.project_path);
+                    self.project_path = self.project_path.norm_path();
 
                     is_config_changed = true;
                     // save recent project
@@ -739,7 +739,7 @@ impl App {
                 // button to pick config file
                 if ui.button(format!("{} open", hex_code::FILE)).clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_file() {
-                        self.config_file = norm_path(&path.display().to_string());
+                        self.config_file = path.display().to_string().norm_path();
                         is_config_changed = true;
                     }
                 }
@@ -767,7 +767,7 @@ impl App {
                 );
                 // key down - enter
                 if config_edit_text.lost_focus() {
-                    self.config_file = norm_path(&self.config_file);
+                    self.config_file = self.config_file.norm_path();
                     if ui.input().key_pressed(egui::Key::Enter) {
                         is_config_changed = true;
 
@@ -816,7 +816,7 @@ impl App {
                                 {
                                     if let Some(rel_path) = &toml_repo.local {
                                         self.save_ignore(
-                                            display_path(rel_path),
+                                            rel_path.display_path(),
                                             !self.repo_states[idx].no_ignore,
                                         );
                                     }
@@ -875,7 +875,7 @@ impl App {
             // text format by sync ignore
             let rel_path = toml_repo.local.to_owned().unwrap();
             let repository_display =
-                format!("{} {}", hex_code::REPOSITORY, display_path(&rel_path));
+                format!("{} {}", hex_code::REPOSITORY, rel_path.display_path());
             let job = match self.repo_states[idx].no_ignore {
                 true => create_layout_job(repository_display, text_color::PURPLE),
                 false => create_layout_job(repository_display, text_color::DARK_PURPLE),
@@ -1045,7 +1045,7 @@ impl App {
             let url = format!(
                 "{} {}",
                 hex_code::URL,
-                display_path(&toml_repo.remote.to_owned().unwrap())
+                toml_repo.remote.to_owned().unwrap().display_path()
             );
             let job = create_truncate_layout_job(url, text_color::LIGHT_GRAY);
             ui.label(job);
@@ -1258,10 +1258,7 @@ fn get_repo_states_thread(
                     // get compare message
                     match cmp_local_remote(input_path, repo, &default_branch, true) {
                         Ok(cmp_msg) => {
-                            let cmp_msg = String::from_utf8(
-                                strip_ansi_escapes::strip(cmp_msg.unwrap()).unwrap(),
-                            )
-                            .unwrap();
+                            let cmp_msg = cmp_msg.to_plain_text();
 
                             if cmp_msg.clone().contains("not tracking")
                                 || cmp_msg.contains("init commit")
