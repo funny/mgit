@@ -116,9 +116,36 @@ impl TomlBuilder {
 }
 
 fn use_gitea() -> bool {
-    std::env::var("MGIT_USE_GITEA")
-        .map(|env| bool::from_str(&env).unwrap_or(false))
-        .unwrap_or(false)
+    #[cfg(feature = "use_gitea")]
+    {
+        true
+    }
+    #[cfg(not(feature = "use_gitea"))]
+    {
+        false
+    }
+}
+
+pub fn retry<T>(
+    times: usize,
+    sleep: std::time::Duration,
+    f: impl Fn() -> Result<T, anyhow::Error>,
+) -> Result<T, anyhow::Error> {
+    let mut result = None::<Result<T, anyhow::Error>>;
+    for i in 0..times {
+        match f() {
+            Ok(r) => {
+                result = Some(Ok(r));
+                break;
+            }
+            Err(e) => {
+                println!("retry[{}]: {}", i, e);
+                result = Some(Err(e));
+                std::thread::sleep(sleep);
+            }
+        }
+    }
+    result.unwrap()
 }
 
 #[derive(Clone, Default)]

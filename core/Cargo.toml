@@ -23,3 +23,6 @@ regex = "1.6.0"
 term_size = "0.3.2"
 ansi_term = "0.12.1"
 lazy_static = "1.4.0"
+
+[features]
+use_gitea = []

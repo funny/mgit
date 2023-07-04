@@ -108,7 +108,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
             let norm_str = norm_path.display_path();
 
             // ignore specified path
-            if matches!(&ignore,Some(paths) if paths.contains(&&norm_str)) {
+            if matches!(&ignore,Some(paths) if paths.contains(&norm_str)) {
                 continue;
             }
 
@@ -119,7 +119,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
             }
 
             // get remote
-            let remote = git::find_remote_url_by_name(&pb, "origin").map_or(None, |r| Some(r));
+            let remote = git::find_remote_url_by_name(&pb, "origin").ok();
             let mut commit: Option<String> = None;
             let mut branch: Option<String> = None;
 
@@ -135,7 +135,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
                     // get tracking brach
                     if let Ok(refname) = git::get_tracking_branch(pb.as_path()) {
                         // split, like origin/master
-                        if let Some((_, branch_ref)) = refname.split_once("/") {
+                        if let Some((_, branch_ref)) = refname.split_once('/') {
                             branch = Some(branch_ref.trim().to_string());
                         }
                     }

@@ -2,8 +2,9 @@ use mgit::ops;
 use mgit::ops::{InitOptions, SnapshotOptions, SnapshotType};
 use std::env;
 use std::path::PathBuf;
+use std::time::Duration;
 
-use crate::common::{exec_cmd, failed_message, TomlBuilder, CSBOOKS_REPO};
+use crate::common::{exec_cmd, failed_message, retry, TomlBuilder, CSBOOKS_REPO};
 
 mod common;
 
@@ -417,10 +418,13 @@ pub fn create_repos_tree1(path: &PathBuf) {
         std::fs::create_dir_all(dir.to_path_buf()).unwrap();
 
         // create local git repositoris
-        exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
+        exec_cmd(&dir, "git", &["init", "-b", "master"]).expect(failed_message::GIT_INIT);
         exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
             .expect(failed_message::GIT_ADD_REMOTE);
-        exec_cmd(&dir, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+        retry(10, Duration::from_millis(400), || {
+            exec_cmd(&dir, "git", &["fetch", "origin"])
+        })
+        .expect(failed_message::GIT_FETCH);
         exec_cmd(&dir, "git", &["switch", "-c", "master", commit])
             .expect(failed_message::GIT_CHECKOUT);
         exec_cmd(&dir, "git", &["branch", "-u", "origin/master"])
@@ -435,10 +439,13 @@ pub fn create_repos_tree2(path: &PathBuf) {
     let remote: &str = &CSBOOKS_REPO;
     let commit = "1e835f92604ee5d0b37fc32ea7694d57ff19815e";
 
-    exec_cmd(&path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(&path, "git", &["init", "-b", "master"]).expect(failed_message::GIT_INIT);
     exec_cmd(&path, "git", &["remote", "add", "origin", remote])
         .expect(failed_message::GIT_ADD_REMOTE);
-    exec_cmd(&path, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+    retry(10, Duration::from_millis(400), || {
+        exec_cmd(&path, "git", &["fetch", "origin"])
+    })
+    .expect(failed_message::GIT_FETCH);
     exec_cmd(&path, "git", &["switch", "-c", "master", commit])
         .expect(failed_message::GIT_CHECKOUT);
     exec_cmd(&path, "git", &["branch", "-u", "origin/master"]).expect(failed_message::GIT_BRANCH);
@@ -475,10 +482,13 @@ pub fn create_repos_tree3(path: &PathBuf) {
 
             std::fs::create_dir_all(dir.to_path_buf()).unwrap();
             // create local git repositoris
-            exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
+            exec_cmd(&dir, "git", &["init", "-b", "master"]).expect(failed_message::GIT_INIT);
             exec_cmd(&dir, "git", &["remote", "add", "origin", remote])
                 .expect(failed_message::GIT_ADD_REMOTE);
-            exec_cmd(&dir, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+            retry(10, Duration::from_millis(400), || {
+                exec_cmd(&dir, "git", &["fetch", "origin"])
+            })
+            .expect(failed_message::GIT_FETCH);
             exec_cmd(&dir, "git", &["switch", "-c", "master", commit])
                 .expect(failed_message::GIT_CHECKOUT);
             exec_cmd(&dir, "git", &["branch", "-u", "origin/master"])
@@ -487,10 +497,13 @@ pub fn create_repos_tree3(path: &PathBuf) {
     }
 
     // set root git init
-    exec_cmd(&path, "git", &["init"]).expect(failed_message::GIT_INIT);
+    exec_cmd(&path, "git", &["init", "-b", "master"]).expect(failed_message::GIT_INIT);
     exec_cmd(&path, "git", &["remote", "add", "origin", remote])
         .expect(failed_message::GIT_ADD_REMOTE);
-    exec_cmd(&path, "git", &["fetch", "origin"]).expect(failed_message::GIT_FETCH);
+    retry(10, Duration::from_millis(400), || {
+        exec_cmd(&path, "git", &["fetch", "origin"])
+    })
+    .expect(failed_message::GIT_FETCH);
     exec_cmd(&path, "git", &["switch", "-c", "master", commit])
         .expect(failed_message::GIT_CHECKOUT);
     exec_cmd(&path, "git", &["branch", "-u", "origin/master"]).expect(failed_message::GIT_BRANCH);
