@@ -1,4 +1,4 @@
-use super::{create_layout_job, defines::text_color, defines::MGIT_VERSION};
+use super::{create_layout_job, defines::text_color};
 use eframe::egui;
 
 #[derive(Default)]
@@ -48,10 +48,6 @@ impl super::View for ErrorWindow {
 
             ui.add_space(5.0);
 
-            ui.hyperlink_to(
-                format!("mgit {} on github", MGIT_VERSION),
-                format!("https://github.com/funny/mgit/releases/"),
-            );
             ui.hyperlink_to(format!("git official website"), "https://git-scm.com/");
         });
     }

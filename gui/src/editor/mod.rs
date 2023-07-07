@@ -360,67 +360,6 @@ pub fn cmp_toml_repo(dest: &TomlRepo, src: &TomlRepo) -> bool {
     result
 }
 
-pub fn get_mgit_version() -> Result<String, String> {
-    let mut err_msg = String::new();
-    let cur_path = std::env::current_exe().unwrap();
-
-    #[cfg(target_os = "windows")]
-    let name = "mgit.exe";
-
-    #[cfg(not(target_os = "windows"))]
-    let name = "mgit";
-
-    let mgit = cur_path.parent().unwrap().join(name);
-
-    // check mgit.exe existance
-    if !mgit.is_file() {
-        err_msg.push_str(&format!("{} is not found!.\n", name));
-        return Err(err_msg);
-    }
-    // make sure version is right on window
-    #[cfg(target_os = "windows")]
-    {
-        let command_str = format!("{} --version", MGIT_DIR);
-        let output = std::process::Command::new("cmd")
-            .arg("/C")
-            .arg(&command_str)
-            .creation_flags(defines::console_option::CREATE_NO_WINDOW)
-            .output()
-            .expect("command failed to start");
-
-        if output.status.success() {
-            let s = String::from_utf8(output.stdout).expect("mgit error");
-            let version = s.split_once(" ").unwrap().1.trim().to_string();
-            return Ok(version);
-        } else {
-            err_msg.push_str("mgit --version failed.");
-        }
-    }
-
-    // make sure version is right on not window
-    #[cfg(not(target_os = "windows"))]
-    {
-        let cur_path = cur_path.parent().unwrap().to_str().unwrap();
-        let command_str = format!("./{} -V", &MGIT_DIR);
-        let output = std::process::Command::new("sh")
-            .current_dir(cur_path)
-            .arg("-c")
-            .arg(&command_str)
-            .output()
-            .expect("command failed to start");
-
-        if output.status.success() {
-            let s = String::from_utf8(output.stdout).expect("mgit error");
-            let version = s.split_once(" ").unwrap().1.trim().to_string();
-            return Ok(version);
-        } else {
-            err_msg.push_str("mgit --version failed.");
-        }
-    }
-
-    Err(err_msg)
-}
-
 pub fn check_git_valid() -> Result<(), String> {
     // make sure git is installed
     #[cfg(target_os = "windows")]
