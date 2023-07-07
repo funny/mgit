@@ -14,9 +14,9 @@ pub trait Progress: Send + Sync + Clone {
     /// repo info message
     fn repo_info(&self, repo_id: RepoId, message: StyleMessage);
 
-    /// repo error message
-    fn repo_error(&self, repo_id: RepoId, message: StyleMessage);
-
     /// repo success ended with message
     fn repo_end(&self, repo_id: RepoId, message: StyleMessage);
+
+    /// repo error message
+    fn repo_error(&self, repo_id: RepoId, message: StyleMessage);
 }

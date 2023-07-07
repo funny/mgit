@@ -87,7 +87,7 @@ pub fn find_remote_url_by_name(
     let args = ["remote", "get-url", name];
     let output = exec_cmd(path, "git", &args)?;
 
-    for remote_url in output.trim().lines() {
+    if let Some(remote_url) = output.trim().lines().next() {
         return Ok(remote_url.trim().to_string());
     }
 
@@ -99,7 +99,7 @@ pub fn get_current_commit(path: impl AsRef<Path>) -> Result<String, anyhow::Erro
     let args = ["rev-parse", "HEAD"];
     let output = exec_cmd(path, "git", &args)?;
 
-    for oid in output.trim().lines() {
+    if let Some(oid) = output.trim().lines().next() {
         return Ok(oid.to_string());
     }
 

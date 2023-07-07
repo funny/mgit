@@ -20,6 +20,8 @@ pub mod resource {
 
 pub mod text_color {
     use super::*;
+    use mgit::Colour;
+
     pub const BLUE: Color32 = Color32::from_rgb(87, 167, 250);
     pub const RED: Color32 = Color32::from_rgb(202, 86, 44);
     pub const GREEN: Color32 = Color32::from_rgb(0, 200, 0);
@@ -28,6 +30,25 @@ pub mod text_color {
     pub const DARK_PURPLE: Color32 = Color32::from_rgb(140, 60, 140);
     pub const GRAY: Color32 = Color32::GRAY;
     pub const LIGHT_GRAY: Color32 = Color32::from_rgba_premultiplied(50, 50, 50, 50);
+    pub const BLACK: Color32 = Color32::BLACK;
+    pub const WHITE: Color32 = Color32::WHITE;
+
+    pub fn from(color: &Option<mgit::Colour>) -> Color32 {
+        if let Some(color) = color {
+            match color {
+                Colour::Black => BLACK,
+                Colour::Red => RED,
+                Colour::Green => GREEN,
+                Colour::Yellow => YELLOW,
+                Colour::Blue => BLUE,
+                Colour::Purple => PURPLE,
+                Colour::White => WHITE,
+                _ => LIGHT_GRAY,
+            }
+        } else {
+            WHITE
+        }
+    }
 }
 
 #[allow(unused)]

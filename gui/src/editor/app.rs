@@ -1,5 +1,6 @@
 use super::*;
 use eframe::egui;
+use std::ops::Deref;
 
 use mgit::core::git;
 use mgit::core::repo::cmp_local_remote;
@@ -9,18 +10,18 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
+use crate::progress::RepoMessageCollector;
+use mgit::ops;
+use mgit::ops::{
+    CleanOptions, FetchOptions, InitOptions, SnapshotOptions, SnapshotType, SyncOptions,
+    TrackOptions,
+};
 use mgit::utils::path::PathExtension;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
 /// main app ui update
 impl eframe::App for App {
-    // save app state
-    #[cfg(feature = "persistence")]
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, &self.state);
-    }
-
     fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // top view
         self.top_view(ctx);
@@ -33,6 +34,12 @@ impl eframe::App for App {
 
         // handle channel recv
         self.handle_channel_recv();
+    }
+
+    // save app state
+    #[cfg(feature = "persistence")]
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, &self.state);
     }
 }
 
@@ -54,19 +61,8 @@ impl App {
 
         let mut app = App::default();
 
-        let (is_dependencies_valid, err_msg) = match get_mgit_version() {
-            Ok(version) => {
-                // get version
-                app.about_window.mgit_version = version;
-                // check mgit and git valid
-                match check_mgit_version_vaild(&app.about_window.mgit_version) {
-                    Ok(_) => match check_git_valid() {
-                        Ok(_) => (true, String::new()),
-                        Err(msg) => (false, msg),
-                    },
-                    Err(msg) => (false, msg),
-                }
-            }
+        let (is_dependencies_valid, err_msg) = match check_git_valid() {
+            Ok(_) => (true, String::new()),
             Err(msg) => (false, msg),
         };
 
@@ -77,7 +73,7 @@ impl App {
         }
 
         app.load_setting();
-        app.exec_cmd(CommandType::Refresh);
+        app.exec_ops(CommandType::Refresh);
         app
     }
 
@@ -142,15 +138,15 @@ impl App {
 
                 // init repo states and sync ignore
                 if let Some(toml_repos) = &self.toml_config.repos {
-                    for toml_repo in toml_repos {
+                    for (_, toml_repo) in toml_repos.iter().enumerate() {
+                        let rel_path = toml_repo
+                            .local
+                            .as_ref()
+                            .map_or(String::from("invalid"), |p| p.clone());
                         // get ignore state
                         let do_ignore = if let Some(ignore) = &self.get_ignore() {
                             let ignore_paths: Vec<String> =
-                                ignore.split("\n").map(|s| s.trim().to_string()).collect();
-                            let rel_path = toml_repo
-                                .local
-                                .to_owned()
-                                .unwrap_or(String::from("invalid"));
+                                ignore.split('\n').map(|s| s.trim().to_string()).collect();
                             ignore_paths.contains(&rel_path.display_path())
                         } else {
                             false
@@ -161,6 +157,23 @@ impl App {
                             no_ignore: !do_ignore,
                             ..RepoState::default()
                         });
+                    }
+                    if self.repo_messages.is_empty() {
+                        toml_repos.iter().for_each(|tr| {
+                            let rel_path = tr
+                                .local
+                                .as_ref()
+                                .map_or(String::from("invalid"), |p| p.clone());
+                            // init repo message
+                            self.repo_messages.insert(
+                                rel_path.replace(['/', '\\'], "_"),
+                                Arc::new(Mutex::new(StyleMessage::default())),
+                            );
+                        });
+                    }
+                    if self.repo_message_collector.is_none() {
+                        self.repo_message_collector =
+                            Some(RepoMessageCollector::new(&self.repo_messages));
                     }
                 }
             }
@@ -215,7 +228,7 @@ impl App {
         }
     }
 
-    fn exec_cmd(&mut self, command_type: CommandType) {
+    fn exec_ops(&mut self, command_type: CommandType) {
         // to show in ui
         if self.config_file.is_empty() {
             self.config_file = format!("{}/.gitrepos", &self.project_path);
@@ -224,184 +237,145 @@ impl App {
         match command_type {
             CommandType::Init => {
                 self.config_file = format!("{}/.gitrepos", &self.project_path);
-                // option --force
-                let options = match self.toml_user_settings.init_force.unwrap_or(true) {
-                    true => String::from("--force"),
-                    false => String::new(),
-                };
 
+                let path = Some(&self.project_path);
+                let force = self.toml_user_settings.init_force;
+
+                let options = InitOptions::new(path, force);
+                let send = self.send.clone();
                 self.clear_toml_config();
-                exec_cmd_with_send(
-                    "init",
-                    &self.project_path,
-                    &options,
-                    CommandType::Init,
-                    self.send.clone(),
-                );
+                std::thread::spawn(move || {
+                    ops::init_repo(options);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Snapshot => {
-                // option --config
-                let mut options = match self.config_file.is_empty() {
-                    true => String::new(),
-                    false => format!("--config \"{}\"", &self.config_file),
-                };
-                // option --branch
-                if self.toml_user_settings.snapshot_branch.unwrap_or(true) {
-                    options = format!("{} --branch", options);
-                }
-                // option --force
-                if self.toml_user_settings.snapshot_force.unwrap_or(true) {
-                    options = format!("{} --force", options);
-                }
-                // option --ignore
-                if let Some(ignore_paths) = &self.get_snapshot_ignore() {
-                    let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
-                    for ignore_path in ignore_paths {
-                        if !ignore_path.is_empty() {
-                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
-                        }
-                    }
-                }
+                let path = Some(&self.project_path);
+                let config_path = Some(&self.config_file);
+                let snapshot_type = self
+                    .toml_user_settings
+                    .snapshot_branch
+                    .and_then(|b| match b {
+                        true => Some(SnapshotType::Branch),
+                        false => None,
+                    });
+                let force = self.toml_user_settings.snapshot_force;
+                let ignore: Option<Vec<String>> = self
+                    .get_snapshot_ignore()
+                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
 
+                let options = SnapshotOptions::new(path, config_path, force, snapshot_type, ignore);
+                let send = self.send.clone();
                 self.clear_toml_config();
-                exec_cmd_with_send(
-                    "snapshot",
-                    &self.project_path,
-                    &options,
-                    CommandType::Snapshot,
-                    self.send.clone(),
-                );
+                std::thread::spawn(move || {
+                    ops::snapshot_repo(options);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Fetch => {
-                // option --config
-                let mut options = match self.config_file.is_empty() {
-                    true => String::new(),
-                    false => format!("--config \"{}\"", &self.config_file),
-                };
-                // option --thread <num>
-                if let Some(thread) = self.toml_user_settings.sync_thread {
-                    options = format!("{} --thread {}", options, thread);
-                }
-                // option --depth <num>
-                if let Some(depth) = self.toml_user_settings.sync_depth {
-                    options = format!("{} --depth {}", options, depth);
-                }
-                // option --ignore
-                if let Some(ignore_paths) = &self.get_ignore() {
-                    let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
-                    for ignore_path in ignore_paths {
-                        if !ignore_path.is_empty() {
-                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
-                        }
-                    }
-                }
-                // option --silent
-                options = format!("{} --silent", options);
+                let path = Some(&self.project_path);
+                let config_path = Some(&self.config_file);
+                let thread = self.toml_user_settings.sync_thread.map(|t| t as usize);
+                let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
+                let ignore: Option<Vec<String>> = self
+                    .get_ignore()
+                    .map(|content| content.split("\n").map(|s| s.to_string()).collect());
+                let silent = Some(true);
+
+                let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
+                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                exec_cmd_with_send(
-                    "fetch",
-                    &self.project_path,
-                    &options,
-                    CommandType::Fetch,
-                    self.send.clone(),
-                );
+                let progress = self.repo_message_collector.as_ref().unwrap().clone();
+                std::thread::spawn(move || {
+                    ops::fetch_repos(options, progress);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Sync | CommandType::SyncHard => {
-                // option --config
-                let mut options = match self.config_file.is_empty() {
-                    true => String::new(),
-                    false => format!("--config \"{}\"", &self.config_file),
-                };
+                let path = Some(&self.project_path);
+                let config_path = Some(&self.config_file);
                 // check if command_type is CommandType::SyncHard
                 let sync_type = match command_type == CommandType::SyncHard {
                     true => SyncType::Hard,
                     false => self.toml_user_settings.sync_type.unwrap_or(SyncType::Stash),
                 };
                 // option none or --stash or --hard
-                match sync_type {
-                    SyncType::Normal => {}
-                    SyncType::Stash => options = format!("{} --stash", options),
-                    SyncType::Hard => options = format!("{} --hard", options),
+                let (hard, stash) = match sync_type {
+                    SyncType::Normal => (Some(false), Some(false)),
+                    SyncType::Stash => (Some(false), Some(true)),
+                    SyncType::Hard => (Some(true), Some(false)),
                 };
                 // option --no-checkout
-                if self.toml_user_settings.sync_no_checkout.unwrap_or(false) {
-                    options = format!("{} --no-checkout", options);
-                }
+                let no_checkout = self.toml_user_settings.sync_no_checkout;
                 // option --no-track
-                if self.toml_user_settings.sync_no_track.unwrap_or(false) {
-                    options = format!("{} --no-track", options);
-                }
+                let no_track = self.toml_user_settings.sync_no_track;
                 // option --thread <num>
-                if let Some(thread) = self.toml_user_settings.sync_thread {
-                    options = format!("{} --thread {}", options, thread);
-                }
+                let thread_count = self.toml_user_settings.sync_thread.map(|t| t as usize);
                 // option --depth <num>
-                if let Some(depth) = self.toml_user_settings.sync_depth {
-                    options = format!("{} --depth {}", options, depth);
-                }
+                let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 // option --ignore
-                if let Some(ignore_paths) = &self.get_ignore() {
-                    let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
-                    for ignore_path in ignore_paths {
-                        if !ignore_path.is_empty() {
-                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
-                        }
-                    }
-                }
-
+                let ignore: Option<Vec<String>> = self
+                    .get_ignore()
+                    .map(|content| content.split("\n").map(|s| s.to_string()).collect());
                 // option --silent
-                options = format!("{} --silent", options);
+                let silent = Some(true);
+
+                let options = SyncOptions::new(
+                    path,
+                    config_path,
+                    thread_count,
+                    silent,
+                    depth,
+                    ignore,
+                    hard,
+                    stash,
+                    no_track,
+                    no_checkout,
+                );
+                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                exec_cmd_with_send(
-                    "sync",
-                    &self.project_path,
-                    &options,
-                    CommandType::Sync,
-                    self.send.clone(),
-                );
+                let progress = self.repo_message_collector.as_ref().unwrap().clone();
+                std::thread::spawn(move || {
+                    ops::sync_repo(options, progress);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Track => {
-                // option --config
-                let mut options = match self.config_file.is_empty() {
-                    true => String::new(),
-                    false => format!("--config \"{}\"", &self.config_file),
-                };
-                // option --ignore
-                if let Some(ignore_paths) = &self.get_ignore() {
-                    let ignore_paths: Vec<&str> = ignore_paths.split("\n").collect();
-                    for ignore_path in ignore_paths {
-                        if !ignore_path.is_empty() {
-                            options = format!("{} --ignore \"{}\"", options, ignore_path.trim());
-                        }
-                    }
-                }
+                let path = Some(&self.project_path);
+                let config_path = Some(&self.config_file);
+                let ignore: Option<Vec<String>> = self
+                    .get_ignore()
+                    .map(|content| content.split("\n").map(|s| s.to_string()).collect());
+
+                let options = TrackOptions::new(path, config_path, ignore);
+                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                exec_cmd_with_send(
-                    "track",
-                    &self.project_path,
-                    &options,
-                    CommandType::Track,
-                    self.send.clone(),
-                );
+                std::thread::spawn(move || {
+                    ops::track(options);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Clean => {
-                // option --config
-                let options = match self.config_file.is_empty() {
-                    true => String::new(),
-                    false => format!("--config \"{}\"", &self.config_file),
-                };
+                let path = Some(&self.project_path);
+                let config_path = Some(&self.config_file);
+
+                let options = CleanOptions::new(path, config_path);
+                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                exec_cmd_with_send(
-                    "clean",
-                    &self.project_path,
-                    &options,
-                    CommandType::Clean,
-                    self.send.clone(),
-                );
+                std::thread::spawn(move || {
+                    ops::clean_repo(options);
+                    send.send((command_type, (usize::MAX, RepoState::default())))
+                        .unwrap();
+                });
             }
             CommandType::Refresh => {
                 self.clear_toml_config();
@@ -442,14 +416,14 @@ impl App {
         // show clean dialog
         self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
         if self.clean_dialog.is_ok() {
-            self.exec_cmd(CommandType::Clean);
+            self.exec_ops(CommandType::Clean);
         }
 
         // show sync hard dialog
         self.sync_hard_dialog
             .show(ctx, eframe, &mut self.sync_hard_is_open);
         if self.sync_hard_dialog.is_ok() {
-            self.exec_cmd(CommandType::SyncHard);
+            self.exec_ops(CommandType::SyncHard);
         }
     }
 
@@ -482,7 +456,7 @@ impl App {
                 ui.set_min_width(MENU_BOX_WIDTH);
                 // init button
                 if ui.button("  Init").clicked() {
-                    self.exec_cmd(CommandType::Init);
+                    self.exec_ops(CommandType::Init);
                     ui.close_menu();
                 }
 
@@ -495,26 +469,26 @@ impl App {
                         .save_file()
                     {
                         self.config_file = path.to_str().unwrap().to_string().norm_path();
-                        self.exec_cmd(CommandType::Snapshot);
+                        self.exec_ops(CommandType::Snapshot);
                     }
                     ui.close_menu();
                 }
 
                 // fetch button
                 if ui.button("  Fetch").clicked() {
-                    self.exec_cmd(CommandType::Fetch);
+                    self.exec_ops(CommandType::Fetch);
                     ui.close_menu();
                 }
 
                 // sync button
                 if ui.button("  Sync").clicked() {
-                    self.exec_cmd(CommandType::Sync);
+                    self.exec_ops(CommandType::Sync);
                     ui.close_menu();
                 }
 
                 // track button
                 if ui.button("  Track").clicked() {
-                    self.exec_cmd(CommandType::Track);
+                    self.exec_ops(CommandType::Track);
                     ui.close_menu();
                 }
 
@@ -527,7 +501,7 @@ impl App {
 
                 // refresh button
                 if ui.button("  Refresh").clicked() {
-                    self.exec_cmd(CommandType::Refresh);
+                    self.exec_ops(CommandType::Refresh);
                     ui.close_menu();
                 }
             });
@@ -570,7 +544,7 @@ impl App {
                 egui::Button::new(format!("  {}\nFetch", hex_code::FETCH)),
             );
             if fetch_button_response.clicked() {
-                self.exec_cmd(CommandType::Fetch);
+                self.exec_ops(CommandType::Fetch);
             }
 
             // sync button
@@ -579,7 +553,7 @@ impl App {
                 egui::Button::new(format!(" {}\nSync", hex_code::SYNC)),
             );
             if sync_button_response.clicked() {
-                self.exec_cmd(CommandType::Sync);
+                self.exec_ops(CommandType::Sync);
             }
 
             // sync hard button
@@ -598,7 +572,7 @@ impl App {
                 egui::Button::new(format!("   {}\nRefresh", hex_code::REFRESH)),
             );
             if refresh_button_response.clicked() {
-                self.exec_cmd(CommandType::Refresh);
+                self.exec_ops(CommandType::Refresh);
             }
         });
     }
@@ -670,10 +644,9 @@ impl App {
                 if ui
                     .add_sized([18.0, 18.0], egui::Button::new(hex_code::LINK_EXTERNAL))
                     .clicked()
+                    && Path::new(&self.project_path).is_dir()
                 {
-                    if Path::new(&self.project_path).is_dir() {
-                        open_in_file_explorer(self.project_path.clone());
-                    }
+                    open_in_file_explorer(self.project_path.clone());
                 }
 
                 // edit text for project
@@ -784,7 +757,7 @@ impl App {
                         self.push_recent_config();
                     }
 
-                    self.exec_cmd(CommandType::Refresh);
+                    self.exec_ops(CommandType::Refresh);
                 }
                 ui.end_row();
             });
@@ -798,15 +771,21 @@ impl App {
         let scroll_area = egui::ScrollArea::vertical().auto_shrink([true; 2]);
         scroll_area.show(ui, |ui| {
             ui.vertical(|ui| {
-                if let Some(toml_repos) = self.toml_config.repos.clone() {
+                if let Some(mut toml_repos) = self.toml_config.repos.clone() {
                     // modification flag
                     let mut is_modified = false;
 
-                    for idx in 0..toml_repos.len() {
+                    for (idx, toml_repo) in toml_repos.iter_mut().enumerate() {
                         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                             ui.set_min_width(desired_width);
                             ui.horizontal(|ui| {
-                                let mut toml_repo = toml_repos[idx].clone();
+                                // let mut toml_repo = toml_repos[idx].clone();
+                                let repo_name = toml_repo
+                                    .local
+                                    .as_ref()
+                                    .unwrap_or(&"invalid".to_string())
+                                    .to_string()
+                                    .replace(['/', '\\'], "_");
 
                                 // show check box for sync ignore
                                 // save ignore
@@ -825,17 +804,18 @@ impl App {
                                 // letf panel - repository remote config
                                 self.repository_remote_config_panel(
                                     ui,
-                                    &mut toml_repo,
+                                    toml_repo,
                                     idx,
                                     desired_width * 0.5,
                                 );
                                 // save modification to toml_repo
                                 if cmp_toml_repo(
                                     &self.toml_config.repos.as_ref().unwrap()[idx],
-                                    &toml_repo,
+                                    toml_repo,
                                 ) {
                                     is_modified = true;
-                                    self.toml_config.repos.as_mut().unwrap()[idx] = toml_repo;
+                                    self.toml_config.repos.as_mut().unwrap()[idx] =
+                                        toml_repo.clone();
                                 }
 
                                 // right panel - repository state
@@ -843,7 +823,12 @@ impl App {
                                     true => self.repo_states[idx].clone(),
                                     false => RepoState::default(),
                                 };
-                                self.repository_state_panel(ui, repo_state, desired_width * 0.5);
+                                self.repository_state_panel(
+                                    ui,
+                                    repo_state,
+                                    repo_name,
+                                    desired_width * 0.5,
+                                );
                             });
                         });
                         ui.separator();
@@ -1057,13 +1042,14 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         repo_state: RepoState,
+        repo_name: impl AsRef<str>,
         desired_width: f32,
     ) {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
             ui.set_width(desired_width);
 
-            // show states
             if repo_state.err_msg.is_empty() {
+                // show states
                 match repo_state.track_state {
                     // show disconnected
                     StateType::Disconnected => {
@@ -1085,6 +1071,11 @@ impl App {
                             ui.add(egui::widgets::Spinner::new());
                         });
 
+                        if let Some(msg) = self.repo_messages.get(repo_name.as_ref()) {
+                            let locked = msg.lock().unwrap();
+                            let job = create_layout_jobs(locked.deref());
+                            ui.label(job);
+                        }
                         ui.add_space(4.0);
                     }
                     // show Warning
@@ -1142,9 +1133,8 @@ impl App {
                                 text_color::GRAY,
                             );
                             ui.label(job);
-                        }
-                        // Warning
-                        else if repo_state.cmp_state == StateType::Warning {
+                        } else if repo_state.cmp_state == StateType::Warning {
+                            // Warning
                             let mut job = create_layout_job(
                                 format!("{} {}", hex_code::COMMIT, &repo_state.cmp_commit),
                                 text_color::YELLOW,
@@ -1159,9 +1149,8 @@ impl App {
                                 },
                             );
                             ui.label(job);
-                        }
-                        // Error
-                        else {
+                        } else {
+                            // Error
                             let job = create_truncate_layout_job(
                                 format!("{} {}", hex_code::COMMIT, &repo_state.cmp_obj),
                                 text_color::RED,
@@ -1298,42 +1287,5 @@ fn get_repo_states_thread(
                     .unwrap();
             })
         });
-    });
-}
-
-fn exec_cmd_with_send(
-    cmd: &str,
-    project: &str,
-    option: &str,
-    command_type: CommandType,
-    send: Sender<(CommandType, (usize, RepoState))>,
-) {
-    let command_str = format!("{} {} \"{}\" {}", MGIT_DIR, cmd, project, option);
-    std::thread::spawn(move || {
-        #[cfg(target_os = "windows")]
-        {
-            std::process::Command::new("cmd")
-                .raw_arg("/C")
-                .raw_arg(&command_str)
-                .creation_flags(defines::console_option::DETACHED_PROCESS)
-                .output()
-                .expect("command failed to start");
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            let cur_path = std::env::current_exe().unwrap();
-            let cur_path = cur_path.parent().unwrap().to_str().unwrap();
-            let command_str = format!("./{}", &command_str);
-            std::process::Command::new("sh")
-                .current_dir(cur_path)
-                .arg("-c")
-                .arg(&command_str)
-                .output()
-                .expect("command failed to start");
-        }
-
-        send.send((command_type, (usize::MAX, RepoState::default())))
-            .unwrap();
     });
 }

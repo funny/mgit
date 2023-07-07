@@ -7,10 +7,14 @@ use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
 use mgit::core::repo::TomlRepo;
 use mgit::core::repos::TomlConfig;
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
+use crate::progress::RepoMessageCollector;
+use mgit::utils::StyleMessage;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+use std::sync::{Arc, Mutex};
 
 mod about_window;
 mod app;
@@ -58,6 +62,8 @@ pub trait DialogBase {
     fn is_ok(&self) -> bool;
 }
 
+pub type RepoMessages = HashMap<String, Arc<Mutex<StyleMessage>>>;
+
 pub struct App {
     project_path: String,
     config_file: String,
@@ -93,35 +99,9 @@ pub struct App {
     // sync hard dialog
     sync_hard_dialog: Dialog,
     sync_hard_is_open: bool,
-}
 
-#[derive(Clone)]
-pub struct RepoState {
-    current_branch: String,
-    tracking_branch: String,
-    track_state: StateType,
-    cmp_obj: String,
-    cmp_commit: String,
-    cmp_changes: String,
-    cmp_state: StateType,
-    err_msg: String,
-    no_ignore: bool,
-}
-
-impl Default for RepoState {
-    fn default() -> Self {
-        Self {
-            current_branch: String::new(),
-            tracking_branch: String::new(),
-            track_state: StateType::Disconnected,
-            cmp_obj: String::new(),
-            cmp_commit: String::new(),
-            cmp_changes: String::new(),
-            cmp_state: StateType::Disconnected,
-            err_msg: String::new(),
-            no_ignore: true,
-        }
-    }
+    repo_messages: RepoMessages,
+    repo_message_collector: Option<RepoMessageCollector>,
 }
 
 impl Default for App {
@@ -162,6 +142,38 @@ impl Default for App {
             // sync hard dialog
             sync_hard_dialog: Dialog::create(format!("Sync Hard"), format!("Confirm sync hard?")),
             sync_hard_is_open: false,
+
+            repo_messages: HashMap::new(),
+            repo_message_collector: None,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct RepoState {
+    current_branch: String,
+    tracking_branch: String,
+    track_state: StateType,
+    cmp_obj: String,
+    cmp_commit: String,
+    cmp_changes: String,
+    cmp_state: StateType,
+    err_msg: String,
+    no_ignore: bool,
+}
+
+impl Default for RepoState {
+    fn default() -> Self {
+        Self {
+            current_branch: String::new(),
+            tracking_branch: String::new(),
+            track_state: StateType::Disconnected,
+            cmp_obj: String::new(),
+            cmp_commit: String::new(),
+            cmp_changes: String::new(),
+            cmp_state: StateType::Disconnected,
+            err_msg: String::new(),
+            no_ignore: true,
         }
     }
 }
@@ -299,6 +311,27 @@ pub fn create_layout_job(text: String, color: egui::Color32) -> egui::text::Layo
     job
 }
 
+pub fn create_layout_jobs(style_message: &StyleMessage) -> egui::text::LayoutJob {
+    let mut job = egui::text::LayoutJob::default();
+    let mut len = 0;
+    for sm in &style_message.0 {
+        // 实现一个truncate效果
+        if len + sm.content.len() > 100 {
+            break;
+        }
+        job.append(
+            &sm.content,
+            0.0,
+            egui::TextFormat {
+                color: text_color::from(sm.style.map_or(&None, |s| &s.foreground)),
+                ..Default::default()
+            },
+        );
+        len += sm.content.len();
+    }
+    job
+}
+
 pub fn create_truncate_layout_job(text: String, color: egui::Color32) -> egui::text::LayoutJob {
     egui::text::LayoutJob {
         sections: vec![egui::text::LayoutSection {
@@ -385,21 +418,9 @@ pub fn get_mgit_version() -> Result<String, String> {
         }
     }
 
-    return Err(err_msg);
+    Err(err_msg)
 }
 
-pub fn check_mgit_version_vaild(version: &str) -> Result<(), String> {
-    let expect_version = semver::VersionReq::parse(MGIT_VERSION).expect("semver error");
-    let current_version = semver::Version::parse(version).expect("semver error");
-
-    match expect_version.matches(&current_version) {
-        true => Ok(()),
-        false => Err(format!(
-            "mgit version {} is required, current version is {}\n",
-            MGIT_VERSION, version
-        )),
-    }
-}
 pub fn check_git_valid() -> Result<(), String> {
     // make sure git is installed
     #[cfg(target_os = "windows")]

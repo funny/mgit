@@ -40,7 +40,7 @@ impl Display for StyleText {
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct StyleMessage(Vec<StyleText>);
+pub struct StyleMessage(pub Vec<StyleText>);
 
 impl StyleMessage {
     pub(crate) fn new() -> Self {
@@ -90,6 +90,10 @@ impl StyleMessage {
     pub(crate) fn remove(mut self, pattern: impl AsRef<str>) -> Self {
         self.0.retain(|st| st.content != pattern.as_ref());
         self
+    }
+
+    pub fn replace(&mut self, other: StyleMessage) {
+        self.0 = other.0;
     }
 }
 

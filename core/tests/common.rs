@@ -153,7 +153,7 @@ impl Progress for TestProgress {
 
     fn repo_info(&self, _repo_id: RepoId, _message: StyleMessage) {}
 
-    fn repo_error(&self, _repo_id: RepoId, _message: StyleMessage) {}
-
     fn repo_end(&self, _repo_id: RepoId, _message: StyleMessage) {}
+
+    fn repo_error(&self, _repo_id: RepoId, _message: StyleMessage) {}
 }

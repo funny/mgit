@@ -79,10 +79,6 @@ impl Progress for MultiProgress {
             .set_message(truncate_spinner_msg(message.to_string()));
     }
 
-    fn repo_error(&self, repo_id: RepoId, message: StyleMessage) {
-        self.repo_end(repo_id, message)
-    }
-
     fn repo_end(&self, repo_id: RepoId, message: StyleMessage) {
         let locked = self.spinner_progress_bars.lock().unwrap();
         let pb = locked.get(&repo_id.id).unwrap();
@@ -96,6 +92,10 @@ impl Progress for MultiProgress {
             .as_ref()
             .unwrap()
             .inc(1);
+    }
+
+    fn repo_error(&self, repo_id: RepoId, message: StyleMessage) {
+        self.repo_end(repo_id, message)
     }
 }
 

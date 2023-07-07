@@ -1,13 +1,18 @@
 // hide console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use crate::logger::init_log;
 use editor::{
     defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
     load_icon, App,
 };
 
 mod editor;
+mod logger;
+pub(crate) mod progress;
 
 fn main() {
+    init_log();
     let mut native_options = eframe::NativeOptions::default();
     native_options.drag_and_drop_support = true;
     native_options.initial_window_size = Some([DEFAULT_WIDTH, DEFAULT_HEIGHT].into());
@@ -21,8 +26,8 @@ fn main() {
     eframe::run_native(
         &format!(
             "{} {}",
-            std::env!("CARGO_PKG_NAME").to_string(),
-            std::env!("CARGO_PKG_VERSION").to_string()
+            std::env!("CARGO_PKG_NAME"),
+            std::env!("CARGO_PKG_VERSION")
         ),
         native_options,
         Box::new(|cc| Box::new(App::new(cc))),

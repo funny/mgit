@@ -8,7 +8,7 @@ use crate::core::git::RemoteRef;
 use crate::utils::path::PathExtension;
 use crate::utils::style_message::StyleMessage;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct RepoId {
     pub id: usize,
     pub repo: String,
@@ -28,7 +28,7 @@ impl RepoId {
     pub fn new(id: usize, repo: impl AsRef<str>) -> Self {
         Self {
             id,
-            repo: repo.as_ref().to_string(),
+            repo: repo.as_ref().to_string().replace(['/', '\\'], "_"),
         }
     }
 }
