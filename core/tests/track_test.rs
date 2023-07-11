@@ -31,7 +31,7 @@ fn cli_track_simple() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
             "foobar-1",
@@ -144,7 +144,7 @@ fn cli_track_ignore() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(

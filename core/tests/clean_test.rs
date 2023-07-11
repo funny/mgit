@@ -88,7 +88,7 @@ fn cli_clean1() {
     create_repos_tree(&path, &rel_paths);
 
     let config_file = path.join(".gitrepos");
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(rel_paths[2], &IMGUI_REPO, None, None, None)
         .join_repo(rel_paths[3], &IMGUI_REPO, None, None, None)
@@ -166,7 +166,7 @@ fn cli_clean2() {
     create_repos_tree(&path, &rel_paths);
 
     let config_file = path.join(".gitrepos");
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(rel_paths[0], &IMGUI_REPO, None, None, None)
         .join_repo(rel_paths[3], &IMGUI_REPO, None, None, None)
@@ -245,7 +245,7 @@ fn cli_clean3() {
     create_repos_tree(&path, &rel_paths);
 
     let config_file = path.join(".gitrepos");
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(rel_paths[2], &IMGUI_REPO, None, None, None)
         .join_repo(rel_paths[3], &IMGUI_REPO, None, None, None)

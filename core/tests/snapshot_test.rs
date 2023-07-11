@@ -35,7 +35,7 @@ fn cli_init_simple() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo("foobar-1", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar-2", &CSBOOKS_REPO, Some("master"), None, None)
@@ -74,7 +74,7 @@ fn cli_init_force1() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar-1", &CSBOOKS_REPO, Some("master"), None, None)
@@ -119,7 +119,7 @@ fn cli_init_force2() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar-1", &CSBOOKS_REPO, Some("master"), None, None)
@@ -187,7 +187,7 @@ fn cli_snapshot_simple() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             "foobar-1",
@@ -238,7 +238,7 @@ fn cli_snapshot_branch() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo("foobar-1", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar-2", &CSBOOKS_REPO, Some("master"), None, None)
@@ -279,7 +279,7 @@ fn cli_snapshot_force() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(config_file).unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -372,7 +372,7 @@ fn cli_snapshot_ignore() {
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(config_file).unwrap();
-    let expect_result = TomlBuilder::new()
+    let expect_result = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             "foobar-1",

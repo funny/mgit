@@ -94,7 +94,7 @@ fn cli_fetch_new_remote_url() {
         assert!(!dir.join(".git/FETCH_HEAD").is_file());
     }
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &MGIT_REPO, None, None, None)
         .join_repo("foobar-1", &MGIT_REPO, None, None, None)

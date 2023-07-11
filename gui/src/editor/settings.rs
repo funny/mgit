@@ -215,7 +215,7 @@ impl TomlUserSettings {
 // ========================================
 // recent project settings for app
 // ========================================
-impl super::App {
+impl<'a> super::App<'a> {
     pub fn load_recent_projects(&mut self) {
         let tmp_dir: PathBuf;
         if let Some(path) = home::home_dir() {

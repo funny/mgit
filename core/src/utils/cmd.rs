@@ -1,12 +1,11 @@
-use crate::core::repo::RepoId;
 use anyhow::{Context, Error};
 use console::strip_ansi_codes;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::utils::progress::Progress;
-use crate::utils::StyleMessage as SMsg;
+use crate::utils::progress::{Progress, RepoInfo};
+use crate::utils::StyleMessage;
 
 pub fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> Result<String, anyhow::Error> {
     let mut command = std::process::Command::new(cmd);
@@ -35,10 +34,8 @@ pub fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> Result<Stri
 }
 
 pub fn exec_cmd_with_progress(
-    rel_path: impl AsRef<str>,
+    repo_info: &RepoInfo,
     command: &mut Command,
-    prefix: &str,
-    idx: usize,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
     let mut spawned = command
@@ -46,13 +43,14 @@ pub fn exec_cmd_with_progress(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .with_context(|| SMsg::new().plain_text(format!("Error starting command {:?}", command)))?;
+        .with_context(|| {
+            StyleMessage::new().plain_text(format!("Error starting command {:?}", command))
+        })?;
 
-    let last_line = SMsg::spinner_info(prefix, &rel_path, "running...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_ref()), last_line);
+    progress.repo_info(repo_info, "running...".into());
 
     // get message from stderr with "--progress" option
-    let mut last_line = SMsg::new();
+    let mut last_line = StyleMessage::new();
     if let Some(ref mut stderr) = spawned.stderr {
         let lines = BufReader::new(stderr).split(b'\r');
         for line in lines {
@@ -62,9 +60,9 @@ pub fn exec_cmd_with_progress(
             }
             let line = std::str::from_utf8(&output).unwrap();
             let plain_line = strip_ansi_codes(line).replace('\n', " ");
-            let full_line = SMsg::spinner_info(prefix, &rel_path, plain_line.trim().into());
+            let full_line = plain_line.trim().into();
 
-            progress.repo_info(RepoId::new(idx, rel_path.as_ref()), full_line);
+            progress.repo_info(repo_info, full_line);
             last_line = last_line.plain_text(plain_line);
         }
     }
@@ -75,7 +73,7 @@ pub fn exec_cmd_with_progress(
 
     if !exit_code.success() {
         return Err(Error::msg("").context(
-            SMsg::new()
+            StyleMessage::new()
                 .plain_text(format!(
                     "Git exited with code {}: ",
                     exit_code.code().unwrap()

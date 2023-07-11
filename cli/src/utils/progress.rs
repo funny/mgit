@@ -1,17 +1,18 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-use mgit::core::repo::RepoId;
-use mgit::utils::progress::Progress;
-use mgit::utils::style_message::StyleMessage;
+use mgit::utils::progress::{Progress, RepoInfo};
+use mgit::utils::style_message::{StyleMessage, GREEN_BOLD, PURPLE_BOLD};
 
 #[derive(Clone, Default)]
 pub(crate) struct MultiProgress {
     multi_progress: Arc<Mutex<indicatif::MultiProgress>>,
     main_progress_bar: Arc<Mutex<Option<ProgressBar>>>,
     spinner_progress_bars: Arc<Mutex<HashMap<usize, ProgressBar>>>,
+    total_repos: Arc<AtomicUsize>,
 }
 
 impl MultiProgress {
@@ -52,10 +53,42 @@ impl MultiProgress {
             .unwrap()
             .insert(id, progress_bar);
     }
+
+    #[inline]
+    fn prefix(idx: usize, total: usize) -> String {
+        format!("[{:02}/{:02}]", idx, total)
+    }
+
+    fn spinner_start(&self, repo_info: &RepoInfo, desc: StyleMessage) -> String {
+        format!(
+            "{:>9} {}",
+            Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
+            desc.to_plain_text()
+        )
+    }
+
+    fn spinner_info(&self, repo_info: &RepoInfo, desc: StyleMessage) -> String {
+        format!(
+            "{:>9} {}: {}",
+            Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
+            &PURPLE_BOLD.paint(repo_info.rel_path()),
+            desc
+        )
+    }
+
+    fn spinner_end(&self, repo_info: &RepoInfo, status: StyleMessage) -> String {
+        format!(
+            "{} {} {}",
+            status,
+            Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
+            &GREEN_BOLD.paint(repo_info.rel_path())
+        )
+    }
 }
 
 impl Progress for MultiProgress {
     fn repos_start(&self, total: usize) {
+        self.total_repos.store(total, Ordering::Relaxed);
         self.create_total_bar(total);
     }
 
@@ -66,24 +99,30 @@ impl Progress for MultiProgress {
         }
     }
 
-    fn repo_start(&self, repo_id: RepoId) {
-        self.create_progress_bar(repo_id.id);
-    }
-
-    fn repo_info(&self, repo_id: RepoId, message: StyleMessage) {
+    fn repo_start(&self, repo_info: &RepoInfo, message: StyleMessage) {
+        self.create_progress_bar(repo_info.index);
         self.spinner_progress_bars
             .lock()
             .unwrap()
-            .get(&repo_id.id)
+            .get(&repo_info.index)
             .unwrap()
-            .set_message(truncate_spinner_msg(message.to_string()));
+            .set_message(truncate_spinner_msg(self.spinner_start(repo_info, message)));
     }
 
-    fn repo_end(&self, repo_id: RepoId, message: StyleMessage) {
+    fn repo_info(&self, repo_info: &RepoInfo, message: StyleMessage) {
+        self.spinner_progress_bars
+            .lock()
+            .unwrap()
+            .get(&repo_info.index)
+            .unwrap()
+            .set_message(truncate_spinner_msg(self.spinner_info(repo_info, message)));
+    }
+
+    fn repo_end(&self, repo_info: &RepoInfo, message: StyleMessage) {
         let locked = self.spinner_progress_bars.lock().unwrap();
-        let pb = locked.get(&repo_id.id).unwrap();
+        let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
-            pb.finish_with_message(message.to_string());
+            pb.finish_with_message(self.spinner_end(repo_info, message));
         }
 
         self.main_progress_bar
@@ -94,8 +133,8 @@ impl Progress for MultiProgress {
             .inc(1);
     }
 
-    fn repo_error(&self, repo_id: RepoId, message: StyleMessage) {
-        self.repo_end(repo_id, message)
+    fn repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {
+        self.repo_end(repo_info, message)
     }
 }
 

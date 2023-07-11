@@ -184,35 +184,12 @@ impl StyleMessage {
         }
     }
 
-    pub(crate) fn spinner_start(prefix: impl AsRef<str>, desc: impl AsRef<str>) -> Self {
-        StyleMessage::new().plain_text(format!("{:>9} {}", prefix.as_ref(), desc.as_ref()))
-    }
-
-    pub(crate) fn spinner_info(
-        prefix: impl AsRef<str>,
-        rel_path: impl AsRef<str>,
-        desc: StyleMessage,
-    ) -> Self {
-        StyleMessage::new()
-            .plain_text(format!("{:>9} ", prefix.as_ref()))
-            .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
-            .plain_text(": ")
-            .join(desc)
-    }
-
-    pub(crate) fn spinner_end(
-        prefix: impl AsRef<str>,
-        rel_path: impl AsRef<str>,
-        is_succ: bool,
-    ) -> Self {
-        let (sign, style): (&str, &Style) = match is_succ {
+    pub(crate) fn repo_end(is_success: bool) -> Self {
+        let (sign, style): (&str, &Style) = match is_success {
             true => ("√", &GREEN_BOLD),
             false => ("x", &RED_BOLD),
         };
-        StyleMessage::new()
-            .styled_text(sign, style)
-            .plain_text(format!(" {} ", prefix.as_ref()))
-            .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
+        StyleMessage::new().styled_text(sign, style)
     }
 
     pub(crate) fn git_error(rel_path: impl AsRef<str>, error: &anyhow::Error) -> Self {

@@ -1,5 +1,6 @@
 use super::*;
 use eframe::egui;
+use std::io::BufRead;
 use std::ops::Deref;
 
 use mgit::core::git;
@@ -21,7 +22,7 @@ use mgit::utils::path::PathExtension;
 use std::os::windows::process::CommandExt;
 
 /// main app ui update
-impl eframe::App for App {
+impl<'a> eframe::App for App<'a> {
     fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // top view
         self.top_view(ctx);
@@ -46,7 +47,7 @@ impl eframe::App for App {
 // ========================================
 // data handle for app
 // ========================================
-impl App {
+impl<'a> App<'a> {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // restore app state
         #[cfg(feature = "persistence")]
@@ -135,46 +136,33 @@ impl App {
         if config_file.is_file() {
             if let Some(toml_config) = load_config(&config_file) {
                 self.toml_config = toml_config;
-
                 // init repo states and sync ignore
                 if let Some(toml_repos) = &self.toml_config.repos {
-                    for (_, toml_repo) in toml_repos.iter().enumerate() {
+                    let ignores = self
+                        .get_ignore()
+                        .unwrap_or("".to_string())
+                        .split('\n')
+                        .map(|s| s.trim().to_string())
+                        .collect::<Vec<_>>();
+                    self.repo_messages.clear();
+                    toml_repos.iter().enumerate().for_each(|(id, toml_repo)| {
                         let rel_path = toml_repo
                             .local
                             .as_ref()
                             .map_or(String::from("invalid"), |p| p.clone());
-                        // get ignore state
-                        let do_ignore = if let Some(ignore) = &self.get_ignore() {
-                            let ignore_paths: Vec<String> =
-                                ignore.split('\n').map(|s| s.trim().to_string()).collect();
-                            ignore_paths.contains(&rel_path.display_path())
-                        } else {
-                            false
-                        };
 
+                        // get ignore state
+                        let do_ignore = ignores.contains(&rel_path);
                         // init repo state
                         self.repo_states.push(RepoState {
                             no_ignore: !do_ignore,
                             ..RepoState::default()
                         });
-                    }
-                    if self.repo_messages.is_empty() {
-                        toml_repos.iter().for_each(|tr| {
-                            let rel_path = tr
-                                .local
-                                .as_ref()
-                                .map_or(String::from("invalid"), |p| p.clone());
-                            // init repo message
-                            self.repo_messages.insert(
-                                rel_path.replace(['/', '\\'], "_"),
-                                Arc::new(Mutex::new(StyleMessage::default())),
-                            );
-                        });
-                    }
-                    if self.repo_message_collector.is_none() {
-                        self.repo_message_collector =
-                            Some(RepoMessageCollector::new(&self.repo_messages));
-                    }
+
+                        self.repo_messages.push(RepoMessage::new(id, toml_repo));
+                    });
+                    self.repo_message_collector =
+                        Some(RepoMessageCollector::new(&self.repo_messages));
                 }
             }
         }
@@ -246,8 +234,8 @@ impl App {
                 self.clear_toml_config();
                 std::thread::spawn(move || {
                     ops::init_repo(options);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
-                        .unwrap();
+                    // send.send((command_type, (usize::MAX, RepoState::default())))
+                    //     .unwrap();
                 });
             }
             CommandType::Snapshot => {
@@ -281,7 +269,7 @@ impl App {
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 let ignore: Option<Vec<String>> = self
                     .get_ignore()
-                    .map(|content| content.split("\n").map(|s| s.to_string()).collect());
+                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
                 let silent = Some(true);
 
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
@@ -351,7 +339,7 @@ impl App {
                 let config_path = Some(&self.config_file);
                 let ignore: Option<Vec<String>> = self
                     .get_ignore()
-                    .map(|content| content.split("\n").map(|s| s.to_string()).collect());
+                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
 
                 let options = TrackOptions::new(path, config_path, ignore);
                 let send = self.send.clone();
@@ -391,7 +379,7 @@ impl App {
 // ========================================
 // ui design for app
 // ========================================
-impl App {
+impl<'a> App<'a> {
     /// part of app
     fn handle_windows(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // show about window
@@ -775,64 +763,62 @@ impl App {
                     // modification flag
                     let mut is_modified = false;
 
-                    for (idx, toml_repo) in toml_repos.iter_mut().enumerate() {
-                        ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-                            ui.set_min_width(desired_width);
-                            ui.horizontal(|ui| {
-                                // let mut toml_repo = toml_repos[idx].clone();
-                                let repo_name = toml_repo
-                                    .local
-                                    .as_ref()
-                                    .unwrap_or(&"invalid".to_string())
-                                    .to_string()
-                                    .replace(['/', '\\'], "_");
+                    toml_repos
+                        .iter_mut()
+                        .enumerate()
+                        .for_each(|(idx, toml_repo)| {
+                            ui.with_layout(
+                                egui::Layout::top_down_justified(egui::Align::LEFT),
+                                |ui| {
+                                    ui.set_min_width(desired_width);
+                                    ui.horizontal(|ui| {
+                                        // show check box for sync ignore
+                                        // save ignore
+                                        if ui
+                                            .checkbox(&mut self.repo_states[idx].no_ignore, "")
+                                            .changed()
+                                        {
+                                            if let Some(rel_path) = &toml_repo.local {
+                                                self.save_ignore(
+                                                    rel_path.display_path(),
+                                                    !self.repo_states[idx].no_ignore,
+                                                );
+                                            }
+                                        };
 
-                                // show check box for sync ignore
-                                // save ignore
-                                if ui
-                                    .checkbox(&mut self.repo_states[idx].no_ignore, "")
-                                    .changed()
-                                {
-                                    if let Some(rel_path) = &toml_repo.local {
-                                        self.save_ignore(
-                                            rel_path.display_path(),
-                                            !self.repo_states[idx].no_ignore,
+                                        // letf panel - repository remote config
+                                        self.repository_remote_config_panel(
+                                            ui,
+                                            toml_repo,
+                                            idx,
+                                            desired_width * 0.5,
                                         );
-                                    }
-                                };
+                                        // save modification to toml_repo
+                                        if cmp_toml_repo(
+                                            &self.toml_config.repos.as_ref().unwrap()[idx],
+                                            toml_repo,
+                                        ) {
+                                            is_modified = true;
+                                            self.toml_config.repos.as_mut().unwrap()[idx] =
+                                                toml_repo.clone();
+                                        }
 
-                                // letf panel - repository remote config
-                                self.repository_remote_config_panel(
-                                    ui,
-                                    toml_repo,
-                                    idx,
-                                    desired_width * 0.5,
-                                );
-                                // save modification to toml_repo
-                                if cmp_toml_repo(
-                                    &self.toml_config.repos.as_ref().unwrap()[idx],
-                                    toml_repo,
-                                ) {
-                                    is_modified = true;
-                                    self.toml_config.repos.as_mut().unwrap()[idx] =
-                                        toml_repo.clone();
-                                }
-
-                                // right panel - repository state
-                                let repo_state = match idx < self.repo_states.len() {
-                                    true => self.repo_states[idx].clone(),
-                                    false => RepoState::default(),
-                                };
-                                self.repository_state_panel(
-                                    ui,
-                                    repo_state,
-                                    repo_name,
-                                    desired_width * 0.5,
-                                );
-                            });
+                                        // right panel - repository state
+                                        let repo_state = match idx < self.repo_states.len() {
+                                            true => self.repo_states[idx].clone(),
+                                            false => RepoState::default(),
+                                        };
+                                        self.repository_state_panel(
+                                            ui,
+                                            repo_state,
+                                            idx,
+                                            desired_width * 0.5,
+                                        );
+                                    });
+                                },
+                            );
+                            ui.separator();
                         });
-                        ui.separator();
-                    }
 
                     if is_modified {
                         // serialize .gitrepos
@@ -1042,7 +1028,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         repo_state: RepoState,
-        repo_name: impl AsRef<str>,
+        idx: usize,
         desired_width: f32,
     ) {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
@@ -1071,11 +1057,10 @@ impl App {
                             ui.add(egui::widgets::Spinner::new());
                         });
 
-                        if let Some(msg) = self.repo_messages.get(repo_name.as_ref()) {
-                            let locked = msg.lock().unwrap();
-                            let job = create_layout_jobs(locked.deref());
-                            ui.label(job);
-                        }
+                        let locked = &self.repo_messages[idx].message.lock().unwrap();
+                        let job = create_layout_jobs(locked.deref());
+                        ui.label(job);
+
                         ui.add_space(4.0);
                     }
                     // show Warning

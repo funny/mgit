@@ -30,7 +30,7 @@ fn cli_sync_simple() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -129,7 +129,7 @@ fn cli_sync_simple_tracking_invalid() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar", &CSBOOKS_REPO, Some("master"), None, None)
@@ -224,7 +224,7 @@ fn cli_sync_stash() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar", &CSBOOKS_REPO, Some("master"), None, None)
@@ -335,7 +335,7 @@ fn cli_sync_stash_tracking_invalid() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .join_repo("foobar", &CSBOOKS_REPO, Some("master"), None, None)
@@ -433,7 +433,7 @@ fn cli_sync_hard() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -537,7 +537,7 @@ fn cli_sync_simple_invalid_path() {
 
     let input_path = path.join("foobar-1");
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -617,7 +617,7 @@ fn cli_sync_stash_invalid_path() {
 
     let input_path = path.join("foobar-1");
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -696,7 +696,7 @@ fn cli_sync_hard_invalid_path() {
 
     let input_path = path.join("foobar-1");
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -806,7 +806,7 @@ fn cli_sync_simple_repo_invalid() {
 
     let input_path = path.join("foobar-1");
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(
             ".",
@@ -895,7 +895,7 @@ fn cli_sync_checkout_invalid_path() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
@@ -984,7 +984,7 @@ fn cli_sync_checkout_symple() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo("foobar-1", &SBERT_REPO, Some("master"), None, None)
@@ -1033,7 +1033,7 @@ fn cli_sync_checkout_symple() {
     assert_eq!(branch.trim(), DEFAULT_BRANCH);
     assert!(exec_cmd(foobar_2_path, "git", &tracking_args).is_err());
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
@@ -1163,7 +1163,7 @@ fn cli_sync_checkout_with_conflict() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo("foobar-1", &SBERT_REPO, Some("master"), None, None)
@@ -1244,7 +1244,7 @@ fn cli_sync_checkout_with_conflict() {
     assert!(exec_cmd(root_path, "git", &tracking_args).is_err());
 
     // for confliction test
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
@@ -1348,7 +1348,7 @@ fn cli_sync_checkout_symple2() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .build();
@@ -1427,7 +1427,7 @@ fn cli_sync_ignore_symple() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo("foobar-1", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
@@ -1528,7 +1528,7 @@ fn cli_sync_with_depth() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(
             ".",
             &SBERT_REPO,
@@ -1619,7 +1619,7 @@ fn cli_sync_new_remote_url() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(
             ".",
             &CSBOOKS_REPO,
@@ -1657,7 +1657,7 @@ fn cli_sync_new_remote_url() {
         assert_eq!(output.trim(), &CSBOOKS_REPO as &str);
     }
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo("foobar", &SBERT_REPO, Some("master"), None, None)
         .build();
