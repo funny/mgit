@@ -1,32 +1,48 @@
+use mgit::core::repo::TomlRepo;
+use regex::Regex;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::ops::Deref;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-use crate::editor::RepoMessages;
+use crate::editor::{CommandType, RepoMessage, RepoState};
 use crate::logger::LOG_DIR;
 use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone)]
-pub(crate) struct RepoMessageCollector {
+pub(crate) struct OpsMessageCollector {
     repo_state_buffers: Vec<Arc<Mutex<StyleMessage>>>,
     file_loggers: Vec<Arc<Mutex<File>>>,
     repo_names: Vec<String>,
+    sender: Arc<Mutex<Sender<RepoMessage>>>,
+    pub command_type: CommandType,
 }
 
-impl RepoMessageCollector {
-    pub(crate) fn new(repo_messages: &RepoMessages) -> Self {
-        let repo_state_buffers = repo_messages
-            .iter()
-            .map(|msg| msg.message.clone())
+impl OpsMessageCollector {
+    pub(crate) fn new(sender: Sender<RepoMessage>) -> Self {
+        Self {
+            repo_state_buffers: vec![],
+            file_loggers: vec![],
+            repo_names: vec![],
+            sender: Arc::new(Mutex::new(sender)),
+            command_type: CommandType::None,
+        }
+    }
+
+    pub(crate) fn update(&mut self, toml_repos: &Vec<TomlRepo>) {
+        let repo_state_buffers = (0..toml_repos.len())
+            .map(|_| Arc::new(Mutex::new(StyleMessage::default())))
             .collect();
 
-        let repo_names = repo_messages
+        let repo_names = toml_repos
             .iter()
-            .map(|msg| msg.generate_repo_name())
+            .enumerate()
+            .map(|(i, toml)| Self::generate_repo_name(i, toml))
             .collect::<Vec<_>>();
 
-        let file_loggers = repo_messages
+        let file_loggers = toml_repos
             .iter()
             .enumerate()
             .map(|(i, _)| {
@@ -45,15 +61,28 @@ impl RepoMessageCollector {
             })
             .collect();
 
-        Self {
-            repo_state_buffers,
-            file_loggers,
-            repo_names,
-        }
+        self.repo_state_buffers = repo_state_buffers;
+        self.file_loggers = file_loggers;
+        self.repo_names = repo_names;
+    }
+
+    pub fn read_ops_message(&self, id: usize) -> StyleMessage {
+        self.repo_state_buffers[id].lock().unwrap().deref().clone()
+    }
+
+    #[rustfmt::skip]
+    pub fn generate_repo_name(id: usize, toml_repo: &TomlRepo) -> String {
+        let regex = Regex::new(r#"[^a-zA-Z0-9]+"#).unwrap();
+        format!(
+            "{:02}-{}-{}",
+            id,
+            regex.replace_all(toml_repo.local.as_ref().unwrap_or(&"no_local".to_string()), "_"),
+            regex.replace_all(toml_repo.remote.as_ref().unwrap_or(&"no_remote".to_string()), "_"),
+        )
     }
 }
 
-impl Progress for RepoMessageCollector {
+impl Progress for OpsMessageCollector {
     fn repos_start(&self, _total: usize) {
         // do nothing
     }
@@ -86,6 +115,16 @@ impl Progress for RepoMessageCollector {
 
     fn repo_end(&self, repo_info: &RepoInfo, message: StyleMessage) {
         self.repo_info(repo_info, message);
+
+        self.sender
+            .lock()
+            .unwrap()
+            .send(RepoMessage::new(
+                self.command_type,
+                RepoState::default(),
+                Some(repo_info.id),
+            ))
+            .unwrap();
 
         let mut file = self.file_loggers[repo_info.id].lock().unwrap();
         writeln!(

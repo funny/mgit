@@ -7,16 +7,12 @@ use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
 use mgit::core::repo::TomlRepo;
 use mgit::core::repos::TomlConfig;
-use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::progress::RepoMessageCollector;
-use mgit::utils::progress::RepoInfo;
+use crate::progress::OpsMessageCollector;
 use mgit::utils::StyleMessage;
-use regex::Regex;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use std::sync::{Arc, Mutex};
 
 mod about_window;
 mod app;
@@ -35,7 +31,7 @@ pub enum StateType {
     Error,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CommandType {
     None,
     Init,
@@ -64,36 +60,24 @@ pub trait DialogBase {
     fn is_ok(&self) -> bool;
 }
 
-pub struct RepoMessage<'a> {
-    pub id: usize,
-    pub toml_repo: &'a TomlRepo,
-    pub message: Arc<Mutex<StyleMessage>>,
+#[derive(Debug, Clone)]
+pub struct RepoMessage {
+    pub id: Option<usize>,
+    pub command_type: CommandType,
+    pub repo_state: RepoState,
 }
 
-impl<'a> RepoMessage<'a> {
-    pub fn new(id: usize, toml_repo: &'a TomlRepo) -> Self {
+impl RepoMessage {
+    pub fn new(command_type: CommandType, repo_state: RepoState, id: Option<usize>) -> Self {
         Self {
             id,
-            toml_repo,
-            message: Arc::new(Mutex::new(StyleMessage::default())),
+            command_type,
+            repo_state,
         }
-    }
-
-    #[rustfmt::skip]
-    pub fn generate_repo_name(&self) -> String {
-        let regex = Regex::new(r#"[^a-zA-Z0-9]+"#).unwrap();
-        format!(
-            "{:02}-{}-{}",
-            self.id,
-            regex.replace_all(self.toml_repo.local.as_ref().unwrap_or(&"no_local".to_string()), "_"),
-            regex.replace_all(self.toml_repo.remote.as_ref().unwrap_or(&"no_remote".to_string()), "_"),
-        )
     }
 }
 
-pub type RepoMessages<'a> = Vec<RepoMessage<'a>>;
-
-pub struct App<'a> {
+pub struct App {
     project_path: String,
     config_file: String,
 
@@ -106,8 +90,8 @@ pub struct App<'a> {
     remote_ref_edit_idx: i32,
     repo_states: Vec<RepoState>,
 
-    send: Sender<(CommandType, (usize, RepoState))>,
-    recv: Receiver<(CommandType, (usize, RepoState))>,
+    send: Sender<RepoMessage>,
+    recv: Receiver<RepoMessage>,
 
     // about window
     about_window: AboutWindow,
@@ -129,11 +113,10 @@ pub struct App<'a> {
     sync_hard_dialog: Dialog,
     sync_hard_is_open: bool,
 
-    repo_messages: RepoMessages<'a>,
-    repo_message_collector: Option<RepoMessageCollector>,
+    ops_message_collector: OpsMessageCollector,
 }
 
-impl<'a> Default for App<'a> {
+impl Default for App {
     fn default() -> Self {
         //let cur_dir = std::env::current_dir().unwrap_or(std::path::PathBuf::from(""));
         let (send, recv) = channel();
@@ -149,7 +132,7 @@ impl<'a> Default for App<'a> {
             remote_ref_edit_idx: -1,
             repo_states: Vec::new(),
 
-            send,
+            send: send.clone(),
             recv,
 
             // about window
@@ -172,8 +155,7 @@ impl<'a> Default for App<'a> {
             sync_hard_dialog: Dialog::create(format!("Sync Hard"), format!("Confirm sync hard?")),
             sync_hard_is_open: false,
 
-            repo_messages: Vec::new(),
-            repo_message_collector: None,
+            ops_message_collector: OpsMessageCollector::new(send),
         }
     }
 }

@@ -1,7 +1,5 @@
 use super::*;
 use eframe::egui;
-use std::io::BufRead;
-use std::ops::Deref;
 
 use mgit::core::git;
 use mgit::core::repo::cmp_local_remote;
@@ -11,7 +9,6 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
-use crate::progress::RepoMessageCollector;
 use mgit::ops;
 use mgit::ops::{
     CleanOptions, FetchOptions, InitOptions, SnapshotOptions, SnapshotType, SyncOptions,
@@ -22,7 +19,7 @@ use mgit::utils::path::PathExtension;
 use std::os::windows::process::CommandExt;
 
 /// main app ui update
-impl<'a> eframe::App for App<'a> {
+impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // top view
         self.top_view(ctx);
@@ -47,7 +44,7 @@ impl<'a> eframe::App for App<'a> {
 // ========================================
 // data handle for app
 // ========================================
-impl<'a> App<'a> {
+impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // restore app state
         #[cfg(feature = "persistence")]
@@ -144,8 +141,7 @@ impl<'a> App<'a> {
                         .split('\n')
                         .map(|s| s.trim().to_string())
                         .collect::<Vec<_>>();
-                    self.repo_messages.clear();
-                    toml_repos.iter().enumerate().for_each(|(id, toml_repo)| {
+                    toml_repos.iter().for_each(|toml_repo| {
                         let rel_path = toml_repo
                             .local
                             .as_ref()
@@ -158,11 +154,8 @@ impl<'a> App<'a> {
                             no_ignore: !do_ignore,
                             ..RepoState::default()
                         });
-
-                        self.repo_messages.push(RepoMessage::new(id, toml_repo));
                     });
-                    self.repo_message_collector =
-                        Some(RepoMessageCollector::new(&self.repo_messages));
+                    self.ops_message_collector.update(toml_repos);
                 }
             }
         }
@@ -176,8 +169,8 @@ impl<'a> App<'a> {
     fn reset_repo_state(&mut self, state_type: StateType) {
         for repo_state in &mut self.repo_states {
             *repo_state = RepoState {
-                track_state: state_type.clone(),
-                cmp_state: state_type.clone(),
+                track_state: state_type,
+                cmp_state: state_type,
                 no_ignore: repo_state.no_ignore,
                 ..RepoState::default()
             };
@@ -189,7 +182,7 @@ impl<'a> App<'a> {
         if let Some(repos) = &self.toml_config.repos.clone() {
             let project_path = self.project_path.clone();
             let default_branch = self.toml_config.default_branch.clone();
-            get_repo_states_thread(
+            get_repo_states_parallel(
                 repos.to_owned(),
                 project_path,
                 default_branch,
@@ -200,13 +193,25 @@ impl<'a> App<'a> {
 
     fn handle_channel_recv(&mut self) {
         // as callback after execute command
-        if let Ok((command_type, (idx, repo_state))) = self.recv.try_recv() {
-            if command_type == CommandType::None {
-                if idx < self.repo_states.len() {
-                    self.repo_states[idx] = RepoState {
-                        no_ignore: self.repo_states[idx].no_ignore,
-                        ..repo_state
+        if let Ok(repo_message) = self.recv.try_recv() {
+            if repo_message.command_type == CommandType::None {
+                if let Some(id) = repo_message.id {
+                    self.repo_states[id] = RepoState {
+                        no_ignore: self.repo_states[id].no_ignore,
+                        ..repo_message.repo_state
                     };
+                };
+            } else if let Some(id) = repo_message.id {
+                if let Some(repos) = &self.toml_config.repos {
+                    let repo_state = get_repo_state(
+                        &repos[id],
+                        &self.project_path,
+                        &self.toml_config.default_branch,
+                    );
+                    self.repo_states[id] = RepoState {
+                        no_ignore: self.repo_states[id].no_ignore,
+                        ..repo_state
+                    }
                 }
             } else {
                 self.load_config();
@@ -234,8 +239,8 @@ impl<'a> App<'a> {
                 self.clear_toml_config();
                 std::thread::spawn(move || {
                     ops::init_repo(options);
-                    // send.send((command_type, (usize::MAX, RepoState::default())))
-                    //     .unwrap();
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
+                        .unwrap();
                 });
             }
             CommandType::Snapshot => {
@@ -258,7 +263,7 @@ impl<'a> App<'a> {
                 self.clear_toml_config();
                 std::thread::spawn(move || {
                     ops::snapshot_repo(options);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
@@ -267,19 +272,18 @@ impl<'a> App<'a> {
                 let config_path = Some(&self.config_file);
                 let thread = self.toml_user_settings.sync_thread.map(|t| t as usize);
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
-                let ignore: Option<Vec<String>> = self
-                    .get_ignore()
-                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
+                let ignore: Option<Vec<String>> = self.get_ignores();
                 let silent = Some(true);
 
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
                 let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                let progress = self.repo_message_collector.as_ref().unwrap().clone();
+                let mut progress = self.ops_message_collector.clone();
+                progress.command_type = command_type;
                 std::thread::spawn(move || {
                     ops::fetch_repos(options, progress);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
@@ -327,19 +331,18 @@ impl<'a> App<'a> {
                 let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
-                let progress = self.repo_message_collector.as_ref().unwrap().clone();
+                let mut progress = self.ops_message_collector.clone();
+                progress.command_type = command_type;
                 std::thread::spawn(move || {
                     ops::sync_repo(options, progress);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
             CommandType::Track => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
-                let ignore: Option<Vec<String>> = self
-                    .get_ignore()
-                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
+                let ignore: Option<Vec<String>> = self.get_ignores();
 
                 let options = TrackOptions::new(path, config_path, ignore);
                 let send = self.send.clone();
@@ -347,7 +350,7 @@ impl<'a> App<'a> {
                 self.reset_repo_state(StateType::Updating);
                 std::thread::spawn(move || {
                     ops::track(options);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
@@ -361,7 +364,7 @@ impl<'a> App<'a> {
                 self.reset_repo_state(StateType::Updating);
                 std::thread::spawn(move || {
                     ops::clean_repo(options);
-                    send.send((command_type, (usize::MAX, RepoState::default())))
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
@@ -379,7 +382,7 @@ impl<'a> App<'a> {
 // ========================================
 // ui design for app
 // ========================================
-impl<'a> App<'a> {
+impl App {
     /// part of app
     fn handle_windows(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // show about window
@@ -1057,8 +1060,8 @@ impl<'a> App<'a> {
                             ui.add(egui::widgets::Spinner::new());
                         });
 
-                        let locked = &self.repo_messages[idx].message.lock().unwrap();
-                        let job = create_layout_jobs(locked.deref());
+                        let job =
+                            create_layout_jobs(&self.ops_message_collector.read_ops_message(idx));
                         ui.label(job);
 
                         ui.add_space(4.0);
@@ -1161,11 +1164,11 @@ impl<'a> App<'a> {
     }
 }
 
-fn get_repo_states_thread(
+fn get_repo_states_parallel(
     toml_repos: Vec<TomlRepo>,
     project_path: String,
     default_branch: Option<String>,
-    sender: Sender<(CommandType, (usize, RepoState))>,
+    sender: Sender<RepoMessage>,
 ) {
     std::thread::spawn(move || {
         let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
@@ -1178,99 +1181,106 @@ fn get_repo_states_thread(
 
         let sender = Arc::new(Mutex::new(sender));
         thread_pool.install(|| {
-            toml_repos.par_iter().for_each_with(&sender, |s, repo| {
-                let toml_repos = toml_repos.clone();
-                let idx = toml_repos
-                    .into_iter()
-                    .position(|r| r.local == repo.local)
-                    .unwrap();
-
-                let mut repo_state = RepoState::default();
-                let input_path = Path::new(&project_path);
-                let full_path = input_path.join(repo.to_owned().local.unwrap());
-
-                let mut is_ok = true;
-                if let Err(e) = git::is_repository(&full_path) {
-                    repo_state.err_msg = e.to_string();
-                    is_ok = false;
-                }
-
-                if let Err(e) = git::has_authenticity(&full_path) {
-                    repo_state.err_msg = e.to_string();
-                    is_ok = false;
-                }
-
-                if is_ok {
-                    // get current branch
-                    match git::get_current_branch(&full_path) {
-                        Ok(res) => {
-                            repo_state.track_state = StateType::Normal;
-                            repo_state.current_branch = res;
-                        }
-                        Err(e) => {
-                            repo_state.err_msg = e.to_string();
-                            is_ok = false;
-                        }
-                    }
-                }
-
-                if is_ok {
-                    // get tracking branch
-                    match git::get_tracking_branch(&full_path) {
-                        Ok(res) => {
-                            repo_state.tracking_branch = res;
-                        }
-                        Err(_) => {
-                            repo_state.track_state = StateType::Warning;
-                            repo_state.tracking_branch = "untracked".to_string();
-                            is_ok = false;
-                        }
-                    }
-                }
-
-                if is_ok {
-                    // get compare message
-                    match cmp_local_remote(input_path, repo, &default_branch, true) {
-                        Ok(cmp_msg) => {
-                            let cmp_msg = cmp_msg.to_plain_text();
-
-                            if cmp_msg.clone().contains("not tracking")
-                                || cmp_msg.contains("init commit")
-                                || cmp_msg.contains("unknown revision")
-                            {
-                                repo_state.cmp_state = StateType::Error;
-                                repo_state.cmp_obj = cmp_msg.clone();
-                            } else if cmp_msg.clone().contains("already update to date.") {
-                                repo_state.cmp_state = StateType::Normal;
-                                let (prefix, log) = cmp_msg.split_once('.').unwrap();
-                                repo_state.cmp_obj = log.trim().to_string();
-                                if repo_state.cmp_obj.is_empty() {
-                                    repo_state.cmp_obj = prefix.to_string();
-                                }
-                            } else {
-                                repo_state.cmp_state = StateType::Warning;
-                                for part in cmp_msg.clone().split(",") {
-                                    if part.contains("commits") {
-                                        repo_state.cmp_commit = part.trim().to_string()
-                                    } else if part.contains("changes") {
-                                        repo_state.cmp_changes = part.trim().to_string()
-                                    } else {
-                                        repo_state.cmp_obj = part.trim().to_string();
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            repo_state.err_msg = e.to_string();
-                        }
-                    }
-                }
-
-                s.lock()
-                    .unwrap()
-                    .send((CommandType::None, (idx, repo_state)))
-                    .unwrap();
-            })
+            toml_repos
+                .iter()
+                .enumerate()
+                .collect::<Vec<_>>()
+                .par_iter()
+                .for_each_with(&sender, |s, (id, repo)| {
+                    let repo_state = get_repo_state(repo, &project_path, &default_branch);
+                    s.lock()
+                        .unwrap()
+                        .send(RepoMessage::new(CommandType::None, repo_state, Some(*id)))
+                        .unwrap();
+                })
         });
     });
+}
+
+pub(crate) fn get_repo_state(
+    repo: &TomlRepo,
+    project_path: &String,
+    default_branch: &Option<String>,
+) -> RepoState {
+    let mut repo_state = RepoState::default();
+    let input_path = Path::new(&project_path);
+    let full_path = input_path.join(repo.to_owned().local.unwrap());
+
+    let mut is_ok = true;
+    if let Err(e) = git::is_repository(&full_path) {
+        repo_state.err_msg = e.to_string();
+        is_ok = false;
+    }
+
+    if let Err(e) = git::has_authenticity(&full_path) {
+        repo_state.err_msg = e.to_string();
+        is_ok = false;
+    }
+
+    if is_ok {
+        // get current branch
+        match git::get_current_branch(&full_path) {
+            Ok(res) => {
+                repo_state.track_state = StateType::Normal;
+                repo_state.current_branch = res;
+            }
+            Err(e) => {
+                repo_state.err_msg = e.to_string();
+                is_ok = false;
+            }
+        }
+    }
+
+    if is_ok {
+        // get tracking branch
+        match git::get_tracking_branch(&full_path) {
+            Ok(res) => {
+                repo_state.tracking_branch = res;
+            }
+            Err(_) => {
+                repo_state.track_state = StateType::Warning;
+                repo_state.tracking_branch = "untracked".to_string();
+                is_ok = false;
+            }
+        }
+    }
+
+    if is_ok {
+        // get compare message
+        match cmp_local_remote(input_path, repo, &default_branch, true) {
+            Ok(cmp_msg) => {
+                let cmp_msg = cmp_msg.to_plain_text();
+
+                if cmp_msg.contains("not tracking")
+                    || cmp_msg.contains("init commit")
+                    || cmp_msg.contains("unknown revision")
+                {
+                    repo_state.cmp_state = StateType::Error;
+                    repo_state.cmp_obj = cmp_msg;
+                } else if cmp_msg.contains("already update to date.") {
+                    repo_state.cmp_state = StateType::Normal;
+                    let (prefix, log) = cmp_msg.split_once('.').unwrap();
+                    repo_state.cmp_obj = log.trim().to_string();
+                    if repo_state.cmp_obj.is_empty() {
+                        repo_state.cmp_obj = prefix.to_string();
+                    }
+                } else {
+                    repo_state.cmp_state = StateType::Warning;
+                    for part in cmp_msg.split(',') {
+                        if part.contains("commits") {
+                            repo_state.cmp_commit = part.trim().to_string()
+                        } else if part.contains("changes") {
+                            repo_state.cmp_changes = part.trim().to_string()
+                        } else {
+                            repo_state.cmp_obj = part.trim().to_string();
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                repo_state.err_msg = e.to_string();
+            }
+        }
+    }
+    repo_state
 }

@@ -215,7 +215,7 @@ impl TomlUserSettings {
 // ========================================
 // recent project settings for app
 // ========================================
-impl<'a> super::App<'a> {
+impl super::App {
     pub fn load_recent_projects(&mut self) {
         let tmp_dir: PathBuf;
         if let Some(path) = home::home_dir() {
@@ -266,6 +266,13 @@ impl<'a> super::App<'a> {
 
     pub fn get_ignore(&self) -> Option<String> {
         self.toml_project_settings.ignore.clone()
+    }
+
+    pub fn get_ignores(&self) -> Option<Vec<String>> {
+        self.toml_project_settings
+            .ignore
+            .as_ref()
+            .map(|content| content.split('\n').map(|s| s.to_string()).collect())
     }
 
     pub fn save_snapshot_ignore(&mut self) {
