@@ -5,8 +5,9 @@ use std::io::Write;
 use std::ops::Deref;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::thread;
 
-use crate::editor::{CommandType, RepoMessage, RepoState};
+use crate::editor::{get_repo_state, CommandType, RepoMessage};
 use crate::logger::LOG_DIR;
 use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::StyleMessage;
@@ -18,6 +19,8 @@ pub(crate) struct OpsMessageCollector {
     repo_names: Vec<String>,
     sender: Arc<Mutex<Sender<RepoMessage>>>,
     pub command_type: CommandType,
+    pub project_path: String,
+    pub default_branch: Option<String>,
 }
 
 impl OpsMessageCollector {
@@ -28,6 +31,8 @@ impl OpsMessageCollector {
             repo_names: vec![],
             sender: Arc::new(Mutex::new(sender)),
             command_type: CommandType::None,
+            project_path: String::new(),
+            default_branch: None,
         }
     }
 
@@ -83,13 +88,9 @@ impl OpsMessageCollector {
 }
 
 impl Progress for OpsMessageCollector {
-    fn repos_start(&self, _total: usize) {
-        // do nothing
-    }
+    fn repos_start(&self, _total: usize) {}
 
-    fn repos_end(&self) {
-        // do noting
-    }
+    fn repos_end(&self) {}
 
     fn repo_start(&self, repo_info: &RepoInfo, message: StyleMessage) {
         {
@@ -113,18 +114,21 @@ impl Progress for OpsMessageCollector {
         writeln!(file, "{}", message.to_plain_text()).unwrap();
     }
 
+    #[allow(unused_variables)]
     fn repo_end(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        self.repo_info(repo_info, message);
-
-        self.sender
-            .lock()
-            .unwrap()
-            .send(RepoMessage::new(
-                self.command_type,
-                RepoState::default(),
-                Some(repo_info.id),
-            ))
-            .unwrap();
+        let sender = self.sender.clone();
+        let id = repo_info.id;
+        let toml_repo = repo_info.toml_repo.clone();
+        let project_path = self.project_path.clone();
+        let default_branch = self.default_branch.clone();
+        thread::spawn(move || {
+            let repo_state = get_repo_state(&toml_repo, &project_path, &default_branch);
+            sender
+                .lock()
+                .unwrap()
+                .send(RepoMessage::new(CommandType::None, repo_state, Some(id)))
+                .unwrap();
+        });
 
         let mut file = self.file_loggers[repo_info.id].lock().unwrap();
         writeln!(

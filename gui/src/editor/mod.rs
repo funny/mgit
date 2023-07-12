@@ -22,6 +22,8 @@ mod error_window;
 mod options_window;
 mod settings;
 
+pub(crate) use app::get_repo_state;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum StateType {
     Disconnected,
@@ -148,11 +150,14 @@ impl Default for App {
             options_is_open: false,
 
             // clean dialog
-            clean_dialog: Dialog::create(format!("Clean"), format!("Confirm clean?")),
+            clean_dialog: Dialog::create("Clean".to_string(), "Confirm clean?".to_string()),
             clean_is_open: false,
 
             // sync hard dialog
-            sync_hard_dialog: Dialog::create(format!("Sync Hard"), format!("Confirm sync hard?")),
+            sync_hard_dialog: Dialog::create(
+                "Sync Hard".to_string(),
+                "Confirm sync hard?".to_string(),
+            ),
             sync_hard_is_open: false,
 
             ops_message_collector: OpsMessageCollector::new(send),

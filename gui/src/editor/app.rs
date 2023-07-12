@@ -201,18 +201,6 @@ impl App {
                         ..repo_message.repo_state
                     };
                 };
-            } else if let Some(id) = repo_message.id {
-                if let Some(repos) = &self.toml_config.repos {
-                    let repo_state = get_repo_state(
-                        &repos[id],
-                        &self.project_path,
-                        &self.toml_config.default_branch,
-                    );
-                    self.repo_states[id] = RepoState {
-                        no_ignore: self.repo_states[id].no_ignore,
-                        ..repo_state
-                    }
-                }
             } else {
                 self.load_config();
                 self.reset_repo_state(StateType::Updating);
@@ -280,6 +268,8 @@ impl App {
 
                 self.reset_repo_state(StateType::Updating);
                 let mut progress = self.ops_message_collector.clone();
+                progress.project_path = self.project_path.clone();
+                progress.default_branch = self.toml_config.default_remote.clone();
                 progress.command_type = command_type;
                 std::thread::spawn(move || {
                     ops::fetch_repos(options, progress);
@@ -333,6 +323,8 @@ impl App {
                 self.reset_repo_state(StateType::Updating);
                 let mut progress = self.ops_message_collector.clone();
                 progress.command_type = command_type;
+                progress.project_path = self.project_path.clone();
+                progress.default_branch = self.toml_config.default_remote.clone();
                 std::thread::spawn(move || {
                     ops::sync_repo(options, progress);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
