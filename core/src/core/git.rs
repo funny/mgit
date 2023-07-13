@@ -217,7 +217,7 @@ pub fn local_branch_already_exist(
 }
 
 pub fn checkout(path: impl AsRef<Path>, args: &[&str]) -> anyhow::Result<()> {
-    exec_cmd(path, "git", &args).map(|_| ())
+    exec_cmd(path, "git", args).map(|_| ())
 }
 
 #[allow(dead_code)]

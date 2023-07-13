@@ -6,6 +6,7 @@ use editor::{
     defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
     load_icon, App,
 };
+use eframe::NativeOptions;
 
 mod editor;
 mod logger;
@@ -13,15 +14,16 @@ pub(crate) mod progress;
 
 fn main() {
     init_log();
-    let mut native_options = eframe::NativeOptions::default();
-    native_options.drag_and_drop_support = true;
-    native_options.initial_window_size = Some([DEFAULT_WIDTH, DEFAULT_HEIGHT].into());
-    native_options.min_window_size = Some(eframe::egui::vec2(666.0, 480.0));
-    // native_options.default_theme = eframe::Theme::Dark;
-    native_options.decorated = true;
-    native_options.transparent = true;
-    native_options.resizable = true;
-    native_options.icon_data = Some(load_icon());
+    let native_options = NativeOptions {
+        drag_and_drop_support: true,
+        initial_window_size: Some([DEFAULT_WIDTH, DEFAULT_HEIGHT].into()),
+        min_window_size: Some(eframe::egui::vec2(666.0, 480.0)),
+        decorated: true,
+        transparent: true,
+        resizable: true,
+        icon_data: Some(load_icon()),
+        ..NativeOptions::default()
+    };
 
     eframe::run_native(
         &format!(

@@ -51,7 +51,7 @@ impl TomlRepo {
             } else if let Some(tag) = &self.tag {
                 RemoteRef::Tag(tag.to_string())
             } else if let Some(branch) = &self.branch {
-                let branch = format!("{}/{}", remote_name, branch.to_string());
+                let branch = format!("{}/{}", remote_name, branch);
                 RemoteRef::Branch(branch)
             } else {
                 return Err(anyhow::anyhow!("remote ref is invalid!"));

@@ -140,6 +140,6 @@ impl Progress for OpsMessageCollector {
     }
 
     fn repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        self.repo_info(repo_info, message)
+        self.repo_end(repo_info, message)
     }
 }

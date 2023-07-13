@@ -15,8 +15,6 @@ use mgit::ops::{
     TrackOptions,
 };
 use mgit::utils::path::PathExtension;
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 
 /// main app ui update
 impl eframe::App for App {

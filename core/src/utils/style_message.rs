@@ -67,10 +67,6 @@ impl StyleMessage {
         self
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     pub(crate) fn contains(&self, pattern: impl AsRef<str>) -> bool {
         self.0.iter().any(|st| st.content == pattern.as_ref())
     }

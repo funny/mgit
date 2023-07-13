@@ -38,6 +38,12 @@ pub fn exec_cmd_with_progress(
     command: &mut Command,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     let mut spawned = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

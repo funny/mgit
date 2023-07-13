@@ -11,8 +11,6 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::progress::OpsMessageCollector;
 use mgit::utils::StyleMessage;
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 
 mod about_window;
 mod app;
