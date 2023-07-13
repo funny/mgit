@@ -264,7 +264,6 @@ impl App {
                 let silent = Some(true);
 
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
-                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
                 let mut progress = self.ops_message_collector.clone();
@@ -273,8 +272,6 @@ impl App {
                 progress.command_type = command_type;
                 std::thread::spawn(move || {
                     ops::fetch_repos(options, progress);
-                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
-                        .unwrap();
                 });
             }
             CommandType::Sync | CommandType::SyncHard => {
@@ -318,7 +315,6 @@ impl App {
                     no_track,
                     no_checkout,
                 );
-                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
                 let mut progress = self.ops_message_collector.clone();
@@ -327,8 +323,6 @@ impl App {
                 progress.default_branch = self.toml_config.default_remote.clone();
                 std::thread::spawn(move || {
                     ops::sync_repo(options, progress);
-                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
-                        .unwrap();
                 });
             }
             CommandType::Track => {
