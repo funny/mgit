@@ -90,7 +90,7 @@ pub fn cmp_local_remote(
 
     let mut toml_repo = toml_repo.to_owned();
     // use default branch when branch is null
-    if None == toml_repo.branch {
+    if toml_repo.branch.is_none() {
         toml_repo.branch = default_branch.to_owned();
     }
 
@@ -105,7 +105,7 @@ pub fn cmp_local_remote(
                 RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
             };
             let remote_desc = match remote_ref {
-                RemoteRef::Commit(commit) => (&commit[..7]).to_string(),
+                RemoteRef::Commit(commit) => commit[..7].to_string(),
                 RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
             };
             (remote_ref_str, remote_desc)
@@ -140,7 +140,7 @@ pub fn cmp_local_remote(
         }
     }
 
-    let mut changes_desc = StyleMessage::new();
+    let mut changes_desc: Option<StyleMessage> = None;
     if !changed_files.is_empty() {
         // format changes tooltip
         changes_desc = StyleMessage::git_changes(changed_files.len());
@@ -155,8 +155,7 @@ pub fn cmp_local_remote(
 
     // get rev-list between local branch and specified remote commit/tag/branch
     let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
-    let mut commit_desc = StyleMessage::new();
-
+    let mut commit_desc: Option<StyleMessage> = None;
     if let Ok(output) = git::get_rev_list_count(&full_path, branch_pair) {
         let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
 
@@ -167,15 +166,18 @@ pub fn cmp_local_remote(
         }
     } else {
         // if git rev-list find "unknown revision" error
-        commit_desc = StyleMessage::git_unknown_revision();
+        commit_desc = Some(StyleMessage::git_unknown_revision());
     }
 
     // show diff overview
-    let desc = if commit_desc.is_empty() && changes_desc.is_empty() {
-        let branch_log = git::get_branch_log(&full_path, branch);
-        StyleMessage::git_update_to_date(branch_log)
-    } else {
-        StyleMessage::git_diff(remote_desc, commit_desc, changes_desc)
+    let desc = match (commit_desc, changes_desc) {
+        (None, None) => {
+            let branch_log = git::get_branch_log(&full_path, branch);
+            StyleMessage::git_update_to_date(branch_log)
+        }
+        (commit_desc, changes_desc) => {
+            StyleMessage::git_diff(remote_desc, commit_desc, changes_desc)
+        }
     };
 
     Ok(desc)

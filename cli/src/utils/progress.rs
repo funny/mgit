@@ -61,9 +61,10 @@ impl MultiProgress {
 
     fn spinner_start(&self, repo_info: &RepoInfo, desc: StyleMessage) -> String {
         format!(
-            "{:>9} {}",
+            "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            desc.to_plain_text()
+            &PURPLE_BOLD.paint(repo_info.rel_path()),
+            desc
         )
     }
 
@@ -78,10 +79,10 @@ impl MultiProgress {
 
     fn spinner_end(&self, repo_info: &RepoInfo, status: StyleMessage) -> String {
         format!(
-            "{} {} {}",
-            status,
+            "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &GREEN_BOLD.paint(repo_info.rel_path())
+            &GREEN_BOLD.paint(repo_info.rel_path()),
+            status,
         )
     }
 }

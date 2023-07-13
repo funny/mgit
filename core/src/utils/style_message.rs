@@ -254,14 +254,14 @@ impl StyleMessage {
             .plain_text("...")
     }
 
-    pub(crate) fn git_changes(len: usize) -> Self {
-        StyleMessage::new()
-            .plain_text(", changes(")
-            .styled_text(len.to_string(), &RED)
-            .plain_text(")")
+    pub(crate) fn git_changes(len: usize) -> Option<Self> {
+        match len {
+            0 => None,
+            _ => Some(StyleMessage::new().styled_text(format!("changes({})", len), &RED)),
+        }
     }
 
-    pub(crate) fn git_commits(ahead: impl AsRef<str>, behind: impl AsRef<str>) -> Self {
+    pub(crate) fn git_commits(ahead: impl AsRef<str>, behind: impl AsRef<str>) -> Option<Self> {
         let ahead = ahead.as_ref();
         let behind = behind.as_ref();
 
@@ -272,18 +272,14 @@ impl StyleMessage {
             _ => format!("commits({}↑{}↓)", ahead, behind),
         };
 
-        match commit_str.is_empty(){
-            true=>StyleMessage::new(),
-            false=>StyleMessage::new()
-            .plain_text(", ")
-            .styled_text(commit_str, &YELLOW)
+        match commit_str.is_empty() {
+            true => None,
+            false => Some(StyleMessage::new().styled_text(commit_str, &YELLOW)),
         }
     }
 
     pub(crate) fn git_unknown_revision() -> Self {
-        StyleMessage::new()
-            .plain_text(", ")
-            .styled_text("unknown revision", &YELLOW)
+        StyleMessage::new().styled_text("unknown revision", &YELLOW)
     }
 
     pub(crate) fn git_update_to(desc: StyleMessage) -> Self {
@@ -301,13 +297,17 @@ impl StyleMessage {
 
     pub(crate) fn git_diff(
         remote_desc: impl AsRef<str>,
-        commit_desc: StyleMessage,
-        changes_desc: StyleMessage,
+        commit_desc: Option<StyleMessage>,
+        changes_desc: Option<StyleMessage>,
     ) -> Self {
-        StyleMessage::new()
-            .styled_text(remote_desc.as_ref(), &BLUE)
-            .join(commit_desc)
-            .join(changes_desc)
+        let mut diff = StyleMessage::new().styled_text(remote_desc.as_ref(), &BLUE);
+        if let Some(commit_desc) = commit_desc {
+            diff = diff.plain_text(", ").join(commit_desc);
+        }
+        if let Some(changes_desc) = changes_desc {
+            diff = diff.plain_text(", ").join(changes_desc)
+        }
+        diff
     }
 }
 

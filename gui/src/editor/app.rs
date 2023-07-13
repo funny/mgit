@@ -1109,11 +1109,23 @@ impl App {
                             ui.label(job);
                         } else if repo_state.cmp_state == StateType::Warning {
                             // Warning
-                            let mut job = create_layout_job(
-                                format!("{} {}", hex_code::COMMIT, &repo_state.cmp_commit),
-                                text_color::YELLOW,
+                            let mut job = egui::text::LayoutJob::default();
+                            job.append(
+                                &format!("{} ", hex_code::COMMIT),
+                                0.0,
+                                egui::TextFormat::default(),
                             );
-                            job.append(" ", 0.0, egui::TextFormat::default());
+                            if !repo_state.cmp_commit.is_empty() {
+                                job.append(
+                                    &repo_state.cmp_commit,
+                                    0.0,
+                                    egui::TextFormat {
+                                        color: text_color::YELLOW,
+                                        ..Default::default()
+                                    },
+                                );
+                                job.append(" ", 0.0, egui::TextFormat::default());
+                            }
                             job.append(
                                 &repo_state.cmp_changes,
                                 0.0,
@@ -1233,7 +1245,7 @@ pub(crate) fn get_repo_state(
 
     if is_ok {
         // get compare message
-        match cmp_local_remote(input_path, repo, &default_branch, true) {
+        match cmp_local_remote(input_path, repo, default_branch, true) {
             Ok(cmp_msg) => {
                 let cmp_msg = cmp_msg.to_plain_text();
 
