@@ -272,9 +272,12 @@ impl StyleMessage {
             _ => format!("commits({}↑{}↓)", ahead, behind),
         };
 
-        StyleMessage::new()
+        match commit_str.is_empty(){
+            true=>StyleMessage::new(),
+            false=>StyleMessage::new()
             .plain_text(", ")
             .styled_text(commit_str, &YELLOW)
+        }
     }
 
     pub(crate) fn git_unknown_revision() -> Self {
