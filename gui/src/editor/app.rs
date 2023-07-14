@@ -1,16 +1,15 @@
-use super::*;
-use eframe::egui;
-
-use eframe::egui::{ProgressBar, Widget};
-use mgit::core::git;
-use mgit::core::repo::cmp_local_remote;
-use mgit::core::repos::load_config;
-use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
+use eframe::egui;
+use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
+
+use crate::editor::widgets::ProgressBar;
+use mgit::core::git;
+use mgit::core::repo::cmp_local_remote;
+use mgit::core::repos::load_config;
 use mgit::ops;
 use mgit::ops::{
     CleanOptions, FetchOptions, InitOptions, SnapshotOptions, SnapshotType, SyncOptions,
@@ -18,6 +17,8 @@ use mgit::ops::{
 };
 use mgit::utils::path::PathExtension;
 use mgit::utils::progress::Progress;
+
+use super::*;
 
 /// main app ui update
 impl eframe::App for App {
@@ -348,6 +349,7 @@ impl App {
                 });
             }
             CommandType::Refresh => {
+                self.progress.store(0, Ordering::Relaxed);
                 self.clear_toml_config();
                 self.load_config();
                 self.reset_repo_state(StateType::Updating);
@@ -422,6 +424,9 @@ impl App {
 
             // quick bar
             self.quick_bar(ui);
+            ui.add_space(2.0);
+
+            ui.add(ProgressBar::new(&self.progress, &self.toml_config.repos));
             ui.add_space(2.0);
         });
     }
@@ -566,18 +571,6 @@ impl App {
                 self.configuration_panel(ui);
 
                 ui.separator();
-                let total = self.toml_config.repos.as_ref().map(|repos| repos.len());
-                let current = self.progress.load(Ordering::Relaxed);
-                let progress = if let Some(total) = total {
-                    if total > 0 {
-                        current as f32 / total as f32
-                    } else {
-                        0.0
-                    }
-                } else {
-                    0.0
-                };
-                ProgressBar::new(progress).show_percentage().ui(ui);
 
                 // repositories list detail
                 let repos_count = match &self.toml_config.repos {

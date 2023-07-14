@@ -21,6 +21,7 @@ mod dialog;
 mod error_window;
 mod options_window;
 mod settings;
+pub(crate) mod widgets;
 
 pub(crate) use app::get_repo_state;
 

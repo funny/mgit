@@ -1,4 +1,3 @@
-use anyhow::Error;
 use std::env;
 use std::path::{Path, PathBuf};
 
