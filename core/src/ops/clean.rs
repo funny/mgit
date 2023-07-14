@@ -48,9 +48,9 @@ pub fn clean_repo(options: CleanOptions) {
     };
 
     let config_repo_paths: Vec<PathBuf> = toml_repos
-        .into_iter()
+        .iter()
         .map(|item| item.local.as_ref().unwrap())
-        .map(|str| PathBuf::from(str))
+        .map(PathBuf::from)
         .collect();
 
     // search for git repos and create .gitrepos file

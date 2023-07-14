@@ -3,6 +3,7 @@ use regex::Regex;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -18,13 +19,14 @@ pub(crate) struct OpsMessageCollector {
     file_loggers: Vec<Arc<Mutex<File>>>,
     repo_names: Vec<String>,
     sender: Arc<Mutex<Sender<RepoMessage>>>,
+    progress: Arc<AtomicUsize>,
     pub command_type: CommandType,
     pub project_path: String,
     pub default_branch: Option<String>,
 }
 
 impl OpsMessageCollector {
-    pub(crate) fn new(sender: Sender<RepoMessage>) -> Self {
+    pub(crate) fn new(sender: Sender<RepoMessage>, progress: Arc<AtomicUsize>) -> Self {
         Self {
             repo_state_buffers: vec![],
             file_loggers: vec![],
@@ -33,6 +35,7 @@ impl OpsMessageCollector {
             command_type: CommandType::None,
             project_path: String::new(),
             default_branch: None,
+            progress,
         }
     }
 
@@ -88,7 +91,9 @@ impl OpsMessageCollector {
 }
 
 impl Progress for OpsMessageCollector {
-    fn repos_start(&self, _total: usize) {}
+    fn repos_start(&self, _total: usize) {
+        self.progress.store(0, Ordering::Relaxed);
+    }
 
     fn repos_end(&self) {}
 
@@ -116,6 +121,7 @@ impl Progress for OpsMessageCollector {
 
     #[allow(unused_variables)]
     fn repo_end(&self, repo_info: &RepoInfo, message: StyleMessage) {
+        self.progress.fetch_add(1, Ordering::Relaxed);
         let sender = self.sender.clone();
         let id = repo_info.id;
         let toml_repo = repo_info.toml_repo.clone();

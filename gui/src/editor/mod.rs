@@ -7,7 +7,9 @@ use self::settings::{SyncType, TomlProjectSettings, TomlUserSettings};
 use eframe::egui::{self, FontFamily, FontId, TextStyle};
 use mgit::core::repo::TomlRepo;
 use mgit::core::repos::TomlConfig;
+use std::sync::atomic::AtomicUsize;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 
 use crate::progress::OpsMessageCollector;
 use mgit::utils::StyleMessage;
@@ -113,6 +115,7 @@ pub struct App {
     sync_hard_dialog: Dialog,
     sync_hard_is_open: bool,
 
+    progress: Arc<AtomicUsize>,
     ops_message_collector: OpsMessageCollector,
 }
 
@@ -120,6 +123,7 @@ impl Default for App {
     fn default() -> Self {
         //let cur_dir = std::env::current_dir().unwrap_or(std::path::PathBuf::from(""));
         let (send, recv) = channel();
+        let progress = Arc::new(AtomicUsize::new(0));
         Self {
             project_path: String::new(),
             config_file: String::new(),
@@ -158,7 +162,8 @@ impl Default for App {
             ),
             sync_hard_is_open: false,
 
-            ops_message_collector: OpsMessageCollector::new(send),
+            progress: progress.clone(),
+            ops_message_collector: OpsMessageCollector::new(send, progress),
         }
     }
 }

@@ -26,7 +26,7 @@ fn main() {
         Commands::Sync(options) => ops::sync_repo(options.into(), progress),
         Commands::Clean(options) => ops::clean_repo(options.into()),
         Commands::ListFiles(options) => ops::list_files(options.into()),
-        Commands::Track(options) => ops::track(options.into()),
+        Commands::Track(options) => ops::track(options.into(), progress),
     }
 }
 

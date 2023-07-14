@@ -79,8 +79,7 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
     );
 
-    let repos_count = toml_repos.len();
-    progress.repos_start(repos_count);
+    progress.repos_start(toml_repos.len());
 
     // user a counter
     let counter = RelaxedCounter::new(1);

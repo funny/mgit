@@ -113,8 +113,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     let ignore = ignore.map(|r| r.iter().collect::<Vec<&String>>());
     exclude_ignore(&mut toml_repos, ignore);
 
-    let repos_count = toml_repos.len();
-    progress.repos_start(repos_count);
+    progress.repos_start(toml_repos.len());
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
     let counter = RelaxedCounter::new(1);
@@ -174,7 +173,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                                 cmp_msg = cmp_msg.remove("already update to date.");
                                 cmp_msg = StyleMessage::git_update_to(cmp_msg);
                             }
-                            msg = msg.plain_text(": ").join(cmp_msg)
+                            msg = msg.plain_text(" ").join(cmp_msg)
                         }
 
                         // show message in progress bar

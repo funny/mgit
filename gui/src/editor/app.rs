@@ -1,11 +1,13 @@
 use super::*;
 use eframe::egui;
 
+use eframe::egui::{ProgressBar, Widget};
 use mgit::core::git;
 use mgit::core::repo::cmp_local_remote;
 use mgit::core::repos::load_config;
 use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
@@ -15,6 +17,7 @@ use mgit::ops::{
     TrackOptions,
 };
 use mgit::utils::path::PathExtension;
+use mgit::utils::progress::Progress;
 
 /// main app ui update
 impl eframe::App for App {
@@ -264,10 +267,7 @@ impl App {
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
 
                 self.reset_repo_state(StateType::Updating);
-                let mut progress = self.ops_message_collector.clone();
-                progress.project_path = self.project_path.clone();
-                progress.default_branch = self.toml_config.default_remote.clone();
-                progress.command_type = command_type;
+                let progress = self.progress(command_type);
                 std::thread::spawn(move || {
                     ops::fetch_repos(options, progress);
                 });
@@ -315,10 +315,7 @@ impl App {
                 );
 
                 self.reset_repo_state(StateType::Updating);
-                let mut progress = self.ops_message_collector.clone();
-                progress.command_type = command_type;
-                progress.project_path = self.project_path.clone();
-                progress.default_branch = self.toml_config.default_remote.clone();
+                let progress = self.progress(command_type);
                 std::thread::spawn(move || {
                     ops::sync_repo(options, progress);
                 });
@@ -329,13 +326,11 @@ impl App {
                 let ignore: Option<Vec<String>> = self.get_ignores();
 
                 let options = TrackOptions::new(path, config_path, ignore);
-                let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
+                let progress = self.progress(command_type);
                 std::thread::spawn(move || {
-                    ops::track(options);
-                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
-                        .unwrap();
+                    ops::track(options, progress);
                 });
             }
             CommandType::Clean => {
@@ -360,6 +355,13 @@ impl App {
             }
             CommandType::None => {}
         }
+    }
+
+    fn progress(&mut self, command_type: CommandType) -> impl Progress {
+        self.ops_message_collector.command_type = command_type;
+        self.ops_message_collector.project_path = self.project_path.clone();
+        self.ops_message_collector.default_branch = self.toml_config.default_remote.clone();
+        self.ops_message_collector.clone()
     }
 }
 
@@ -564,6 +566,18 @@ impl App {
                 self.configuration_panel(ui);
 
                 ui.separator();
+                let total = self.toml_config.repos.as_ref().map(|repos| repos.len());
+                let current = self.progress.load(Ordering::Relaxed);
+                let progress = if let Some(total) = total {
+                    if total > 0 {
+                        current as f32 / total as f32
+                    } else {
+                        0.0
+                    }
+                } else {
+                    0.0
+                };
+                ProgressBar::new(progress).show_percentage().ui(ui);
 
                 // repositories list detail
                 let repos_count = match &self.toml_config.repos {
