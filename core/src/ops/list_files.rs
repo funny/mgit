@@ -56,15 +56,15 @@ pub fn list_files(options: ListFilesOptions) {
         };
 
         for line in content.trim().lines() {
-            if let Some((left, right)) = line.rsplit_once("\t") {
-                let split_str = match !rel_path.ends_with("\\") && !rel_path.ends_with("/") {
+            if let Some((left, right)) = line.rsplit_once('\t') {
+                let split_str = match !rel_path.ends_with('\\') && !rel_path.ends_with('/') {
                     true => "/",
                     false => "",
                 };
 
                 let path = format!("{}{}{}", rel_path, split_str, right);
                 let path = path.norm_path();
-                println!("{}\t{}", left, path);
+                logger::info(format!("{}\t{}", left, path));
             }
         }
     }

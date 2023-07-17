@@ -7,7 +7,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 use crate::editor::{get_repo_state, CommandType, RepoMessage};
 use crate::logger::LOG_DIR;
@@ -131,7 +130,7 @@ impl Progress for OpsMessageCollector {
         thread::spawn(move || {
             #[cfg(feature = "dev")]
             {
-                thread::sleep(Duration::from_millis(100 * id as u64));
+                thread::sleep(std::time::Duration::from_millis(100 * id as u64));
             }
             progress.fetch_add(1, Ordering::Relaxed);
             let repo_state = get_repo_state(&toml_repo, &project_path, &default_branch);
