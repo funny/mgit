@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
 use crate::editor::{get_repo_state, CommandType, RepoMessage};
 use crate::logger::LOG_DIR;
@@ -19,7 +20,7 @@ pub(crate) struct OpsMessageCollector {
     file_loggers: Vec<Arc<Mutex<File>>>,
     repo_names: Vec<String>,
     sender: Arc<Mutex<Sender<RepoMessage>>>,
-    progress: Arc<AtomicUsize>,
+    pub progress: Arc<AtomicUsize>,
     pub command_type: CommandType,
     pub project_path: String,
     pub default_branch: Option<String>,
@@ -121,13 +122,18 @@ impl Progress for OpsMessageCollector {
 
     #[allow(unused_variables)]
     fn repo_end(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        self.progress.fetch_add(1, Ordering::Relaxed);
         let sender = self.sender.clone();
         let id = repo_info.id;
         let toml_repo = repo_info.toml_repo.clone();
         let project_path = self.project_path.clone();
         let default_branch = self.default_branch.clone();
+        let progress = self.progress.clone();
         thread::spawn(move || {
+            #[cfg(feature = "dev")]
+            {
+                thread::sleep(Duration::from_millis(100 * id as u64));
+            }
+            progress.fetch_add(1, Ordering::Relaxed);
             let repo_state = get_repo_state(&toml_repo, &project_path, &default_branch);
             sender
                 .lock()
