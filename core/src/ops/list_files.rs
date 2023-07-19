@@ -22,50 +22,60 @@ impl ListFilesOptions {
     }
 }
 
-pub fn list_files(options: ListFilesOptions) {
+pub fn list_files(options: ListFilesOptions) -> Vec<String> {
     let path = &options.path;
     let config_path = &options.config_path;
 
     // if directory doesn't exist, return
     if !path.is_dir() {
         logger::error(StyleMessage::dir_not_found(path));
-        return;
+        return vec![];
     }
 
     // check if .gitrepos exists
     if !config_path.is_file() {
         logger::error(StyleMessage::config_file_not_found());
-        return;
+        return vec![];
     }
 
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
         logger::error("load config file failed!");
-        return;
+        return vec![];
     };
 
     let Some( toml_repos) = toml_config.repos else {
-        return;
+        return vec![];
     };
 
-    for toml_repo in &toml_repos {
-        let rel_path = toml_repo.local.as_ref().unwrap();
-        let full_path = path.join(rel_path);
-        let Ok(content) = git::ls_files(&full_path) else {
-            continue;
-        };
+    toml_repos
+        .iter()
+        .flat_map(|toml_repo| {
+            let rel_path = toml_repo.local.as_ref().unwrap();
+            let full_path = path.join(rel_path);
+            let Ok(content) = git::ls_files(full_path) else {
+                return vec![]
+            };
 
-        for line in content.trim().lines() {
-            if let Some((left, right)) = line.rsplit_once('\t') {
-                let split_str = match !rel_path.ends_with('\\') && !rel_path.ends_with('/') {
-                    true => "/",
-                    false => "",
-                };
+            content
+                .trim()
+                .lines()
+                .flat_map(|line| {
+                    if let Some((left, right)) = line.rsplit_once('\t') {
+                        let split_str = match !rel_path.ends_with('\\') && !rel_path.ends_with('/')
+                        {
+                            true => "/",
+                            false => "",
+                        };
 
-                let path = format!("{}{}{}", rel_path, split_str, right);
-                let path = path.norm_path();
-                logger::info(format!("{}\t{}", left, path));
-            }
-        }
-    }
+                        let path = format!("{}{}{}", rel_path, split_str, right);
+                        let path = path.norm_path();
+                        Some(format!("{}\t{}", left, path))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<String>>()
+        })
+        .collect::<Vec<String>>()
 }

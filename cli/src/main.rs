@@ -25,7 +25,10 @@ fn main() {
         Commands::Fetch(options) => ops::fetch_repos(options.into(), progress),
         Commands::Sync(options) => ops::sync_repo(options.into(), progress),
         Commands::Clean(options) => ops::clean_repo(options.into()),
-        Commands::ListFiles(options) => ops::list_files(options.into()),
+        Commands::ListFiles(options) => {
+            let files = ops::list_files(options.into());
+            println!("{}", files.join("\n"));
+        }
         Commands::Track(options) => ops::track(options.into(), progress),
     }
 }
