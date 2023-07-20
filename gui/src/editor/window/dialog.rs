@@ -1,5 +1,14 @@
-use super::View;
-use eframe::{egui, epaint::text::LayoutJob};
+use eframe::egui::{Context, Vec2};
+use eframe::{egui, epaint::text::LayoutJob, Frame};
+
+use crate::utils::defines;
+
+use super::{View, WindowBase};
+
+pub trait DialogBase {
+    fn create(name: String, content: String) -> Self;
+    fn is_ok(&self) -> bool;
+}
 
 #[derive(Default)]
 pub struct Dialog {
@@ -8,7 +17,7 @@ pub struct Dialog {
     is_ok: Option<bool>,
 }
 
-impl super::DialogBase for Dialog {
+impl DialogBase for Dialog {
     fn create(name: String, content: String) -> Self {
         Self {
             name,
@@ -25,37 +34,38 @@ impl super::DialogBase for Dialog {
     }
 }
 
-impl super::WindowBase for Dialog {
+impl WindowBase for Dialog {
     fn name(&self) -> String {
         self.name.clone()
     }
 
-    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
-        let width = 300.0;
-        let height = 160.0;
-        let screen_rect = eframe.info().window_info.size;
-        let default_pos = [
-            (screen_rect.x - width) * 0.5,
-            (screen_rect.y - height) * 0.5,
-        ];
+    fn width(&self) -> f32 {
+        300.0
+    }
+
+    fn height(&self) -> f32 {
+        160.0
+    }
+
+    fn default_pos(&self, screen_rect: &Vec2) -> [f32; 2] {
+        [
+            (screen_rect.x - self.width()) * 0.5,
+            (screen_rect.y - self.height()) * 0.5,
+        ]
+    }
+
+    fn before_show(&mut self, _: &Context, _: &mut Frame, _: &mut bool) {
         self.is_ok = None;
+    }
 
-        egui::Window::new(&self.name)
-            .fixed_pos(default_pos)
-            .fixed_size([width, height])
-            .collapsible(false)
-            .open(open)
-            .show(ctx, |ui| {
-                self.ui(ui);
-            });
-
+    fn after_show(&mut self, _: &Context, _: &mut Frame, open: &mut bool) {
         if self.is_ok.is_some() {
             *open = false;
         }
     }
 }
 
-impl super::View for Dialog {
+impl View for Dialog {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(0.0, 20.0);
@@ -74,7 +84,7 @@ impl super::View for Dialog {
                     "Ok",
                     0.0,
                     egui::TextFormat {
-                        color: super::defines::text_color::GREEN,
+                        color: defines::text_color::GREEN,
                         ..Default::default()
                     },
                 );
@@ -93,7 +103,7 @@ impl super::View for Dialog {
                     "Cancel",
                     0.0,
                     egui::TextFormat {
-                        color: super::defines::text_color::RED,
+                        color: defines::text_color::RED,
                         ..Default::default()
                     },
                 );

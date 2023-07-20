@@ -59,12 +59,12 @@ fn cli_sync_simple() {
             Some(true),
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -91,7 +91,7 @@ fn cli_sync_simple() {
             None,
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // compaire changes after sync
@@ -151,13 +151,13 @@ fn cli_sync_simple_tracking_invalid() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -188,7 +188,7 @@ fn cli_sync_simple_tracking_invalid() {
             None,
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // compaire changes after sync
@@ -246,13 +246,13 @@ fn cli_sync_stash() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -282,14 +282,14 @@ fn cli_sync_stash() {
             None,
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
-        assert_eq!(false, output.contains(".gitignore"));
-        assert_eq!(false, output.contains(".gitrepos"));
-        assert_eq!(false, output.contains("1.txt"));
+        assert!(!output.contains(".gitignore"));
+        assert!(!output.contains(".gitrepos"));
+        assert!(!output.contains("1.txt"));
     } else {
         panic!("{}", failed_message::GIT_STATUS);
     }
@@ -357,13 +357,13 @@ fn cli_sync_stash_tracking_invalid() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // create new local commit
     std::fs::File::create(path.join("1.txt")).ok();
@@ -395,7 +395,7 @@ fn cli_sync_stash_tracking_invalid() {
             Some(true),
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // compaire changes after sync
@@ -461,7 +461,7 @@ fn cli_sync_hard() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // ignore "foobar" folder
@@ -494,7 +494,7 @@ fn cli_sync_hard() {
             None,
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // ignore "foobar" folder
@@ -502,8 +502,8 @@ fn cli_sync_hard() {
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
         assert!(output.contains(".gitignore"));
-        assert_eq!(false, output.contains(".gitrepos"));
-        assert_eq!(false, output.contains("1.txt"));
+        assert!(!output.contains(".gitrepos"));
+        assert!(!output.contains("1.txt"));
     } else {
         panic!("{}", failed_message::GIT_STATUS);
     }
@@ -552,7 +552,7 @@ fn cli_sync_simple_invalid_path() {
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
-    assert_eq!(false, input_path.is_dir());
+    assert!(!input_path.is_dir());
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -568,7 +568,7 @@ fn cli_sync_simple_invalid_path() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     assert!(input_path.is_dir());
@@ -576,7 +576,7 @@ fn cli_sync_simple_invalid_path() {
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -632,7 +632,7 @@ fn cli_sync_stash_invalid_path() {
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
-    assert_eq!(false, input_path.is_dir());
+    assert!(!input_path.is_dir());
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -648,7 +648,7 @@ fn cli_sync_stash_invalid_path() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     assert!(input_path.is_dir());
@@ -656,7 +656,7 @@ fn cli_sync_stash_invalid_path() {
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -711,7 +711,7 @@ fn cli_sync_hard_invalid_path() {
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
-    assert_eq!(false, input_path.is_dir());
+    assert!(!input_path.is_dir());
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -727,7 +727,7 @@ fn cli_sync_hard_invalid_path() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     assert!(input_path.is_dir());
@@ -735,7 +735,7 @@ fn cli_sync_hard_invalid_path() {
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -821,14 +821,14 @@ fn cli_sync_simple_repo_invalid() {
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     assert!(config_file.is_file());
-    assert_eq!(false, input_path.is_dir());
+    assert!(!input_path.is_dir());
 
     // create root path: "foobar-1"
     std::fs::create_dir_all(&input_path).unwrap();
     assert!(input_path.is_dir());
 
     // create path: "foobar-1/foobar-1-1"
-    std::fs::create_dir_all(&input_path.join("foobar-1-1")).unwrap();
+    std::fs::create_dir_all(input_path.join("foobar-1-1")).unwrap();
     assert!(input_path.is_dir());
 
     // initialize the repositories tree
@@ -845,7 +845,7 @@ fn cli_sync_simple_repo_invalid() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     assert!(input_path.is_dir());
@@ -853,7 +853,7 @@ fn cli_sync_simple_repo_invalid() {
     // ignore "foobar" folder
     let ignore_file = input_path.join(".gitignore");
     let ingore_content = "foobar-1-1";
-    std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&input_path);
@@ -908,7 +908,7 @@ fn cli_sync_checkout_invalid_path() {
         .join_repo("foobar-2", &SBERT_REPO, None, None, Some("v0.3.0"))
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -924,7 +924,7 @@ fn cli_sync_checkout_invalid_path() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let cur_branch_args = ["branch", "--show-current"];
@@ -991,7 +991,7 @@ fn cli_sync_checkout_symple() {
         .join_repo("foobar-2", &SBERT_REPO, Some("master"), None, None)
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -1007,7 +1007,7 @@ fn cli_sync_checkout_symple() {
             Some(true),
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let cur_branch_args = ["branch", "--show-current"];
@@ -1046,7 +1046,7 @@ fn cli_sync_checkout_symple() {
         .join_repo("foobar-2", &SBERT_REPO, None, None, Some("v0.3.0"))
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // test checkout function
     // root path, checkout a new branch
@@ -1076,7 +1076,7 @@ fn cli_sync_checkout_symple() {
             Some(true),
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // root: master untracked
@@ -1108,7 +1108,7 @@ fn cli_sync_checkout_symple() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // test checkout and track function
@@ -1186,7 +1186,7 @@ fn cli_sync_checkout_with_conflict() {
             Some(true),
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let cur_branch_args = ["branch", "--show-current"];
@@ -1224,8 +1224,8 @@ fn cli_sync_checkout_with_conflict() {
     let _ = exec_cmd(&path, "git", &["commit", "-am", "foobar"]);
 
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
-        assert_eq!(false, output.contains(".gitignore"));
-        assert_eq!(false, output.contains(".gitrepos"));
+        assert!(!output.contains(".gitignore"));
+        assert!(!output.contains(".gitrepos"));
     } else {
         panic!("{}", failed_message::GIT_STATUS);
     }
@@ -1257,7 +1257,7 @@ fn cli_sync_checkout_with_conflict() {
         .join_repo("foobar-2", &SBERT_REPO, None, None, Some("v0.3.0"))
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
 
     // sync repositories, with checkout
@@ -1274,7 +1274,7 @@ fn cli_sync_checkout_with_conflict() {
             Some(true),
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // root: foobar untracked,  checkout failed
@@ -1306,7 +1306,7 @@ fn cli_sync_checkout_with_conflict() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // root: master → origin/master
@@ -1353,7 +1353,7 @@ fn cli_sync_checkout_symple2() {
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -1369,13 +1369,13 @@ fn cli_sync_checkout_symple2() {
             Some(true),
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     exec_cmd(&path, "git", &["reset", "--hard", "v0.3.0"]).expect(failed_message::GIT_RESET);
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // test checkout function
     // sync repositories, with checkout
@@ -1392,7 +1392,7 @@ fn cli_sync_checkout_symple2() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // for foobar-1, local changes only contain ".gitignore"
@@ -1454,7 +1454,7 @@ fn cli_sync_ignore_symple() {
         )
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -1474,7 +1474,7 @@ fn cli_sync_ignore_symple() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let root_path = path.join(".git");
@@ -1484,19 +1484,19 @@ fn cli_sync_ignore_symple() {
     let foobar_2_1_path = path.join("foobar-2/foobar-2-1/.git");
     let foobar_2_2_path = path.join("foobar-2/foobar-2-2/.git");
 
-    assert_eq!(false, root_path.is_dir());
-    assert_eq!(false, foobar_1_path.is_dir());
-    assert_eq!(true, foobar_1_1_path.is_dir());
-    assert_eq!(true, foobar_2_path.is_dir());
-    assert_eq!(false, foobar_2_1_path.is_dir());
-    assert_eq!(true, foobar_2_2_path.is_dir());
+    assert!(!root_path.is_dir());
+    assert!(!foobar_1_path.is_dir());
+    assert!(foobar_1_1_path.is_dir());
+    assert!(foobar_2_path.is_dir());
+    assert!(!foobar_2_1_path.is_dir());
+    assert!(foobar_2_2_path.is_dir());
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
 }
 
 pub fn check_git_author_identity(path: &PathBuf) {
-    if let Err(_) = exec_cmd(path, "git", &["config", "--global", "user.email"]) {
+    if exec_cmd(path, "git", &["config", "--global", "user.email"]).is_err() {
         exec_cmd(
             path,
             "git",
@@ -1540,7 +1540,7 @@ fn cli_sync_with_depth() {
         .join_repo("foobar-2", &SBERT_REPO, None, None, Some("v0.3.0"))
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -1556,11 +1556,11 @@ fn cli_sync_with_depth() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize the repositories tree
     ops::sync_repo(
@@ -1576,7 +1576,7 @@ fn cli_sync_with_depth() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     // get root repo commit count
@@ -1588,7 +1588,7 @@ fn cli_sync_with_depth() {
 
     // get foobar-1 repo commit count
     let foobar_path = path.join("foobar-1");
-    if let Ok(output) = exec_cmd(&foobar_path, "git", &["rev-list", "--all", "--count"]) {
+    if let Ok(output) = exec_cmd(foobar_path, "git", &["rev-list", "--all", "--count"]) {
         assert_eq!(output.trim(), 1.to_string());
     } else {
         panic!("{}", failed_message::GIT_REV_LIST);
@@ -1596,7 +1596,7 @@ fn cli_sync_with_depth() {
 
     // get foobar-2 repo commit count
     let foobar_path = path.join("foobar-2");
-    if let Ok(output) = exec_cmd(&foobar_path, "git", &["rev-list", "--all", "--count"]) {
+    if let Ok(output) = exec_cmd(foobar_path, "git", &["rev-list", "--all", "--count"]) {
         assert_eq!(output.trim(), 1.to_string());
     } else {
         panic!("{}", failed_message::GIT_REV_LIST);
@@ -1646,7 +1646,7 @@ fn cli_sync_new_remote_url() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let repo_paths = ["", "foobar"];
@@ -1676,7 +1676,7 @@ fn cli_sync_new_remote_url() {
             None,
             None,
         ),
-        TestProgress::default(),
+        TestProgress,
     );
     for repo_path in repo_paths {
         let dir = path.join(repo_path);

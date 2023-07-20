@@ -100,7 +100,7 @@ fn cli_clean1() {
     ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
-        let dir = path.join(&rel_path);
+        let dir = path.join(rel_path);
 
         if rel_path == "foobar-1/foobar-1-2/foobar-1-2-1"
             || rel_path == "foobar-2"
@@ -119,18 +119,18 @@ fn cli_clean1() {
             assert!(dir.join("bar/1.txt").is_file());
             assert!(dir.join("bar/2.txt").is_file());
         } else {
-            assert_eq!(false, dir.join("1.txt").is_file());
-            assert_eq!(false, dir.join("2.txt").is_file());
+            assert!(!dir.join("1.txt").is_file());
+            assert!(!dir.join("2.txt").is_file());
 
-            assert_eq!(false, dir.join(".git").is_dir());
+            assert!(!dir.join(".git").is_dir());
 
-            assert_eq!(false, dir.join("foo").is_dir());
-            assert_eq!(false, dir.join("foo/1.txt").is_file());
-            assert_eq!(false, dir.join("foo/2.txt").is_file());
+            assert!(!dir.join("foo").is_dir());
+            assert!(!dir.join("foo/1.txt").is_file());
+            assert!(!dir.join("foo/2.txt").is_file());
 
-            assert_eq!(false, dir.join("bar").is_dir());
-            assert_eq!(false, dir.join("bar/1.txt").is_file());
-            assert_eq!(false, dir.join("bar/2.txt").is_file());
+            assert!(!dir.join("bar").is_dir());
+            assert!(!dir.join("bar/1.txt").is_file());
+            assert!(!dir.join("bar/2.txt").is_file());
         }
     }
 
@@ -179,7 +179,7 @@ fn cli_clean2() {
     ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
 
     for rel_path in rel_paths {
-        let dir = path.join(&rel_path);
+        let dir = path.join(rel_path);
 
         if rel_path == "."
             || rel_path == "foobar-1/foobar-1-2/foobar-1-2-1"
@@ -199,18 +199,18 @@ fn cli_clean2() {
             assert!(dir.join("bar/1.txt").is_file());
             assert!(dir.join("bar/2.txt").is_file());
         } else {
-            assert_eq!(false, dir.join("1.txt").is_file());
-            assert_eq!(false, dir.join("2.txt").is_file());
+            assert!(!dir.join("1.txt").is_file());
+            assert!(!dir.join("2.txt").is_file());
 
-            assert_eq!(false, dir.join(".git").is_dir());
+            assert!(!dir.join(".git").is_dir());
 
-            assert_eq!(false, dir.join("foo").is_dir());
-            assert_eq!(false, dir.join("foo/1.txt").is_file());
-            assert_eq!(false, dir.join("foo/2.txt").is_file());
+            assert!(!dir.join("foo").is_dir());
+            assert!(!dir.join("foo/1.txt").is_file());
+            assert!(!dir.join("foo/2.txt").is_file());
 
-            assert_eq!(false, dir.join("bar").is_dir());
-            assert_eq!(false, dir.join("bar/1.txt").is_file());
-            assert_eq!(false, dir.join("bar/2.txt").is_file());
+            assert!(!dir.join("bar").is_dir());
+            assert!(!dir.join("bar/1.txt").is_file());
+            assert!(!dir.join("bar/2.txt").is_file());
         }
     }
 
@@ -258,7 +258,7 @@ fn cli_clean3() {
     ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)));
 
     for rel_path in rel_paths {
-        let dir = path.join(&rel_path);
+        let dir = path.join(rel_path);
 
         if rel_path == "foobar-1/foobar-1-2/foobar-1-2-1"
             || rel_path == "foobar-2"
@@ -277,18 +277,18 @@ fn cli_clean3() {
             assert!(dir.join("bar/1.txt").is_file());
             assert!(dir.join("bar/2.txt").is_file());
         } else {
-            assert_eq!(false, dir.join("1.txt").is_file());
-            assert_eq!(false, dir.join("2.txt").is_file());
+            assert!(!dir.join("1.txt").is_file());
+            assert!(!dir.join("2.txt").is_file());
 
-            assert_eq!(false, dir.join(".git").is_dir());
+            assert!(!dir.join(".git").is_dir());
 
-            assert_eq!(false, dir.join("foo").is_dir());
-            assert_eq!(false, dir.join("foo/1.txt").is_file());
-            assert_eq!(false, dir.join("foo/2.txt").is_file());
+            assert!(!dir.join("foo").is_dir());
+            assert!(!dir.join("foo/1.txt").is_file());
+            assert!(!dir.join("foo/2.txt").is_file());
 
-            assert_eq!(false, dir.join("bar").is_dir());
-            assert_eq!(false, dir.join("bar/1.txt").is_file());
-            assert_eq!(false, dir.join("bar/2.txt").is_file());
+            assert!(!dir.join("bar").is_dir());
+            assert!(!dir.join("bar/1.txt").is_file());
+            assert!(!dir.join("bar/2.txt").is_file());
         }
     }
 
@@ -298,15 +298,15 @@ fn cli_clean3() {
 
 pub fn create_repos_tree(path: &PathBuf, rel_paths: &[&str]) {
     if path.exists() {
-        std::fs::remove_dir_all(&path).unwrap();
+        std::fs::remove_dir_all(path).unwrap();
     }
-    std::fs::create_dir_all(&path).unwrap();
+    std::fs::create_dir_all(path).unwrap();
     let remote = "https://github.com/imgui-rs/imgui-rs.git";
 
     // create git repos、 some files and some folders
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
-        std::fs::create_dir_all(dir.to_path_buf()).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
 
         // create local git repositoris
         exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);

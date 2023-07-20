@@ -1,12 +1,14 @@
+use std::path::PathBuf;
+
 use lazy_static::lazy_static;
 use log::{error, info, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config;
+
 use mgit::utils::logger;
 use mgit::utils::style_message::StyleMessage;
-use std::path::PathBuf;
 
 pub(crate) static GUI_LOGGER: GuiLogger = GuiLogger {};
 lazy_static! {

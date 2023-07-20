@@ -145,7 +145,7 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         logger::error("Errors:");
         errors.iter().for_each(|(toml_repo, error)| {
             logger::error(StyleMessage::git_error(
-                &toml_repo.local.as_ref().unwrap(),
+                toml_repo.local.as_ref().unwrap(),
                 error,
             ));
         });

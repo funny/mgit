@@ -1,5 +1,3 @@
-use mgit::core::repo::TomlRepo;
-use regex::Regex;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::ops::Deref;
@@ -8,10 +6,15 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use crate::editor::{get_repo_state, CommandType, RepoMessage};
-use crate::logger::LOG_DIR;
+use regex::Regex;
+
+use mgit::core::repo::TomlRepo;
 use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::StyleMessage;
+
+use crate::editor::ops::{get_repo_state, RepoMessage};
+use crate::utils::command::CommandType;
+use crate::utils::logger::LOG_DIR;
 
 #[derive(Debug, Clone)]
 pub(crate) struct OpsMessageCollector {
@@ -142,12 +145,7 @@ impl Progress for OpsMessageCollector {
         });
 
         let mut file = self.file_loggers[repo_info.id].lock().unwrap();
-        writeln!(
-            file,
-            "==========end repo: {}==========",
-            self.repo_names[repo_info.id]
-        )
-        .unwrap();
+        writeln!(file, "{}", self.repo_names[repo_info.id]).unwrap();
     }
 
     fn repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {

@@ -1,5 +1,8 @@
-use super::settings::{SyncType, TomlUserSettings};
 use eframe::egui;
+use eframe::egui::Vec2;
+
+use crate::toml_settings::user_settings::TomlUserSettings;
+use crate::toml_settings::SyncType;
 
 pub struct OptionsWindow {
     pub init_force: bool,
@@ -80,26 +83,22 @@ impl OptionsWindow {
 
 impl super::WindowBase for OptionsWindow {
     fn name(&self) -> String {
-        format!("Command Options")
+        "Command Options".to_string()
     }
 
-    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
-        let width = 470.0;
-        let height = 460.0;
-        let screen_rect = eframe.info().window_info.size;
-        let default_pos = [
-            (screen_rect.x - width) * 0.5,
-            (screen_rect.y - height) * 0.5,
-        ];
-        egui::Window::new(self.name())
-            .fixed_pos(default_pos)
-            .fixed_size([width, height])
-            .collapsible(false)
-            .open(open)
-            .show(ctx, |ui| {
-                use super::View;
-                self.ui(ui);
-            });
+    fn width(&self) -> f32 {
+        470.0
+    }
+
+    fn height(&self) -> f32 {
+        460.0
+    }
+
+    fn default_pos(&self, screen_rect: &Vec2) -> [f32; 2] {
+        [
+            (screen_rect.x - self.width()) * 0.5,
+            (screen_rect.y - self.height()) * 0.5,
+        ]
     }
 }
 

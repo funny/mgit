@@ -1,16 +1,17 @@
 // hide console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use crate::logger::init_log;
-use editor::{
-    defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
-    load_icon, App,
-};
 use eframe::NativeOptions;
 
-mod editor;
-mod logger;
-pub(crate) mod progress;
+use editor::Editor;
+
+use crate::editor::misc::load_icon;
+use crate::utils::defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH};
+use crate::utils::logger::init_log;
+
+pub(crate) mod editor;
+pub(crate) mod toml_settings;
+pub(crate) mod utils;
 
 fn main() {
     init_log();
@@ -32,6 +33,6 @@ fn main() {
             std::env!("CARGO_PKG_VERSION")
         ),
         native_options,
-        Box::new(|cc| Box::new(App::new(cc))),
+        Box::new(|cc| Box::new(Editor::new(cc))),
     );
 }

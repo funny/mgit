@@ -1,6 +1,8 @@
-use super::defines::{hex_code, resource};
 use eframe::egui;
+use eframe::egui::Vec2;
 use egui_extras::RetainedImage;
+
+use crate::utils::defines::{hex_code, resource};
 
 #[derive(Default)]
 pub struct AboutWindow {
@@ -9,27 +11,22 @@ pub struct AboutWindow {
 
 impl super::WindowBase for AboutWindow {
     fn name(&self) -> String {
-        format!("About mgit-gui")
+        "About mgit-gui".to_string()
     }
 
-    fn show(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame, open: &mut bool) {
-        let width = 300.0;
-        let height = 160.0;
-        let screen_rect = eframe.info().window_info.size;
-        let default_pos = [
-            (screen_rect.x - width) * 0.5,
-            (screen_rect.y - height) * 0.5,
-        ];
+    fn width(&self) -> f32 {
+        300.0
+    }
 
-        egui::Window::new(self.name())
-            .fixed_pos(default_pos)
-            .fixed_size([width, height])
-            .collapsible(false)
-            .open(open)
-            .show(ctx, |ui| {
-                use super::View;
-                self.ui(ui);
-            });
+    fn height(&self) -> f32 {
+        160.0
+    }
+
+    fn default_pos(&self, screen_rect: &Vec2) -> [f32; 2] {
+        [
+            (screen_rect.x - self.width()) * 0.5,
+            (screen_rect.y - self.height()) * 0.5,
+        ]
     }
 }
 

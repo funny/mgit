@@ -32,6 +32,7 @@ pub struct SyncOptions {
 }
 
 impl SyncOptions {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
@@ -144,7 +145,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                 let mut pre_cmp_msg = StyleMessage::new();
                 if !silent {
                     let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                    pre_cmp_msg = pre_cmp_msg.try_join(cmp_res.map_or(None, |m| Some(m)));
+                    pre_cmp_msg = pre_cmp_msg.try_join(cmp_res.ok());
                 }
 
                 // execute command according each repo status
@@ -231,7 +232,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
         logger::error("Errors:");
         error_repos.iter().for_each(|(toml_repo, error)| {
             logger::error(StyleMessage::git_error(
-                &toml_repo.local.as_ref().unwrap(),
+                toml_repo.local.as_ref().unwrap(),
                 error,
             ));
         });
@@ -425,7 +426,7 @@ fn exec_stash(
     repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> Result<String, anyhow::Error> {
-    progress.repo_info(&repo_info, "stash...".into());
+    progress.repo_info(repo_info, "stash...".into());
 
     let full_path = input_path.join(repo_info.rel_path());
     git::stash(full_path)

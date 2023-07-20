@@ -3,9 +3,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use eframe::egui::{vec2, NumExt, Response, Sense, Ui, Widget};
-use eframe::emath::Rect;
-use eframe::epaint::Stroke;
+use eframe::egui::{vec2, NumExt, Rect, Response, Sense, Stroke, Ui, Widget};
 
 use mgit::core::repo::TomlRepo;
 

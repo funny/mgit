@@ -8,17 +8,18 @@ pub const MENU_BOX_WIDTH: f32 = 200.0;
 pub const GIT_VERSION: &str = ">= 2.22.0";
 
 pub mod resource {
-    pub const NERD_FONT: &'static [u8] =
+    pub const NERD_FONT: &[u8] =
         include_bytes!("../../resource/Fira Code Medium Nerd Font Complete.ttf");
 
-    pub const APP_ICON: &'static [u8] = include_bytes!("../../resource/logo64x64.ico");
+    pub const APP_ICON: &[u8] = include_bytes!("../../resource/logo64x64.ico");
 
-    pub const LOGO: &'static [u8] = include_bytes!("../../resource/logo128x128.png");
+    pub const LOGO: &[u8] = include_bytes!("../../resource/logo128x128.png");
 }
 
 pub mod text_color {
-    use super::*;
     use mgit::Colour;
+
+    use super::*;
 
     pub const BLUE: Color32 = Color32::from_rgb(87, 167, 250);
     pub const RED: Color32 = Color32::from_rgb(202, 86, 44);

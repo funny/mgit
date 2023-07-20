@@ -53,7 +53,7 @@ pub fn snapshot_repo(options: SnapshotOptions) {
     let ignore = &options.ignore;
 
     // start taking snapshot repos
-    logger::info(StyleMessage::ops_start("take snapshot", &path));
+    logger::info(StyleMessage::ops_start("take snapshot", path));
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
