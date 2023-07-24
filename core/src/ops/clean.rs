@@ -29,7 +29,7 @@ pub fn clean_repo(options: CleanOptions) {
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::error(StyleMessage::dir_not_found(&path));
+        logger::error(StyleMessage::dir_not_found(path));
         return;
     }
     // check if .gitrepos exists
@@ -38,7 +38,7 @@ pub fn clean_repo(options: CleanOptions) {
         return;
     }
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(&config_path) else{
+    let Some(toml_config) = load_config(config_path) else{
         logger::error("load config file failed!");
         return;
     };
@@ -48,9 +48,9 @@ pub fn clean_repo(options: CleanOptions) {
     };
 
     let config_repo_paths: Vec<PathBuf> = toml_repos
-        .into_iter()
+        .iter()
         .map(|item| item.local.as_ref().unwrap())
-        .map(|str| PathBuf::from(str))
+        .map(PathBuf::from)
         .collect();
 
     // search for git repos and create .gitrepos file
@@ -96,7 +96,7 @@ pub fn clean_repo(options: CleanOptions) {
         let contained_paths = find_contained_paths(&unused_path, &config_repo_paths);
 
         // remove unused directory
-        if contained_paths.len() > 0 {
+        if !contained_paths.is_empty() {
             if let Err(e) = remove_unused_files(&input_path, &unused_path, &contained_paths) {
                 // logger::remove_file_failed(&unused_path, e);
                 logger::error(StyleMessage::remove_file_failed(&unused_path, e));
@@ -113,15 +113,12 @@ pub fn clean_repo(options: CleanOptions) {
     logger::info(StyleMessage::remove_repo_succ(count));
 }
 
-fn find_contained_paths(unused_path: &PathBuf, config_repo_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
+fn find_contained_paths(unused_path: &Path, config_repo_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
     let mut contained_paths: Vec<PathBuf> = Vec::new();
 
     for config_repo_path in config_repo_paths {
         // add contained paths
-        if config_repo_path
-            .as_path()
-            .starts_with(unused_path.as_path())
-        {
+        if config_repo_path.as_path().starts_with(unused_path) {
             contained_paths.push(config_repo_path.to_path_buf());
         }
     }
@@ -156,12 +153,12 @@ fn remove_unused_files(
         // if the path is not the parent of contained path, continue
         else if file_path.is_dir() && find_contained_paths(&rel_path, contained_paths).is_empty()
         {
-            std::fs::remove_dir_all(&file_path)?;
+            std::fs::remove_dir_all(file_path)?;
             it.skip_current_dir();
         }
         // otherwise, delete the file/folder
         else if file_path.is_file() {
-            std::fs::remove_file(&file_path)?;
+            std::fs::remove_file(file_path)?;
         }
     }
     Ok(())

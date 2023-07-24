@@ -87,7 +87,7 @@ pub fn find_remote_url_by_name(
     let args = ["remote", "get-url", name];
     let output = exec_cmd(path, "git", &args)?;
 
-    for remote_url in output.trim().lines() {
+    if let Some(remote_url) = output.trim().lines().next() {
         return Ok(remote_url.trim().to_string());
     }
 
@@ -99,7 +99,7 @@ pub fn get_current_commit(path: impl AsRef<Path>) -> Result<String, anyhow::Erro
     let args = ["rev-parse", "HEAD"];
     let output = exec_cmd(path, "git", &args)?;
 
-    for oid in output.trim().lines() {
+    if let Some(oid) = output.trim().lines().next() {
         return Ok(oid.to_string());
     }
 
@@ -217,7 +217,7 @@ pub fn local_branch_already_exist(
 }
 
 pub fn checkout(path: impl AsRef<Path>, args: &[&str]) -> anyhow::Result<()> {
-    exec_cmd(path, "git", &args).map(|_| ())
+    exec_cmd(path, "git", args).map(|_| ())
 }
 
 #[allow(dead_code)]

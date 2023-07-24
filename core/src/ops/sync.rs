@@ -1,20 +1,21 @@
 use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use rayon::{iter::ParallelIterator, prelude::IntoParallelRefIterator};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::git::{RemoteRef, ResetType, StashMode};
+use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
-use crate::core::repo::{RepoId, TomlRepo};
 use crate::core::repos::load_config;
 
 use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch};
 
 use crate::utils::logger;
-use crate::utils::progress::Progress;
+use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
 
 pub struct SyncOptions {
@@ -31,6 +32,7 @@ pub struct SyncOptions {
 }
 
 impl SyncOptions {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
@@ -112,8 +114,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     let ignore = ignore.map(|r| r.iter().collect::<Vec<&String>>());
     exclude_ignore(&mut toml_repos, ignore);
 
-    let repos_count = toml_repos.len();
-    progress.repos_start(repos_count);
+    progress.repos_start(toml_repos.len());
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
     let counter = RelaxedCounter::new(1);
@@ -129,85 +130,73 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let (succ_repos, error_repos) = thread_pool.install(|| {
         let res: Vec<ParallelResult> = toml_repos
-            .par_iter()
-            .map(|toml_repo| {
+            .iter()
+            .enumerate()
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let prefix = format!("[{:02}/{:02}]", idx, repos_count);
-                let rel_path = toml_repo.local.as_ref().unwrap();
+                let mut repo_info = RepoInfo::new(index, idx, toml_repo);
 
-                let msg = format!("{:>9} waiting...", &prefix);
                 let progress = progress.clone();
-                progress.repo_start(RepoId::new(idx, rel_path));
-                progress.repo_info(RepoId::new(idx, rel_path), msg.into());
+                progress.repo_start(&repo_info, "waiting...".into());
 
                 // get compare stat betwwen local and specified commit/tag/branch/
                 let mut pre_cmp_msg = StyleMessage::new();
                 if !silent {
                     let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                    pre_cmp_msg = pre_cmp_msg.try_join(cmp_res.map_or(None, |m| Some(m)));
+                    pre_cmp_msg = pre_cmp_msg.try_join(cmp_res.ok());
                 }
 
                 // execute command according each repo status
                 let exec_res = inner_exec(
                     path,
-                    toml_repo,
+                    &mut repo_info,
                     &stash_mode,
                     no_checkout,
                     depth.as_ref(),
                     &default_branch,
-                    &prefix,
-                    idx,
                     &progress,
                 );
 
                 // handle result
-                let rel_path = toml_repo.local.as_ref().unwrap();
-                let res: ParallelResult = match exec_res {
+                match exec_res {
                     Ok(_) => {
-                        let mut msg = StyleMessage::spinner_end(prefix, rel_path, true);
+                        let mut msg = StyleMessage::repo_end(true);
 
                         // if not silent, show compare stat betweent local and remote
                         if !silent {
                             let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                            let mut cmp_msg =
-                                StyleMessage::new().try_join(cmp_res.map_or(None, |m| Some(m)));
+                            let mut cmp_msg = StyleMessage::new().try_join(cmp_res.ok());
                             let already_update = cmp_msg.contains("already update to date.");
 
                             if pre_cmp_msg != cmp_msg && already_update {
                                 cmp_msg = cmp_msg.remove("already update to date.");
                                 cmp_msg = StyleMessage::git_update_to(cmp_msg);
                             }
-                            msg = msg.plain_text(": ").join(cmp_msg)
+                            msg = msg.plain_text(" ").join(cmp_msg)
                         }
 
                         // show message in progress bar
-                        progress.repo_end(RepoId::new(idx, rel_path.as_str()), msg);
+                        progress.repo_end(&repo_info, msg);
 
                         // track remote branch, return track status
                         let mut track_msg = StyleMessage::new();
                         if !no_track {
                             let track_res =
-                                set_tracking_remote_branch(path, &toml_repo, &default_branch);
-                            track_msg = track_msg.try_join(track_res.map_or(None, |m| Some(m)));
+                                set_tracking_remote_branch(path, toml_repo, &default_branch);
+                            track_msg = track_msg.try_join(track_res.ok());
                         }
 
                         Ok((toml_repo, track_msg))
                     }
                     Err(e) => {
-                        let msg = StyleMessage::spinner_end(
-                            prefix,
-                            toml_repo.local.as_ref().unwrap(),
-                            false,
-                        );
-
                         // show message in progress bar
-                        progress.repo_error(RepoId::new(idx, rel_path), msg);
+                        progress.repo_error(&repo_info, StyleMessage::repo_end(false));
 
                         Err((toml_repo, e))
                     }
-                };
-
-                res
+                }
             })
             .collect();
 
@@ -243,7 +232,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
         logger::error("Errors:");
         error_repos.iter().for_each(|(toml_repo, error)| {
             logger::error(StyleMessage::git_error(
-                &toml_repo.local.as_ref().unwrap(),
+                toml_repo.local.as_ref().unwrap(),
                 error,
             ));
         });
@@ -252,23 +241,22 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
 
 fn inner_exec(
     input_path: &Path,
-    toml_repo: &TomlRepo,
+    repo_info: &mut RepoInfo,
     stash_mode: &StashMode,
     no_checkout: bool,
     depth: Option<&usize>,
     default_branch: &Option<String>,
-    prefix: &str,
-    idx: usize,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = &input_path.join(rel_path);
+    let full_path = &input_path.join(repo_info.rel_path());
 
+    let mut toml_repo = repo_info.toml_repo.to_owned();
+    let mut owned_repo_info = repo_info.to_owned();
+    let repo_info = &mut owned_repo_info;
     // make repo directory and skip clone the repository
     std::fs::create_dir_all(full_path)
         .with_context(|| format!("create dir {} failed.", full_path.to_str().unwrap()))?;
 
-    let mut toml_repo = toml_repo.to_owned();
     let mut stash_mode = stash_mode.to_owned();
     let is_repo_none = git::is_repository(full_path.as_path()).is_err();
     // if repository not found, create new one
@@ -277,82 +265,69 @@ fn inner_exec(
         stash_mode = StashMode::Hard;
 
         // git init when dir exist
-        exec_init(input_path, &toml_repo, prefix, idx, progress)?;
+        exec_init(input_path, repo_info, progress)?;
         // git remote add url
-        exec_add_remote(input_path, &toml_repo, prefix, idx, progress)?;
+        exec_add_remote(input_path, repo_info, progress)?;
     } else {
-        let remote_url = toml_repo.remote.as_ref().unwrap();
+        let remote_url = repo_info.toml_repo.remote.as_ref().unwrap();
         git::update_remote_url(full_path, remote_url)?;
     }
 
     // use default branch when branch is null
-    if toml_repo.branch.is_none() {
+    if repo_info.toml_repo.branch.is_none() {
         toml_repo.branch = default_branch.to_owned();
+        repo_info.toml_repo = &toml_repo;
     }
 
     // fetch
-    exec_fetch(input_path, &toml_repo, depth, prefix, idx, progress)?;
+    exec_fetch(input_path, repo_info, depth, progress)?;
 
     // priority: commit/tag/branch(default-branch)
-    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+    let remote_ref = repo_info.toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref {
         RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
 
     // check remote-ref valid
-    git::is_remote_ref_valid(full_path, &remote_ref_str)?;
+    git::is_remote_ref_valid(full_path, remote_ref_str)?;
 
     match stash_mode {
         StashMode::Normal => {
             // try stash → checkout → reset → stash pop
             if !no_checkout {
                 // stash
-                let stash_result = exec_stash(input_path, &toml_repo, prefix, idx, progress);
+                let stash_result = exec_stash(input_path, repo_info, progress);
                 let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
 
                 // checkout
                 let mut result: Result<(), anyhow::Error>;
-                result = exec_checkout(input_path, &toml_repo, false, prefix, idx, progress);
+                result = exec_checkout(input_path, repo_info, progress, false);
 
                 if result.is_ok() {
                     // reset --hard
-                    result = exec_reset(
-                        input_path,
-                        &toml_repo,
-                        ResetType::Hard,
-                        prefix,
-                        idx,
-                        progress,
-                    );
+                    result = exec_reset(input_path, repo_info, progress, ResetType::Hard);
                 }
 
                 // stash pop, whether checkout succ or failed, whether reset succ or failed
                 if stash_msg.contains("WIP") {
-                    let _ = exec_stash_pop(input_path, &toml_repo, prefix, idx, progress);
+                    let _ = exec_stash_pop(input_path, repo_info, progress);
                 }
                 result
             } else {
                 // reset --soft
-                exec_reset(
-                    input_path,
-                    &toml_repo,
-                    ResetType::Soft,
-                    prefix,
-                    idx,
-                    progress,
-                )
+                exec_reset(input_path, repo_info, progress, ResetType::Soft)
             }
         }
         StashMode::Stash => {
             // stash with `--stash` option, maybe return error if need to initial commit
-            let stash_result = exec_stash(input_path, &toml_repo, prefix, idx, progress);
+            let stash_result = exec_stash(input_path, repo_info, progress);
             let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
 
             // checkout
             let mut result: Result<(), anyhow::Error> = Ok(());
             let mut reset_type = ResetType::Mixed;
             if !no_checkout {
-                result = exec_checkout(input_path, &toml_repo, true, prefix, idx, progress)
+                result = exec_checkout(input_path, repo_info, progress, true)
                     .with_context(|| stash_msg.clone());
 
                 reset_type = ResetType::Hard;
@@ -360,7 +335,7 @@ fn inner_exec(
 
             // reset --mixed
             if result.is_ok() {
-                result = exec_reset(input_path, &toml_repo, reset_type, prefix, idx, progress)
+                result = exec_reset(input_path, repo_info, progress, reset_type)
                     .with_context(|| stash_msg.clone());
             }
 
@@ -368,7 +343,7 @@ fn inner_exec(
             if let Err(e) = result {
                 // if reset failed, pop stash if stash something this time
                 if stash_msg.contains("WIP") {
-                    let _ = exec_stash_pop(input_path, &toml_repo, prefix, idx, progress);
+                    let _ = exec_stash_pop(input_path, repo_info, progress);
                 }
                 return Err(e);
             }
@@ -377,92 +352,63 @@ fn inner_exec(
         StashMode::Hard => {
             // clean
             if !is_repo_none {
-                exec_clean(input_path, &toml_repo, prefix, idx, progress)?;
+                exec_clean(input_path, repo_info, progress)?;
             }
 
             // checkout
             if !no_checkout {
-                exec_checkout(input_path, &toml_repo, true, prefix, idx, progress)?;
+                exec_checkout(input_path, repo_info, progress, true)?;
             }
 
             // reset --hard
-            exec_reset(
-                input_path,
-                &toml_repo,
-                ResetType::Hard,
-                prefix,
-                idx,
-                progress,
-            )
+            exec_reset(input_path, repo_info, progress, ResetType::Hard)
         }
     }
 }
 
 fn exec_init(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
-
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "initialize...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
-    git::init(full_path)
+    progress.repo_info(repo_info, "initialize...".into());
+    git::init(input_path.join(repo_info.rel_path()))
 }
 
 fn exec_add_remote(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "add remote...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "add remote...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
-    let url = toml_repo.remote.as_ref().unwrap();
+    let full_path = input_path.join(repo_info.rel_path());
+    let url = repo_info.toml_repo.remote.as_ref().unwrap();
     git::add_remote_url(full_path, url)
 }
 
 fn exec_clean(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "clean...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "clean...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
+    let full_path = input_path.join(repo_info.rel_path());
     git::clean(full_path)
 }
 
 fn exec_reset(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    reset_type: ResetType,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
+    reset_type: ResetType,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "reset...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "reset...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
+    let full_path = input_path.join(repo_info.rel_path());
     // priority: commit/tag/branch(default-branch)
-    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+    let remote_ref = repo_info.toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref {
         RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
@@ -477,74 +423,59 @@ fn exec_reset(
 
 fn exec_stash(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> Result<String, anyhow::Error> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "stash...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "stash...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
+    let full_path = input_path.join(repo_info.rel_path());
     git::stash(full_path)
 }
 
 fn exec_stash_pop(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
 ) -> Result<String, anyhow::Error> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "pop stash...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "pop stash...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
+    let full_path = input_path.join(repo_info.rel_path());
     git::stash_pop(full_path)
 }
 
 fn exec_checkout(
     input_path: &Path,
-    toml_repo: &TomlRepo,
-    force: bool,
-    prefix: &str,
-    idx: usize,
+    repo_info: &RepoInfo,
     progress: &impl Progress,
+    force: bool,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.join(rel_path);
+    progress.repo_info(repo_info, "checkout...".into());
 
-    let msg = StyleMessage::spinner_info(prefix, rel_path, "checkout...".into());
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
-
+    let full_path = input_path.join(repo_info.rel_path());
     // priority: commit/tag/branch(default-branch)
-    let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+    let remote_ref = repo_info.toml_repo.get_remote_ref(full_path.as_path())?;
     let remote_ref_str = match remote_ref.clone() {
         RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
     let branch = match remote_ref {
         RemoteRef::Commit(commit) => format!("commits/{}", &commit[..7]),
         RemoteRef::Tag(tag) => format!("tags/{}", tag),
-        RemoteRef::Branch(_) => toml_repo
+        RemoteRef::Branch(_) => repo_info
+            .toml_repo
             .branch
             .clone()
             .unwrap_or("invalid-branch".to_string()),
     };
 
     // don't need to checkout if current branch is the branch
-    if let Ok(currnte_branch) = git::get_current_branch(full_path.as_path()) {
-        if branch == currnte_branch {
+    if let Ok(current_branch) = git::get_current_branch(full_path.as_path()) {
+        if branch == current_branch {
             return Ok(());
         }
     }
 
     let suffix = StyleMessage::git_checking_out(&branch);
-    let msg = StyleMessage::spinner_info(prefix, rel_path, suffix);
-    progress.repo_info(RepoId::new(idx, rel_path.as_str()), msg);
+    progress.repo_info(repo_info, suffix);
 
     // check if local branch already exists
     let branch_exist = git::local_branch_already_exist(&full_path, &branch)?;

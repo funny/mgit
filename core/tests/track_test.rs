@@ -31,7 +31,7 @@ fn cli_track_simple() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
             "foobar-1",
@@ -43,7 +43,7 @@ fn cli_track_simple() {
         .join_repo("foobar-2", &SBERT_REPO, Some("character_bert"), None, None)
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
     ops::sync_repo(
@@ -59,7 +59,7 @@ fn cli_track_simple() {
             Some(true),
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let cur_branch_args = ["branch", "--show-current"];
@@ -89,14 +89,13 @@ fn cli_track_simple() {
         r#"branch = "master""#,
     );
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    ops::track(TrackOptions::new(
-        Some(input_path.clone()),
-        None::<PathBuf>,
-        None,
-    ));
+    ops::track(
+        TrackOptions::new(Some(input_path.clone()), None::<PathBuf>, None),
+        TestProgress,
+    );
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -144,7 +143,7 @@ fn cli_track_ignore() {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &SBERT_REPO, Some("master"), None, None)
         .join_repo(
@@ -157,7 +156,7 @@ fn cli_track_ignore() {
         .join_repo("foobar-2", &SBERT_REPO, Some("character_bert"), None, None)
         .build();
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // initialize repositories, with no-track
     ops::sync_repo(
@@ -173,7 +172,7 @@ fn cli_track_ignore() {
             Some(true),
             Some(true),
         ),
-        TestProgress::default(),
+        TestProgress,
     );
 
     let cur_branch_args = ["branch", "--show-current"];
@@ -203,14 +202,17 @@ fn cli_track_ignore() {
         r#"branch = "master""#,
     );
     let config_file = path.join(".gitrepos");
-    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     // track command
-    ops::track(TrackOptions::new(
-        Some(input_path.clone()),
-        None::<PathBuf>,
-        Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),
-    ));
+    ops::track(
+        TrackOptions::new(
+            Some(input_path.clone()),
+            None::<PathBuf>,
+            Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),
+        ),
+        TestProgress,
+    );
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());

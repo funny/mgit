@@ -34,7 +34,7 @@ fn cli_fetch_simple() {
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
-        std::fs::create_dir_all(dir.to_path_buf()).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
 
         // create local git repositoris
         exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
@@ -51,7 +51,7 @@ fn cli_fetch_simple() {
     // fetch command
     ops::fetch_repos(
         FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
-        TestProgress::default(),
+        TestProgress,
     );
 
     for repo_path in repo_paths {
@@ -82,7 +82,7 @@ fn cli_fetch_new_remote_url() {
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
-        std::fs::create_dir_all(dir.to_path_buf()).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
 
         // create local git repositoris
         exec_cmd(&dir, "git", &["init"]).expect(failed_message::GIT_INIT);
@@ -94,7 +94,7 @@ fn cli_fetch_new_remote_url() {
         assert!(!dir.join(".git/FETCH_HEAD").is_file());
     }
 
-    let toml_string = TomlBuilder::new()
+    let toml_string = TomlBuilder::default()
         .default_branch("develop")
         .join_repo(".", &MGIT_REPO, None, None, None)
         .join_repo("foobar-1", &MGIT_REPO, None, None, None)
@@ -105,7 +105,7 @@ fn cli_fetch_new_remote_url() {
     // fetch command
     ops::fetch_repos(
         FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
-        TestProgress::default(),
+        TestProgress,
     );
 
     for repo_path in repo_paths {

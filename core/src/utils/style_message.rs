@@ -40,7 +40,7 @@ impl Display for StyleText {
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct StyleMessage(Vec<StyleText>);
+pub struct StyleMessage(pub Vec<StyleText>);
 
 impl StyleMessage {
     pub(crate) fn new() -> Self {
@@ -67,10 +67,6 @@ impl StyleMessage {
         self
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     pub(crate) fn contains(&self, pattern: impl AsRef<str>) -> bool {
         self.0.iter().any(|st| st.content == pattern.as_ref())
     }
@@ -90,6 +86,10 @@ impl StyleMessage {
     pub(crate) fn remove(mut self, pattern: impl AsRef<str>) -> Self {
         self.0.retain(|st| st.content != pattern.as_ref());
         self
+    }
+
+    pub fn replace(&mut self, other: StyleMessage) {
+        self.0 = other.0;
     }
 }
 
@@ -180,35 +180,12 @@ impl StyleMessage {
         }
     }
 
-    pub(crate) fn spinner_start(prefix: impl AsRef<str>, desc: impl AsRef<str>) -> Self {
-        StyleMessage::new().plain_text(format!("{:>9} {}", prefix.as_ref(), desc.as_ref()))
-    }
-
-    pub(crate) fn spinner_info(
-        prefix: impl AsRef<str>,
-        rel_path: impl AsRef<str>,
-        desc: StyleMessage,
-    ) -> Self {
-        StyleMessage::new()
-            .plain_text(format!("{:>9} ", prefix.as_ref()))
-            .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
-            .plain_text(": ")
-            .join(desc)
-    }
-
-    pub(crate) fn spinner_end(
-        prefix: impl AsRef<str>,
-        rel_path: impl AsRef<str>,
-        is_succ: bool,
-    ) -> Self {
-        let (sign, style): (&str, &Style) = match is_succ {
+    pub(crate) fn repo_end(is_success: bool) -> Self {
+        let (sign, style): (&str, &Style) = match is_success {
             true => ("√", &GREEN_BOLD),
             false => ("x", &RED_BOLD),
         };
-        StyleMessage::new()
-            .styled_text(sign, style)
-            .plain_text(format!(" {} ", prefix.as_ref()))
-            .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
+        StyleMessage::new().styled_text(sign, style)
     }
 
     pub(crate) fn git_error(rel_path: impl AsRef<str>, error: &anyhow::Error) -> Self {
@@ -273,14 +250,14 @@ impl StyleMessage {
             .plain_text("...")
     }
 
-    pub(crate) fn git_changes(len: usize) -> Self {
-        StyleMessage::new()
-            .plain_text(", changes(")
-            .styled_text(len.to_string(), &RED)
-            .plain_text(")")
+    pub(crate) fn git_changes(len: usize) -> Option<Self> {
+        match len {
+            0 => None,
+            _ => Some(StyleMessage::new().styled_text(format!("changes({})", len), &RED)),
+        }
     }
 
-    pub(crate) fn git_commits(ahead: impl AsRef<str>, behind: impl AsRef<str>) -> Self {
+    pub(crate) fn git_commits(ahead: impl AsRef<str>, behind: impl AsRef<str>) -> Option<Self> {
         let ahead = ahead.as_ref();
         let behind = behind.as_ref();
 
@@ -291,15 +268,14 @@ impl StyleMessage {
             _ => format!("commits({}↑{}↓)", ahead, behind),
         };
 
-        StyleMessage::new()
-            .plain_text(", ")
-            .styled_text(commit_str, &YELLOW)
+        match commit_str.is_empty() {
+            true => None,
+            false => Some(StyleMessage::new().styled_text(commit_str, &YELLOW)),
+        }
     }
 
     pub(crate) fn git_unknown_revision() -> Self {
-        StyleMessage::new()
-            .plain_text(", ")
-            .styled_text("unknown revision", &YELLOW)
+        StyleMessage::new().styled_text("unknown revision", &YELLOW)
     }
 
     pub(crate) fn git_update_to(desc: StyleMessage) -> Self {
@@ -317,13 +293,17 @@ impl StyleMessage {
 
     pub(crate) fn git_diff(
         remote_desc: impl AsRef<str>,
-        commit_desc: StyleMessage,
-        changes_desc: StyleMessage,
+        commit_desc: Option<StyleMessage>,
+        changes_desc: Option<StyleMessage>,
     ) -> Self {
-        StyleMessage::new()
-            .styled_text(remote_desc.as_ref(), &BLUE)
-            .join(commit_desc)
-            .join(changes_desc)
+        let mut diff = StyleMessage::new().styled_text(remote_desc.as_ref(), &BLUE);
+        if let Some(commit_desc) = commit_desc {
+            diff = diff.plain_text(", ").join(commit_desc);
+        }
+        if let Some(changes_desc) = changes_desc {
+            diff = diff.plain_text(", ").join(changes_desc)
+        }
+        diff
     }
 }
 

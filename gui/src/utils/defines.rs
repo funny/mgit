@@ -5,21 +5,22 @@ pub const DEFAULT_HEIGHT: f32 = 740.0;
 
 pub const MENU_BOX_WIDTH: f32 = 200.0;
 
-pub const MGIT_DIR: &str = "mgit";
-pub const MGIT_VERSION: &str = ">= 1.1.7";
 pub const GIT_VERSION: &str = ">= 2.22.0";
 
 pub mod resource {
-    pub const NERD_FONT: &'static [u8] =
+    pub const NERD_FONT: &[u8] =
         include_bytes!("../../resource/Fira Code Medium Nerd Font Complete.ttf");
 
-    pub const APP_ICON: &'static [u8] = include_bytes!("../../resource/logo64x64.ico");
+    pub const APP_ICON: &[u8] = include_bytes!("../../resource/logo64x64.ico");
 
-    pub const LOGO: &'static [u8] = include_bytes!("../../resource/logo128x128.png");
+    pub const LOGO: &[u8] = include_bytes!("../../resource/logo128x128.png");
 }
 
 pub mod text_color {
+    use mgit::Colour;
+
     use super::*;
+
     pub const BLUE: Color32 = Color32::from_rgb(87, 167, 250);
     pub const RED: Color32 = Color32::from_rgb(202, 86, 44);
     pub const GREEN: Color32 = Color32::from_rgb(0, 200, 0);
@@ -28,6 +29,25 @@ pub mod text_color {
     pub const DARK_PURPLE: Color32 = Color32::from_rgb(140, 60, 140);
     pub const GRAY: Color32 = Color32::GRAY;
     pub const LIGHT_GRAY: Color32 = Color32::from_rgba_premultiplied(50, 50, 50, 50);
+    pub const BLACK: Color32 = Color32::BLACK;
+    pub const WHITE: Color32 = Color32::WHITE;
+
+    pub fn from(color: &Option<mgit::Colour>) -> Color32 {
+        if let Some(color) = color {
+            match color {
+                Colour::Black => BLACK,
+                Colour::Red => RED,
+                Colour::Green => GREEN,
+                Colour::Yellow => YELLOW,
+                Colour::Blue => BLUE,
+                Colour::Purple => PURPLE,
+                Colour::White => WHITE,
+                _ => LIGHT_GRAY,
+            }
+        } else {
+            WHITE
+        }
+    }
 }
 
 #[allow(unused)]

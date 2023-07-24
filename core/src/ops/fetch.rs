@@ -1,6 +1,5 @@
 use atomic_counter::{AtomicCounter, RelaxedCounter};
-use rayon::iter::ParallelIterator;
-use rayon::prelude::IntoParallelRefIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -8,11 +7,11 @@ use std::process::Command;
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
+use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
-use crate::core::repo::{RepoId, TomlRepo};
 use crate::core::repos::load_config;
 
-use crate::utils::progress::Progress;
+use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
 use crate::utils::{cmd, logger};
 
@@ -80,8 +79,7 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
     );
 
-    let repos_count = toml_repos.len();
-    progress.repos_start(repos_count);
+    progress.repos_start(toml_repos.len());
 
     // user a counter
     let counter = RelaxedCounter::new(1);
@@ -96,41 +94,39 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
         let res = toml_repos
-            .par_iter()
-            .map(|toml_repo| {
+            .iter()
+            .enumerate()
+            .collect::<Vec<_>>()
+            .into_par_iter()
+            .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let prefix = format!("[{:02}/{:02}]", idx, repos_count);
-                let rel_path = toml_repo.local.as_ref().unwrap();
+                let repo_info = RepoInfo::new(index, idx, toml_repo);
 
-                let msg = StyleMessage::spinner_start(&prefix, " waiting...");
                 let progress = progress.clone();
-                progress.repo_start(RepoId::new(idx, rel_path));
-                progress.repo_info(RepoId::new(idx, rel_path), msg);
+                progress.repo_start(&repo_info, "waiting...".into());
 
                 // execute fetch command with progress
-                let exec_res = inner_exec(path, toml_repo, depth.as_ref(), &prefix, idx, &progress);
+                let exec_res = inner_exec(path, &repo_info, depth.as_ref(), &progress);
 
                 // handle result
-                let res = match exec_res {
+                match exec_res {
                     Ok(_) => {
-                        let mut msg = StyleMessage::spinner_end(prefix, rel_path, true);
+                        let mut msg = StyleMessage::repo_end(true);
 
                         // if not silent, show compare stat betweent local and remote
                         if !silent {
                             let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                            msg = msg.try_join(cmp_res.map_or(None, |m| Some(m)));
+                            msg = msg.join(" ".into()).try_join(cmp_res.ok());
                         }
 
-                        progress.repo_end(RepoId::new(idx, rel_path.as_str()), msg);
+                        progress.repo_end(&repo_info, msg);
                         Ok(())
                     }
                     Err(e) => {
-                        let msg = StyleMessage::spinner_end(prefix, rel_path, false);
-                        progress.repo_error(RepoId::new(idx, rel_path.as_str()), msg);
+                        progress.repo_error(&repo_info, StyleMessage::repo_end(false));
                         Err((toml_repo, e))
                     }
-                };
-                res
+                }
             })
             .filter_map(Result::err)
             .collect();
@@ -149,7 +145,7 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         logger::error("Errors:");
         errors.iter().for_each(|(toml_repo, error)| {
             logger::error(StyleMessage::git_error(
-                &toml_repo.local.as_ref().unwrap(),
+                toml_repo.local.as_ref().unwrap(),
                 error,
             ));
         });
@@ -158,38 +154,32 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
 
 fn inner_exec(
     input_path: impl AsRef<Path>,
-    toml_repo: &TomlRepo,
+    repo_info: &RepoInfo,
     depth: Option<&usize>,
-    prefix: &str,
-    idx: usize,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.as_ref().join(rel_path);
-    let remote_url = toml_repo.remote.as_ref().unwrap();
+    let full_path = input_path.as_ref().join(repo_info.rel_path());
+    let remote_url = repo_info.toml_repo.remote.as_ref().unwrap();
 
     git::update_remote_url(full_path, remote_url)?;
-    exec_fetch(input_path, toml_repo, depth, &prefix, idx, progress)
+    exec_fetch(input_path, repo_info, depth, progress)
 }
 
 pub fn exec_fetch(
     input_path: impl AsRef<Path>,
-    toml_repo: &TomlRepo,
+    repo_info: &RepoInfo,
     depth: Option<&usize>,
-    prefix: &str,
-    idx: usize,
     progress: &impl Progress,
 ) -> anyhow::Result<()> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
-    let full_path = input_path.as_ref().join(rel_path);
+    let full_path = input_path.as_ref().join(repo_info.rel_path());
 
     // get remote name from url
-    let remote_name = toml_repo.get_remote_name(full_path.as_path())?;
+    let remote_name = repo_info.toml_repo.get_remote_name(full_path.as_path())?;
     let mut args = vec!["fetch", &remote_name];
 
     if let Some(depth) = depth {
         // priority: commit/tag/branch(default-branch)
-        let remote_ref = toml_repo.get_remote_ref(full_path.as_path())?;
+        let remote_ref = repo_info.toml_repo.get_remote_ref(full_path.as_path())?;
         match remote_ref {
             RemoteRef::Commit(commit) => {
                 args.push(Box::leak(commit.into_boxed_str()));
@@ -200,7 +190,7 @@ pub fn exec_fetch(
                 args.push("--no-tags");
             }
             RemoteRef::Branch(_) => {
-                let branch = toml_repo.branch.as_ref().expect("invalid-branch");
+                let branch = repo_info.toml_repo.branch.as_ref().expect("invalid-branch");
                 args.push(branch);
             }
         };
@@ -216,5 +206,5 @@ pub fn exec_fetch(
     let mut command = Command::new("git");
     let full_command = command.args(args).current_dir(full_path);
 
-    cmd::exec_cmd_with_progress(rel_path, full_command, prefix, idx, progress)
+    cmd::exec_cmd_with_progress(repo_info, full_command, progress)
 }

@@ -1,30 +1,38 @@
 // hide console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use editor::{
-    defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH},
-    load_icon, App,
-};
 
-mod editor;
+use eframe::NativeOptions;
+
+use editor::Editor;
+
+use crate::editor::misc::load_icon;
+use crate::utils::defines::{DEFAULT_HEIGHT, DEFAULT_WIDTH};
+use crate::utils::logger::init_log;
+
+pub(crate) mod editor;
+pub(crate) mod toml_settings;
+pub(crate) mod utils;
 
 fn main() {
-    let mut native_options = eframe::NativeOptions::default();
-    native_options.drag_and_drop_support = true;
-    native_options.initial_window_size = Some([DEFAULT_WIDTH, DEFAULT_HEIGHT].into());
-    native_options.min_window_size = Some(eframe::egui::vec2(666.0, 480.0));
-    // native_options.default_theme = eframe::Theme::Dark;
-    native_options.decorated = true;
-    native_options.transparent = true;
-    native_options.resizable = true;
-    native_options.icon_data = Some(load_icon());
+    init_log();
+    let native_options = NativeOptions {
+        drag_and_drop_support: true,
+        initial_window_size: Some([DEFAULT_WIDTH, DEFAULT_HEIGHT].into()),
+        min_window_size: Some(eframe::egui::vec2(666.0, 480.0)),
+        decorated: true,
+        transparent: true,
+        resizable: true,
+        icon_data: Some(load_icon()),
+        ..NativeOptions::default()
+    };
 
     eframe::run_native(
         &format!(
             "{} {}",
-            std::env!("CARGO_PKG_NAME").to_string(),
-            std::env!("CARGO_PKG_VERSION").to_string()
+            std::env!("CARGO_PKG_NAME"),
+            std::env!("CARGO_PKG_VERSION")
         ),
         native_options,
-        Box::new(|cc| Box::new(App::new(cc))),
+        Box::new(|cc| Box::new(Editor::new(cc))),
     );
 }

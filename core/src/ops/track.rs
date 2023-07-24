@@ -8,6 +8,7 @@ use crate::core::repo::TomlRepo;
 use crate::core::repos::load_config;
 
 use crate::utils::logger;
+use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::StyleMessage;
 
 pub struct TrackOptions {
@@ -32,7 +33,7 @@ impl TrackOptions {
     }
 }
 
-pub fn track(options: TrackOptions) {
+pub fn track(options: TrackOptions, progress: impl Progress) {
     let path = &options.path;
     let config_path = &options.config_path;
     let ignore = options.ignore.as_ref();
@@ -68,11 +69,21 @@ pub fn track(options: TrackOptions) {
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
     );
 
-    for toml_repo in &toml_repos {
-        if let Ok(res) = set_tracking_remote_branch(path, toml_repo, &default_branch) {
-            logger::info(format!("  {}", res));
+    progress.repos_start(toml_repos.len());
+
+    toml_repos.iter().enumerate().for_each(|(id, repo)| {
+        let repo_info = RepoInfo::new(id, id, repo);
+        progress.repo_start(&repo_info, "tracking repo".into());
+        match set_tracking_remote_branch(path, repo, &default_branch) {
+            Ok(msg) => {
+                progress.repo_info(&repo_info, msg);
+                progress.repo_end(&repo_info, "tracked".into());
+            }
+            Err(e) => {
+                progress.repo_error(&repo_info, format!("failed： {}", e).into());
+            }
         }
-    }
+    });
 }
 
 pub fn set_tracking_remote_branch(

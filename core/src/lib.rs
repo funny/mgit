@@ -3,3 +3,5 @@
 pub mod core;
 pub mod ops;
 pub mod utils;
+
+pub use ansi_term::{Colour, Style};
