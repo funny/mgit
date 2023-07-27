@@ -97,15 +97,21 @@ impl super::Editor {
         }
     }
 
-    pub(crate) fn get_ignore(&self) -> Option<String> {
-        self.toml_project_settings.ignore.clone()
-    }
-
     pub(crate) fn get_ignores(&self) -> Option<Vec<String>> {
-        self.toml_project_settings
-            .ignore
-            .as_ref()
-            .map(|content| content.split('\n').map(|s| s.to_string()).collect())
+        self.toml_project_settings.ignore.as_ref().map(|content| {
+            content
+                .trim()
+                .split('\n')
+                .filter_map(|s| {
+                    let s = s.trim().to_string();
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s)
+                    }
+                })
+                .collect()
+        })
     }
 
     pub(crate) fn save_snapshot_ignore(&mut self) {

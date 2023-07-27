@@ -20,12 +20,7 @@ impl Editor {
                 self.toml_config = toml_config;
                 // init repo states and sync ignore
                 if let Some(toml_repos) = &self.toml_config.repos {
-                    let ignores = self
-                        .get_ignore()
-                        .unwrap_or("".to_string())
-                        .split('\n')
-                        .map(|s| s.trim().to_string())
-                        .collect::<Vec<_>>();
+                    let ignores = self.get_ignores().unwrap_or(vec![]);
                     toml_repos.iter().for_each(|toml_repo| {
                         let rel_path = toml_repo
                             .local

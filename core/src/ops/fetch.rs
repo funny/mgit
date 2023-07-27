@@ -1,5 +1,6 @@
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use std::collections::HashMap;
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -74,6 +75,10 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
     let default_branch = toml_config.default_branch;
 
     // ignore specified repositories
+    let mut toml_repos = toml_repos
+        .into_iter()
+        .enumerate()
+        .collect::<HashMap<usize, TomlRepo>>();
     exclude_ignore(
         &mut toml_repos,
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
@@ -95,12 +100,12 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
     let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
         let res = toml_repos
             .iter()
-            .enumerate()
+            // .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let repo_info = RepoInfo::new(index, idx, toml_repo);
+                let repo_info = RepoInfo::new(*index, idx, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());
