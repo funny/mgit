@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use eframe::egui::{vec2, NumExt, Rect, Response, Sense, Stroke, Ui, Widget};
 
+use crate::editor::ops::RepoState;
 use mgit::core::repo::TomlRepo;
 
 pub(crate) struct ProgressBar {
@@ -13,15 +14,14 @@ pub(crate) struct ProgressBar {
 }
 
 impl ProgressBar {
-    pub fn new(current: Arc<AtomicUsize>, repos: &Option<Vec<TomlRepo>>) -> Self {
-        let total = repos.as_ref().map(|repos| repos.len());
+    pub fn new(current: Arc<AtomicUsize>, repos: &[RepoState]) -> Self {
+        let total = repos.iter().fold(
+            0,
+            |total, repo| if repo.no_ignore { total + 1 } else { total },
+        );
         let current_rate = current.load(Ordering::Relaxed);
-        let progress = if let Some(total) = total {
-            if total > 0 {
-                current_rate as f32 / total as f32
-            } else {
-                0.0
-            }
+        let progress = if total > 0 {
+            current_rate as f32 / total as f32
         } else {
             0.0
         };

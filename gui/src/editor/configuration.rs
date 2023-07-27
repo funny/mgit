@@ -28,7 +28,8 @@ impl Editor {
                             .map_or(String::from("invalid"), |p| p.clone());
 
                         // get ignore state
-                        let do_ignore = ignores.contains(&rel_path);
+                        let do_ignore = ignores.contains(&rel_path.display_path());
+
                         // init repo state
                         self.repo_states.push(RepoState {
                             no_ignore: !do_ignore,
