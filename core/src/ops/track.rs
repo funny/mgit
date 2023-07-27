@@ -58,7 +58,7 @@ pub fn track(options: TrackOptions, progress: impl Progress) {
     };
 
     // handle track
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return;
     };
 

@@ -105,7 +105,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     }
 
     // load .gitrepos
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return;
     };
 

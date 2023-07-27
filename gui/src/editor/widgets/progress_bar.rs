@@ -6,7 +6,6 @@ use std::time::Duration;
 use eframe::egui::{vec2, NumExt, Rect, Response, Sense, Stroke, Ui, Widget};
 
 use crate::editor::ops::RepoState;
-use mgit::core::repo::TomlRepo;
 
 pub(crate) struct ProgressBar {
     pub(crate) progress: f32,

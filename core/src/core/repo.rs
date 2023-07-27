@@ -65,7 +65,7 @@ impl TomlRepo {
 pub fn exclude_ignore(toml_repos: &mut HashMap<usize, TomlRepo>, ignore: Option<Vec<&String>>) {
     if let Some(ignore_paths) = ignore {
         let ignore_paths = ignore_paths.into_iter().collect::<HashSet<_>>();
-        toml_repos.retain(|k, v| {
+        toml_repos.retain(|_, v| {
             if v.local.is_none() {
                 return false;
             }

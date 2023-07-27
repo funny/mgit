@@ -69,7 +69,7 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         return;
     };
 
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return;
     };
     let default_branch = toml_config.default_branch;
