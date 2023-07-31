@@ -1,5 +1,5 @@
 name: test-cli
-on: [push]
+on: workflow_dispatch
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,12 +13,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-   
+
     - name: Install stable toolchain
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         override: true
-    
+
     - name: run mgit test
       run: cargo test -p mgit
