@@ -1,6 +1,6 @@
 [package]
 name = "mgit-core"
-version = "1.0.0"
+version = "1.2.0"
 edition = "2021"
 
 [lib]
@@ -23,6 +23,7 @@ regex = "1.6.0"
 term_size = "0.3.2"
 ansi_term = "0.12.1"
 lazy_static = "1.4.0"
+thiserror = "1.0.4"
 
 [features]
 use_gitea = []

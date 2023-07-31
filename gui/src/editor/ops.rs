@@ -127,6 +127,7 @@ impl Editor {
                 let thread = self.toml_user_settings.sync_thread.map(|t| t as usize);
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 let ignore: Option<Vec<String>> = self.get_ignores();
+                println!("{:?}", &ignore);
                 let silent = Some(true);
 
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
@@ -160,9 +161,7 @@ impl Editor {
                 // option --depth <num>
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 // option --ignore
-                let ignore: Option<Vec<String>> = self
-                    .get_ignore()
-                    .map(|content| content.split('\n').map(|s| s.to_string()).collect());
+                let ignore: Option<Vec<String>> = self.get_ignores();
                 // option --silent
                 let silent = Some(true);
 
@@ -260,6 +259,9 @@ impl Editor {
 
     pub(crate) fn reset_repo_state(&mut self, state_type: StateType) {
         for repo_state in &mut self.repo_states {
+            if !repo_state.no_ignore {
+                continue;
+            }
             *repo_state = RepoState {
                 track_state: state_type,
                 cmp_state: state_type,

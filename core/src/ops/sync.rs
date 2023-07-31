@@ -2,6 +2,7 @@ use anyhow::Context;
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
+use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -104,7 +105,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     }
 
     // load .gitrepos
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return;
     };
 
@@ -112,6 +113,10 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
 
     // ignore specified repositories
     let ignore = ignore.map(|r| r.iter().collect::<Vec<&String>>());
+    let mut toml_repos = toml_repos
+        .into_iter()
+        .enumerate()
+        .collect::<HashMap<usize, TomlRepo>>();
     exclude_ignore(&mut toml_repos, ignore);
 
     progress.repos_start(toml_repos.len());
@@ -131,12 +136,12 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     let (succ_repos, error_repos) = thread_pool.install(|| {
         let res: Vec<ParallelResult> = toml_repos
             .iter()
-            .enumerate()
+            // .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let mut repo_info = RepoInfo::new(index, idx, toml_repo);
+                let mut repo_info = RepoInfo::new(*index, idx, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());

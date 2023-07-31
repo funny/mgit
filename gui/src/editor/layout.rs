@@ -37,10 +37,7 @@ impl Editor {
 
                 ui.add_space(2.0);
 
-                ui.add(ProgressBar::new(
-                    self.progress.clone(),
-                    &self.toml_config.repos,
-                ));
+                ui.add(ProgressBar::new(self.progress.clone(), &self.repo_states));
             });
     }
 

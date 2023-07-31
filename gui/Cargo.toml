@@ -1,6 +1,6 @@
 [package]
 name = "mgit-gui"
-version = "1.0.6"
+version = "1.2.0"
 edition = "2021"
 repository = "https://github.com/funny/mgit"
 

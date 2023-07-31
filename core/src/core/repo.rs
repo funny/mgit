@@ -1,6 +1,7 @@
 use anyhow::Context;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
@@ -61,20 +62,15 @@ impl TomlRepo {
     }
 }
 
-pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<&String>>) {
+pub fn exclude_ignore(toml_repos: &mut HashMap<usize, TomlRepo>, ignore: Option<Vec<&String>>) {
     if let Some(ignore_paths) = ignore {
-        for ignore_path in ignore_paths {
-            if let Some(idx) = toml_repos.iter().position(|r| {
-                if let Some(rel_path) = r.local.as_ref() {
-                    // consider "." as root path
-                    rel_path.display_path() == *ignore_path
-                } else {
-                    false
-                }
-            }) {
-                toml_repos.remove(idx);
+        let ignore_paths = ignore_paths.into_iter().collect::<HashSet<_>>();
+        toml_repos.retain(|_, v| {
+            if v.local.is_none() {
+                return false;
             }
-        }
+            !ignore_paths.contains(&v.local.as_ref().unwrap().display_path())
+        });
     }
 }
 
