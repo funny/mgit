@@ -118,7 +118,7 @@ jobs:
         echo "target dir is: ${{ env.TARGET_DIR }}"
 
     - name: Build release binary
-      run: ${{ env.CARGO }} build -p mgit --verbose --release ${{ env.TARGET_FLAGS }}
+      run: ${{ env.CARGO }} build -p mgit-cli --verbose --release ${{ env.TARGET_FLAGS }}
 
     - name: Strip release binary (linux and macos)
       if: matrix.build == 'linux' || matrix.build == 'macos'
