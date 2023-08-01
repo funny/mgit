@@ -1,28 +1,10 @@
-FROM ubuntu:22.04
-LABEL authors="bppleman"
+#该镜像版本默认安装的glibc不满足egui要求的最低版本，所以使用rust镜像并安装gtk依赖
+#FROM ghcr.io/cross-rs/x86_64-unknown-linux-gnu:0.2.5
+FROM rust:1.71.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y \
-    curl \
-    ca-certificates \
-    git \
     gcc \
-    libclang-dev \
-    libgtk-3-dev \
-    libxcb-render0-dev \
-    libxcb-shape0-dev \
-    libxcb-xfixes0-dev \
-    libxkbcommon-dev \
-    libssl-dev
-
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile complete
-
-COPY entry.sh /usr/local/bin/entry.sh
-
-COPY mgit.bundle /root/mgit.bundle
-
-RUN chmod +x /usr/local/bin/entry.sh
-
-CMD ["/usr/local/bin/entry.sh"]
+    libgtk-3-dev

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Use Guide
+# ./util/cross_for_linux --release -p mgit-gui
+
+export CROSS_ROOTLESS_CONTAINER_ENGINE=1
+
+if command -v cross &> /dev/null; then
+    echo "cargo-cross is installed"
+else
+    echo "cargo-cross is not installed"
+    echo "installing cargo-cross"
+    cargo install cargo-cross
+fi
+
+cross build --target x86_64-unknown-linux-gnu "$@"
