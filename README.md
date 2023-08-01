@@ -155,6 +155,7 @@ sudo apt update
 sudo apt-get install -y \
     gcc g++ \
     cmake pkg-config \
+    fontconfig \
     libgtk-3-dev
 ```
 

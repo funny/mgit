@@ -32,3 +32,6 @@ winres = "0.1"
 
 [features]
 dev = []
+
+[package.metadata.cross.target.x86_64-unknown-linux-gnu]
+dockerfile = "../gitea_compose/Dockerfile"
