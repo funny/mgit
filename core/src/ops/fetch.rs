@@ -116,19 +116,18 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
                 // handle result
                 match exec_res {
                     Ok(_) => {
-                        let mut msg = StyleMessage::repo_end(true);
-
-                        // if not silent, show compare stat betweent local and remote
-                        if !silent {
-                            let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                            msg = msg.join(" ".into()).try_join(cmp_res.ok());
-                        }
-
+                        // if not silent, show compare stat between local and remote
+                        let msg = match silent {
+                            true => StyleMessage::new(),
+                            false => StyleMessage::from(" ").try_join(
+                                cmp_local_remote(path, toml_repo, &default_branch, false).ok(),
+                            ),
+                        };
                         progress.repo_end(&repo_info, msg);
                         Ok(())
                     }
                     Err(e) => {
-                        progress.repo_error(&repo_info, StyleMessage::repo_end(false));
+                        progress.repo_error(&repo_info, StyleMessage::new());
                         Err((toml_repo, e))
                     }
                 }

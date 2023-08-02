@@ -40,10 +40,6 @@ impl super::View for AboutWindow {
                 image.show(ui);
             }
 
-            // mgit version
-            let text = format!("mgit v{}", &self.mgit_version);
-            ui.label(text);
-
             // mgit gui version
             let text = format!("mgit-gui v{}", std::env!("CARGO_PKG_VERSION"));
             ui.label(text);

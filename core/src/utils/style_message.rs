@@ -180,7 +180,7 @@ impl StyleMessage {
         }
     }
 
-    pub(crate) fn repo_end(is_success: bool) -> Self {
+    pub fn repo_end(is_success: bool) -> Self {
         let (sign, style): (&str, &Style) = match is_success {
             true => ("√", &GREEN_BOLD),
             false => ("x", &RED_BOLD),

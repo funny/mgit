@@ -20,6 +20,10 @@ pub fn set_logger(logger: &'static dyn Log) {
     }
 }
 
+pub fn get_logger() -> &'static dyn Log {
+    unsafe { LOGGER }
+}
+
 pub trait Log: Send + Sync {
     fn info(&self, message: StyleMessage);
 
