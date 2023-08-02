@@ -171,16 +171,16 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                         let msg = match silent {
                             true => StyleMessage::new(),
                             false => {
-                                let cmp_res =
-                                    cmp_local_remote(path, toml_repo, &default_branch, false);
-                                let mut cmp_msg = StyleMessage::new().try_join(cmp_res.ok());
+                                let mut cmp_msg =
+                                    cmp_local_remote(path, toml_repo, &default_branch, false)
+                                        .unwrap_or(StyleMessage::new());
                                 let already_update = cmp_msg.contains("already update to date.");
 
                                 if pre_cmp_msg != cmp_msg && already_update {
                                     cmp_msg = cmp_msg.remove("already update to date.");
                                     cmp_msg = StyleMessage::git_update_to(cmp_msg);
                                 }
-                                StyleMessage::from(" ").join(cmp_msg)
+                                cmp_msg
                             }
                         };
 

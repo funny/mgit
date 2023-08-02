@@ -119,9 +119,8 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
                         // if not silent, show compare stat between local and remote
                         let msg = match silent {
                             true => StyleMessage::new(),
-                            false => StyleMessage::from(" ").try_join(
-                                cmp_local_remote(path, toml_repo, &default_branch, false).ok(),
-                            ),
+                            false => cmp_local_remote(path, toml_repo, &default_branch, false)
+                                .unwrap_or(StyleMessage::new()),
                         };
                         progress.repo_end(&repo_info, msg);
                         Ok(())

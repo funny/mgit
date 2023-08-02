@@ -127,7 +127,9 @@ impl Progress for MultiProgress {
         let locked = self.spinner_progress_bars.lock().unwrap();
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
-            pb.finish_with_message(self.spinner_end(repo_info, message, true));
+            pb.finish_with_message(truncate_spinner_msg(
+                self.spinner_end(repo_info, message, true),
+            ));
         }
 
         self.main_progress_bar
