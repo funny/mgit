@@ -167,20 +167,22 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                 // handle result
                 match exec_res {
                     Ok(_) => {
-                        let mut msg = StyleMessage::repo_end(true);
-
                         // if not silent, show compare stat betweent local and remote
-                        if !silent {
-                            let cmp_res = cmp_local_remote(path, toml_repo, &default_branch, false);
-                            let mut cmp_msg = StyleMessage::new().try_join(cmp_res.ok());
-                            let already_update = cmp_msg.contains("already update to date.");
+                        let msg = match silent {
+                            true => StyleMessage::new(),
+                            false => {
+                                let mut cmp_msg =
+                                    cmp_local_remote(path, toml_repo, &default_branch, false)
+                                        .unwrap_or(StyleMessage::new());
+                                let already_update = cmp_msg.contains("already update to date.");
 
-                            if pre_cmp_msg != cmp_msg && already_update {
-                                cmp_msg = cmp_msg.remove("already update to date.");
-                                cmp_msg = StyleMessage::git_update_to(cmp_msg);
+                                if pre_cmp_msg != cmp_msg && already_update {
+                                    cmp_msg = cmp_msg.remove("already update to date.");
+                                    cmp_msg = StyleMessage::git_update_to(cmp_msg);
+                                }
+                                cmp_msg
                             }
-                            msg = msg.plain_text(" ").join(cmp_msg)
-                        }
+                        };
 
                         // show message in progress bar
                         progress.repo_end(&repo_info, msg);
@@ -197,7 +199,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                     }
                     Err(e) => {
                         // show message in progress bar
-                        progress.repo_error(&repo_info, StyleMessage::repo_end(false));
+                        progress.repo_error(&repo_info, StyleMessage::new());
 
                         Err((toml_repo, e))
                     }

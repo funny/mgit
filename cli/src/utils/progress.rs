@@ -3,6 +3,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use indicatif::{ProgressBar, ProgressStyle};
+use mgit::utils::logger::get_logger;
+use mgit::utils::path::PathExtension;
 
 use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::{StyleMessage, GREEN_BOLD, PURPLE_BOLD};
@@ -63,7 +65,7 @@ impl MultiProgress {
         format!(
             "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &PURPLE_BOLD.paint(repo_info.rel_path()),
+            &PURPLE_BOLD.paint(repo_info.rel_path().display_path()),
             desc
         )
     }
@@ -72,16 +74,17 @@ impl MultiProgress {
         format!(
             "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &PURPLE_BOLD.paint(repo_info.rel_path()),
+            &PURPLE_BOLD.paint(repo_info.rel_path().display_path()),
             desc
         )
     }
 
-    fn spinner_end(&self, repo_info: &RepoInfo, status: StyleMessage) -> String {
+    fn spinner_end(&self, repo_info: &RepoInfo, status: StyleMessage, is_success: bool) -> String {
         format!(
-            "{:>9} {}: {}",
+            "{:>9} {} {}: {}",
+            StyleMessage::repo_end(is_success),
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &GREEN_BOLD.paint(repo_info.rel_path()),
+            &GREEN_BOLD.paint(repo_info.rel_path().display_path()),
             status,
         )
     }
@@ -97,6 +100,7 @@ impl Progress for MultiProgress {
         let locked = self.main_progress_bar.lock().unwrap();
         if !locked.as_ref().unwrap().is_finished() {
             locked.as_ref().unwrap().finish();
+            get_logger().info("".into());
         }
     }
 
@@ -123,7 +127,9 @@ impl Progress for MultiProgress {
         let locked = self.spinner_progress_bars.lock().unwrap();
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
-            pb.finish_with_message(self.spinner_end(repo_info, message));
+            pb.finish_with_message(truncate_spinner_msg(
+                self.spinner_end(repo_info, message, true),
+            ));
         }
 
         self.main_progress_bar
@@ -135,7 +141,18 @@ impl Progress for MultiProgress {
     }
 
     fn repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        self.repo_end(repo_info, message)
+        let locked = self.spinner_progress_bars.lock().unwrap();
+        let pb = locked.get(&repo_info.index).unwrap();
+        if !pb.is_finished() {
+            pb.finish_with_message(self.spinner_end(repo_info, message, false));
+        }
+
+        self.main_progress_bar
+            .lock()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .inc(1);
     }
 }
 

@@ -30,6 +30,8 @@ pub(crate) mod widgets;
 pub(crate) mod window;
 
 pub struct Editor {
+    context: egui::Context,
+
     project_path: String,
     config_file: String,
 
@@ -75,6 +77,8 @@ impl Default for Editor {
         let (send, recv) = channel();
         let progress = Arc::new(AtomicUsize::new(0));
         Self {
+            context: egui::Context::default(),
+
             project_path: String::new(),
             config_file: String::new(),
 
@@ -132,6 +136,7 @@ impl Editor {
         configure_text_styles(&cc.egui_ctx);
 
         let mut app = Editor::default();
+        app.context = cc.egui_ctx.clone();
 
         let (is_dependencies_valid, err_msg) = match check_git_valid() {
             Ok(_) => (true, String::new()),

@@ -10,10 +10,11 @@ use crate::editor::ops::RepoState;
 pub(crate) struct ProgressBar {
     pub(crate) progress: f32,
     current: Arc<AtomicUsize>,
+    context: egui::Context,
 }
 
 impl ProgressBar {
-    pub fn new(current: Arc<AtomicUsize>, repos: &[RepoState]) -> Self {
+    pub fn new(current: Arc<AtomicUsize>, repos: &[RepoState], context: egui::Context) -> Self {
         let total = repos.iter().fold(
             0,
             |total, repo| if repo.no_ignore { total + 1 } else { total },
@@ -24,7 +25,11 @@ impl ProgressBar {
         } else {
             0.0
         };
-        Self { progress, current }
+        Self {
+            progress,
+            current,
+            context,
+        }
     }
 }
 
@@ -60,9 +65,11 @@ impl Widget for ProgressBar {
 
                 if progress >= 1.0 {
                     let current = self.current;
+                    let context = self.context.clone();
                     thread::spawn(move || {
                         thread::sleep(Duration::from_secs(1));
                         current.store(0, Ordering::Relaxed);
+                        context.request_repaint();
                     });
                 }
             }

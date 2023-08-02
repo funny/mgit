@@ -127,7 +127,6 @@ impl Editor {
                 let thread = self.toml_user_settings.sync_thread.map(|t| t as usize);
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 let ignore: Option<Vec<String>> = self.get_ignores();
-                println!("{:?}", &ignore);
                 let silent = Some(true);
 
                 let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
@@ -237,6 +236,8 @@ impl Editor {
                 self.reset_repo_state(StateType::Updating);
                 self.get_repo_states();
             }
+
+            self.context.request_repaint();
         }
     }
 
@@ -281,6 +282,7 @@ impl Editor {
                 project_path,
                 default_branch,
                 self.send.clone(),
+                self.context.clone(),
             )
         }
     }
@@ -291,12 +293,13 @@ fn get_repo_states_parallel(
     project_path: String,
     default_branch: Option<String>,
     sender: Sender<RepoMessage>,
+    ctx: egui::Context,
 ) {
     std::thread::spawn(move || {
         let thread_pool = match rayon::ThreadPoolBuilder::new().build() {
             Ok(r) => r,
             Err(e) => {
-                println!("{}", e);
+                eprintln!("{}", e);
                 return;
             }
         };
@@ -316,6 +319,9 @@ fn get_repo_states_parallel(
                         .unwrap();
                 })
         });
+
+        // NOTE: 保证所有仓库忽略后正常渲染
+        ctx.request_repaint();
     });
 }
 
