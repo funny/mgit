@@ -120,29 +120,6 @@ fn use_gitea() -> bool {
     cfg!(feature = "use_gitea")
 }
 
-#[allow(unused)]
-pub fn retry<T>(
-    times: usize,
-    sleep: std::time::Duration,
-    f: impl Fn() -> Result<T, anyhow::Error>,
-) -> Result<T, anyhow::Error> {
-    let mut result = None::<Result<T, anyhow::Error>>;
-    for i in 0..times {
-        match f() {
-            Ok(r) => {
-                result = Some(Ok(r));
-                break;
-            }
-            Err(e) => {
-                println!("retry[{}]: {}", i, e);
-                result = Some(Err(e));
-                std::thread::sleep(sleep);
-            }
-        }
-    }
-    result.unwrap()
-}
-
 #[derive(Clone, Default)]
 pub struct TestProgress;
 

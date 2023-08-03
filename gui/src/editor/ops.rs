@@ -92,7 +92,7 @@ impl Editor {
                 let send = self.send.clone();
                 self.clear_status();
                 std::thread::spawn(move || {
-                    ops::init_repo(options);
+                    let _ = ops::init_repo(options);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
@@ -116,7 +116,7 @@ impl Editor {
                 let send = self.send.clone();
                 self.clear_status();
                 std::thread::spawn(move || {
-                    ops::snapshot_repo(options);
+                    let _ = ops::snapshot_repo(options);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
@@ -134,7 +134,7 @@ impl Editor {
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
                 std::thread::spawn(move || {
-                    ops::fetch_repos(options, progress);
+                    let _ = ops::fetch_repos(options, progress);
                 });
             }
             CommandType::Sync | CommandType::SyncHard => {
@@ -180,7 +180,7 @@ impl Editor {
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
                 std::thread::spawn(move || {
-                    ops::sync_repo(options, progress);
+                    let _ = ops::sync_repo(options, progress);
                 });
             }
             CommandType::Track => {
@@ -193,7 +193,7 @@ impl Editor {
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
                 std::thread::spawn(move || {
-                    ops::track(options, progress);
+                    let _ = ops::track(options, progress);
                 });
             }
             CommandType::Clean => {
@@ -205,7 +205,7 @@ impl Editor {
 
                 self.reset_repo_state(StateType::Updating);
                 std::thread::spawn(move || {
-                    ops::clean_repo(options);
+                    let _ = ops::clean_repo(options);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });

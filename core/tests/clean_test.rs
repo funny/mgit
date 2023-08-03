@@ -1,5 +1,6 @@
 use mgit::ops;
 use mgit::ops::CleanOptions;
+use mgit::utils::error::MgitResult;
 use std::env;
 use std::path::PathBuf;
 
@@ -70,7 +71,7 @@ mod common;
 ///             ├──1.txt
 ///             └──2.txt
 #[test]
-fn cli_clean1() {
+fn cli_clean1() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -97,7 +98,7 @@ fn cli_clean1() {
 
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -136,6 +137,7 @@ fn cli_clean1() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -147,7 +149,7 @@ fn cli_clean1() {
 ///   test_clean2 (.git)
 ///     ├─... (same as cli_clean1())
 #[test]
-fn cli_clean2() {
+fn cli_clean2() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -176,7 +178,7 @@ fn cli_clean2() {
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -216,6 +218,7 @@ fn cli_clean2() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -227,7 +230,7 @@ fn cli_clean2() {
 ///   test_clean3
 ///     ├─... (same as cli_clean1())
 #[test]
-fn cli_clean3() {
+fn cli_clean3() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -255,7 +258,7 @@ fn cli_clean3() {
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     let config_path = &path.join(".gitrepos");
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)));
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -294,6 +297,7 @@ fn cli_clean3() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 pub fn create_repos_tree(path: &PathBuf, rel_paths: &[&str]) {

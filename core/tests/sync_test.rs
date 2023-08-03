@@ -1,5 +1,6 @@
 use mgit::ops;
 use mgit::ops::SyncOptions;
+use mgit::utils::error::MgitResult;
 use std::{collections::HashSet, env, path::PathBuf};
 
 use crate::common::{
@@ -19,7 +20,7 @@ mod common;
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_simple() {
+fn cli_sync_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -60,7 +61,7 @@ fn cli_sync_simple() {
             None,
         ),
         TestProgress,
-    );
+    )?;
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
     let ingore_content = "foobar";
@@ -92,7 +93,7 @@ fn cli_sync_simple() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -105,6 +106,7 @@ fn cli_sync_simple() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -118,7 +120,7 @@ fn cli_sync_simple() {
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_simple_tracking_invalid() {
+fn cli_sync_simple_tracking_invalid() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -152,7 +154,7 @@ fn cli_sync_simple_tracking_invalid() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -175,7 +177,7 @@ fn cli_sync_simple_tracking_invalid() {
     // sync --hard will delete .gitrepos in the front
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
-    ops::sync_repo(
+    let result = ops::sync_repo(
         SyncOptions::new(
             Some(input_path.clone()),
             None::<PathBuf>,
@@ -190,6 +192,7 @@ fn cli_sync_simple_tracking_invalid() {
         ),
         TestProgress,
     );
+    assert!(result.is_err());
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -201,6 +204,7 @@ fn cli_sync_simple_tracking_invalid() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -213,7 +217,7 @@ fn cli_sync_simple_tracking_invalid() {
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_stash() {
+fn cli_sync_stash() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -247,7 +251,7 @@ fn cli_sync_stash() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -283,7 +287,7 @@ fn cli_sync_stash() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     // compaire changes after sync
     if let Ok(output) = exec_cmd(&path, "git", &["status"]) {
@@ -312,6 +316,7 @@ fn cli_sync_stash() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -324,7 +329,7 @@ fn cli_sync_stash() {
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_stash_tracking_invalid() {
+fn cli_sync_stash_tracking_invalid() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -358,7 +363,7 @@ fn cli_sync_stash_tracking_invalid() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -382,7 +387,7 @@ fn cli_sync_stash_tracking_invalid() {
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync --stash
 
-    ops::sync_repo(
+    let result = ops::sync_repo(
         SyncOptions::new(
             Some(input_path.clone()),
             None::<PathBuf>,
@@ -397,6 +402,7 @@ fn cli_sync_stash_tracking_invalid() {
         ),
         TestProgress,
     );
+    assert!(result.is_err());
 
     // compaire changes after sync
     // nothing will be stash
@@ -410,6 +416,7 @@ fn cli_sync_stash_tracking_invalid() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -422,7 +429,7 @@ fn cli_sync_stash_tracking_invalid() {
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_hard() {
+fn cli_sync_hard() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -462,7 +469,7 @@ fn cli_sync_hard() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // ignore "foobar" folder
     let ignore_file = path.join(".gitignore");
@@ -495,7 +502,7 @@ fn cli_sync_hard() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     // ignore "foobar" folder
     std::fs::write(&ignore_file, ingore_content.trim()).expect(failed_message::WRITE_FILE);
@@ -510,6 +517,7 @@ fn cli_sync_hard() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -525,7 +533,7 @@ fn cli_sync_hard() {
 ///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
-fn cli_sync_simple_invalid_path() {
+fn cli_sync_simple_invalid_path() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -569,7 +577,7 @@ fn cli_sync_simple_invalid_path() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     assert!(input_path.is_dir());
 
@@ -590,6 +598,7 @@ fn cli_sync_simple_invalid_path() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -605,7 +614,7 @@ fn cli_sync_simple_invalid_path() {
 ///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
-fn cli_sync_stash_invalid_path() {
+fn cli_sync_stash_invalid_path() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -649,7 +658,7 @@ fn cli_sync_stash_invalid_path() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     assert!(input_path.is_dir());
 
@@ -669,6 +678,7 @@ fn cli_sync_stash_invalid_path() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -684,7 +694,7 @@ fn cli_sync_stash_invalid_path() {
 ///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
-fn cli_sync_hard_invalid_path() {
+fn cli_sync_hard_invalid_path() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -728,7 +738,7 @@ fn cli_sync_hard_invalid_path() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     assert!(input_path.is_dir());
 
@@ -748,6 +758,7 @@ fn cli_sync_hard_invalid_path() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// get local changes
@@ -794,7 +805,7 @@ fn get_local_changes(input_path: &PathBuf) -> HashSet<String> {
 ///         ├─foobar-1-1 (.git)
 ///         └─1.txt
 #[test]
-fn cli_sync_simple_repo_invalid() {
+fn cli_sync_simple_repo_invalid() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -846,7 +857,7 @@ fn cli_sync_simple_repo_invalid() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     assert!(input_path.is_dir());
 
@@ -867,6 +878,7 @@ fn cli_sync_simple_repo_invalid() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -884,7 +896,7 @@ fn cli_sync_simple_repo_invalid() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_sync_checkout_invalid_path() {
+fn cli_sync_checkout_invalid_path() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -925,7 +937,7 @@ fn cli_sync_checkout_invalid_path() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -953,6 +965,7 @@ fn cli_sync_checkout_invalid_path() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -973,7 +986,7 @@ fn cli_sync_checkout_invalid_path() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_sync_checkout_symple() {
+fn cli_sync_checkout_symple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -1008,7 +1021,7 @@ fn cli_sync_checkout_symple() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -1077,7 +1090,7 @@ fn cli_sync_checkout_symple() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // root: master untracked
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -1109,7 +1122,7 @@ fn cli_sync_checkout_symple() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // test checkout and track function
     // root: master → origin/master
@@ -1130,6 +1143,7 @@ fn cli_sync_checkout_symple() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -1152,7 +1166,7 @@ fn cli_sync_checkout_symple() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_sync_checkout_with_conflict() {
+fn cli_sync_checkout_with_conflict() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -1187,7 +1201,7 @@ fn cli_sync_checkout_with_conflict() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -1275,7 +1289,7 @@ fn cli_sync_checkout_with_conflict() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -1307,7 +1321,7 @@ fn cli_sync_checkout_with_conflict() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // root: master → origin/master
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -1327,6 +1341,7 @@ fn cli_sync_checkout_with_conflict() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -1337,7 +1352,7 @@ fn cli_sync_checkout_with_conflict() {
 /// 测试目录结构:
 ///   test_sync_checkout_symple2(.git)
 #[test]
-fn cli_sync_checkout_symple2() {
+fn cli_sync_checkout_symple2() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -1370,7 +1385,7 @@ fn cli_sync_checkout_symple2() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     exec_cmd(&path, "git", &["reset", "--hard", "v0.3.0"]).expect(failed_message::GIT_RESET);
 
@@ -1393,7 +1408,7 @@ fn cli_sync_checkout_symple2() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // for foobar-1, local changes only contain ".gitignore"
     let local_changes1 = get_local_changes(&path);
@@ -1405,6 +1420,7 @@ fn cli_sync_checkout_symple2() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -1418,7 +1434,7 @@ fn cli_sync_checkout_symple2() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_sync_ignore_symple() {
+fn cli_sync_ignore_symple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target/tmp/test_sync_ignore_symple");
@@ -1475,7 +1491,7 @@ fn cli_sync_ignore_symple() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     let root_path = path.join(".git");
     let foobar_1_path = path.join("foobar-1/.git");
@@ -1493,6 +1509,7 @@ fn cli_sync_ignore_symple() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 pub fn check_git_author_identity(path: &PathBuf) {
@@ -1517,7 +1534,7 @@ pub fn check_git_author_identity(path: &PathBuf) {
 ///     ├─foobar (.git)
 ///     └─1.txt
 #[test]
-fn cli_sync_with_depth() {
+fn cli_sync_with_depth() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -1557,7 +1574,7 @@ fn cli_sync_with_depth() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     let config_file = path.join(".gitrepos");
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
@@ -1577,7 +1594,7 @@ fn cli_sync_with_depth() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     // get root repo commit count
     if let Ok(output) = exec_cmd(&path, "git", &["rev-list", "--all", "--count"]) {
@@ -1604,13 +1621,14 @@ fn cli_sync_with_depth() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
 ///     1、运行命令 mgit sync <path>
 ///     2、更新配置文件中新的 url
 #[test]
-fn cli_sync_new_remote_url() {
+fn cli_sync_new_remote_url() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target/tmp/cli_sync_new_remote_url");
@@ -1647,7 +1665,7 @@ fn cli_sync_new_remote_url() {
             None,
         ),
         TestProgress,
-    );
+    )?;
 
     let repo_paths = ["", "foobar"];
     for repo_path in repo_paths {
@@ -1677,7 +1695,7 @@ fn cli_sync_new_remote_url() {
             None,
         ),
         TestProgress,
-    );
+    )?;
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
         let args = ["config", "--get", "remote.origin.url"];
@@ -1687,4 +1705,5 @@ fn cli_sync_new_remote_url() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }

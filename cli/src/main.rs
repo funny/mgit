@@ -9,6 +9,7 @@ use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config;
 use mgit::ops;
+use mgit::utils::StyleMessage;
 
 use crate::cli::{Cli, Commands};
 use crate::utils::logger::TERM_LOGGER;
@@ -19,18 +20,26 @@ fn main() {
 
     let progress = MultiProgress::default();
     let cli = Cli::parse();
-    match cli.command {
+    let result = match cli.command {
         Commands::Init(options) => ops::init_repo(options.into()),
         Commands::Snapshot(options) => ops::snapshot_repo(options.into()),
         Commands::Fetch(options) => ops::fetch_repos(options.into(), progress),
         Commands::Sync(options) => ops::sync_repo(options.into(), progress),
         Commands::Clean(options) => ops::clean_repo(options.into()),
-        Commands::ListFiles(options) => {
-            let files = ops::list_files(options.into());
-            println!("{}", files.join("\n"));
-        }
+        Commands::ListFiles(options) => match ops::list_files(options.into()) {
+            Ok(files) => {
+                println!("{}", files.join("\n"));
+                Ok(StyleMessage::default())
+            }
+            Err(e) => Err(e),
+        },
         Commands::Track(options) => ops::track(options.into(), progress),
-    }
+    };
+
+    match result {
+        Ok(success_msg) => println!("{}", success_msg),
+        Err(error_msg) => eprintln!("{}", error_msg),
+    };
 }
 
 fn init_log() {
