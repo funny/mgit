@@ -36,6 +36,9 @@ fn main() {
 fn init_log() {
     mgit::utils::logger::set_logger(&TERM_LOGGER);
 
+    console::set_colors_enabled(true);
+    console::set_colors_enabled_stderr(true);
+
     let stdout = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{m}{n}")))
         .build();
