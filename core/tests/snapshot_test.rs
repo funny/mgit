@@ -1,10 +1,12 @@
 use mgit::ops;
 use mgit::ops::{InitOptions, SnapshotOptions, SnapshotType};
+use mgit::utils::cmd::retry;
+use mgit::utils::error::MgitResult;
 use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::common::{exec_cmd, failed_message, retry, TomlBuilder, CSBOOKS_REPO};
+use crate::common::{exec_cmd, failed_message, TomlBuilder, CSBOOKS_REPO};
 
 mod common;
 
@@ -20,7 +22,7 @@ mod common;
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_init_simple() {
+fn cli_init_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -31,7 +33,7 @@ fn cli_init_simple() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -42,6 +44,7 @@ fn cli_init_simple() {
         .build();
 
     assert_eq!(real_result.trim(), expect_result.trim());
+    Ok(())
 
     // clean-up
     // std::fs::remove_dir_all(&path).unwrap();
@@ -59,7 +62,7 @@ fn cli_init_simple() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_init_force1() {
+fn cli_init_force1() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -70,7 +73,7 @@ fn cli_init_force1() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), Some(true)));
+    ops::init_repo(InitOptions::new(Some(path.clone()), Some(true)))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -85,6 +88,7 @@ fn cli_init_force1() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -103,7 +107,7 @@ fn cli_init_force1() {
 ///        ├──foobar-2-1 (.git)
 ///        └──foobar-2-2 (.git)
 #[test]
-fn cli_init_force2() {
+fn cli_init_force2() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -115,7 +119,7 @@ fn cli_init_force2() {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -158,6 +162,7 @@ fn cli_init_force2() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -166,7 +171,7 @@ fn cli_init_force2() {
 ///        仓库信息为 local、remote、commit
 ///     3、根目录不是仓库
 #[test]
-fn cli_snapshot_simple() {
+fn cli_snapshot_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -183,7 +188,7 @@ fn cli_snapshot_simple() {
         None,
         None,
         None,
-    ));
+    ))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -209,6 +214,7 @@ fn cli_snapshot_simple() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -217,7 +223,7 @@ fn cli_snapshot_simple() {
 ///        仓库信息为 local、remote、branch
 ///     3、根目录不是仓库
 #[test]
-fn cli_snapshot_branch() {
+fn cli_snapshot_branch() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -234,7 +240,7 @@ fn cli_snapshot_branch() {
         None,
         Some(SnapshotType::Branch),
         None,
-    ));
+    ))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -248,6 +254,7 @@ fn cli_snapshot_branch() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -256,7 +263,7 @@ fn cli_snapshot_branch() {
 ///        仓库信息为 local、remote、commit
 ///     3、根目录是仓库
 #[test]
-fn cli_snapshot_force() {
+fn cli_snapshot_force() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -275,7 +282,7 @@ fn cli_snapshot_force() {
         Some(true),
         None,
         None,
-    ));
+    ))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(config_file).unwrap();
@@ -336,6 +343,7 @@ fn cli_snapshot_force() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -344,7 +352,7 @@ fn cli_snapshot_force() {
 ///        仓库信息为 local、remote、commit
 ///     3、根目录是仓库
 #[test]
-fn cli_snapshot_ignore() {
+fn cli_snapshot_ignore() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -368,7 +376,7 @@ fn cli_snapshot_ignore() {
             "foobar-2".to_string(),
             "foobar-2/foobar-2-2".to_string(),
         ]),
-    ));
+    ))?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(config_file).unwrap();
@@ -401,6 +409,7 @@ fn cli_snapshot_ignore() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 pub fn create_repos_tree1(path: &PathBuf) {

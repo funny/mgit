@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -14,8 +14,10 @@ use crate::core::repos::load_config;
 
 use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch};
+use crate::utils::error::{MgitError, MgitResult, OpsErrors};
 
 use crate::utils::logger;
+use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
 
@@ -63,7 +65,7 @@ impl SyncOptions {
     }
 }
 
-pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
+pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     let path = &options.path;
     let config_path = &options.config_path;
     let thread_count = options.thread_count;
@@ -85,14 +87,14 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
 
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::error(StyleMessage::config_file_not_found());
-        return;
+        return Err(anyhow!(MgitError::ConfigFileNotFound(
+            StyleMessage::config_file_not_found(),
+        )));
     }
 
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
-        logger::error("load config file failed!");
-        return;
+        return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
     // remove unused repositories when use '--config' option
@@ -101,12 +103,12 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
         clean_repo(CleanOptions::new(
             Some(path.clone()),
             Some(config_path.clone()),
-        ));
+        ))?;
     }
 
     // load .gitrepos
     let Some(toml_repos) = toml_config.repos else {
-        return;
+        return Ok("No repos to sync".into());
     };
 
     let default_branch = toml_config.default_branch;
@@ -124,19 +126,16 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
     let counter = RelaxedCounter::new(1);
     let thread_builder = rayon::ThreadPoolBuilder::new().num_threads(thread_count);
-    let Ok(thread_pool) = thread_builder.build() else
-    {
-        logger::error("create thread pool failed!");
-        return;
+    let Ok(thread_pool) = thread_builder.build() else {
+        return Err(anyhow!(MgitError::CreateThreadPoolFailed));
     };
 
-    type ParallelResult<'a> = Result<(&'a TomlRepo, StyleMessage), (&'a TomlRepo, anyhow::Error)>;
+    type ParallelResult<'a> = Result<(&'a TomlRepo, StyleMessage), StyleMessage>;
 
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let (succ_repos, error_repos) = thread_pool.install(|| {
         let res: Vec<ParallelResult> = toml_repos
             .iter()
-            // .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
@@ -201,7 +200,10 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
                         // show message in progress bar
                         progress.repo_error(&repo_info, StyleMessage::new());
 
-                        Err((toml_repo, e))
+                        Err(StyleMessage::git_error(
+                            toml_repo.local.as_ref().unwrap().display_path(),
+                            &e,
+                        ))
                     }
                 }
             })
@@ -211,38 +213,35 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) {
 
         // collect repos
         let mut succ_repos: Vec<(&TomlRepo, StyleMessage)> = Vec::new();
-        let mut error_repos: Vec<(&TomlRepo, anyhow::Error)> = Vec::new();
+        let mut error_repos: Vec<StyleMessage> = Vec::new();
         for r in res {
             match r {
                 Ok((toml_repo, track_msg)) => succ_repos.push((toml_repo, track_msg)),
-                Err((toml_repo, e)) => error_repos.push((toml_repo, e)),
+                Err(error_msg) => error_repos.push(error_msg),
             }
         }
         (succ_repos, error_repos)
     });
 
-    match StyleMessage::ops_errors("sync", error_repos.len()) {
-        Ok(msg) => logger::info(msg),
-        Err(err_msg) => logger::error(err_msg),
-    }
-
-    // show track status
-    if !silent {
-        logger::info("Track status:");
-        succ_repos
-            .iter()
-            .for_each(|(_, msg)| logger::info(format!("  {}", msg)))
-    }
-
-    // show errors
-    if !error_repos.is_empty() {
-        logger::error("Errors:");
-        error_repos.iter().for_each(|(toml_repo, error)| {
-            logger::error(StyleMessage::git_error(
-                toml_repo.local.as_ref().unwrap(),
-                error,
-            ));
-        });
+    match error_repos.len() {
+        0 => {
+            let mut result = StyleMessage::ops_success("sync");
+            // show track status
+            if !silent {
+                result = result.join("\nTrack status:\n".into());
+                for (_, msg) in succ_repos {
+                    result = result.join(format!("  {}", msg).into());
+                }
+            }
+            Ok(result)
+        }
+        _ => {
+            let msg = StyleMessage::ops_failed("sync", error_repos.len());
+            Err(anyhow!(MgitError::OpsError {
+                prefix: msg,
+                errors: OpsErrors(error_repos),
+            }))
+        }
     }
 }
 

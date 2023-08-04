@@ -91,15 +91,17 @@ impl StyleMessage {
     pub fn replace(&mut self, other: StyleMessage) {
         self.0 = other.0;
     }
-}
 
-impl StyleMessage {
     pub fn to_plain_text(&self) -> String {
         self.0
             .iter()
             .map(|st| st.to_plain_text())
             .collect::<Vec<_>>()
             .join("")
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
@@ -169,15 +171,15 @@ impl StyleMessage {
             .styled_text(path.as_ref().display().to_string(), &PURPLE_BOLD)
     }
 
-    pub(crate) fn ops_errors(prefix: impl AsRef<str>, count: usize) -> Result<Self, Self> {
-        match count {
-            0 => Ok(StyleMessage::new()
-                .plain_text(format!("{} finished! 0 error(s).", prefix.as_ref()))),
-            _ => Err(StyleMessage::new()
-                .plain_text(format!("{} finished! ", prefix.as_ref()))
-                .styled_text(count.to_string(), &RED_BOLD)
-                .plain_text(" error(s).")),
-        }
+    pub(crate) fn ops_success(prefix: impl AsRef<str>) -> Self {
+        StyleMessage::new().plain_text(format!("{} finished! 0 error(s).", prefix.as_ref()))
+    }
+
+    pub(crate) fn ops_failed(prefix: impl AsRef<str>, amount: usize) -> Self {
+        StyleMessage::new()
+            .plain_text(format!("{} finished! ", prefix.as_ref()))
+            .styled_text(amount.to_string(), &RED_BOLD)
+            .plain_text(" error(s).")
     }
 
     pub fn repo_end(is_success: bool) -> Self {

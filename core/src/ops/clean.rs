@@ -1,9 +1,11 @@
+use anyhow::anyhow;
 use globset::GlobBuilder;
 use std::env;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::core::repos::load_config;
+use crate::utils::error::{MgitError, MgitResult};
 use crate::utils::logger;
 use crate::utils::style_message::StyleMessage;
 
@@ -20,7 +22,7 @@ impl CleanOptions {
     }
 }
 
-pub fn clean_repo(options: CleanOptions) {
+pub fn clean_repo(options: CleanOptions) -> MgitResult {
     let path = &options.path;
     let config_path = &options.config_path;
 
@@ -29,22 +31,23 @@ pub fn clean_repo(options: CleanOptions) {
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::error(StyleMessage::dir_not_found(path));
-        return;
+        return Err(anyhow!(MgitError::DirNotFound(
+            StyleMessage::dir_not_found(path)
+        )));
     }
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::error(StyleMessage::config_file_not_found());
-        return;
+        return Err(anyhow!(MgitError::ConfigFileNotFound(
+            StyleMessage::config_file_not_found()
+        )));
     }
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
-        logger::error("load config file failed!");
-        return;
+        return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
     let Some(toml_repos) = &toml_config.repos else {
-        return;
+        return Ok("No repos to clean".into());
     };
 
     let config_repo_paths: Vec<PathBuf> = toml_repos
@@ -110,7 +113,7 @@ pub fn clean_repo(options: CleanOptions) {
     }
 
     // show statistics info
-    logger::info(StyleMessage::remove_repo_succ(count));
+    Ok(StyleMessage::remove_repo_succ(count))
 }
 
 fn find_contained_paths(unused_path: &Path, config_repo_paths: &Vec<PathBuf>) -> Vec<PathBuf> {

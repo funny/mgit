@@ -2,9 +2,11 @@ use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::HashMap;
 
+use anyhow::anyhow;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
@@ -12,6 +14,9 @@ use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
+use crate::utils::cmd::retry;
+use crate::utils::error::{MgitError, MgitResult, OpsErrors};
+use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
 use crate::utils::{cmd, logger};
@@ -47,7 +52,7 @@ impl FetchOptions {
     }
 }
 
-pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
+pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult {
     let path = &options.path;
     let config_path = &options.config_path;
     let thread_count = options.thread_count;
@@ -60,17 +65,17 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
 
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::info(StyleMessage::config_file_not_found());
-        return;
+        return Err(anyhow!(MgitError::ConfigFileNotFound(
+            StyleMessage::config_file_not_found(),
+        )));
     }
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else {
-        logger::error("load config file failed!");
-        return;
+        return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
     let Some(toml_repos) = toml_config.repos else {
-        return;
+        return Ok("No repos to fetch".into());
     };
     let default_branch = toml_config.default_branch;
 
@@ -92,15 +97,13 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
     let thread_builder = rayon::ThreadPoolBuilder::new().num_threads(thread_count);
     let Ok(thread_pool) = thread_builder.build() else {
-        logger::error("create thread pool failed!");
-        return;
+        return Err(anyhow!(MgitError::CreateThreadPoolFailed));
     };
 
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
-    let errors: Vec<(&TomlRepo, anyhow::Error)> = thread_pool.install(|| {
+    let errors: Vec<_> = thread_pool.install(|| {
         let res = toml_repos
             .iter()
-            // .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
@@ -127,7 +130,10 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
                     }
                     Err(e) => {
                         progress.repo_error(&repo_info, StyleMessage::new());
-                        Err((toml_repo, e))
+                        Err(StyleMessage::git_error(
+                            toml_repo.local.as_ref().unwrap().display_path(),
+                            &e,
+                        ))
                     }
                 }
             })
@@ -138,20 +144,15 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) {
         res
     });
 
-    match StyleMessage::ops_errors("fetch", errors.len()) {
-        Ok(msg) => logger::info(msg),
-        Err(err_msg) => logger::error(err_msg),
-    }
-
-    // show errors
-    if !errors.is_empty() {
-        logger::error("Errors:");
-        errors.iter().for_each(|(toml_repo, error)| {
-            logger::error(StyleMessage::git_error(
-                toml_repo.local.as_ref().unwrap(),
-                error,
-            ));
-        });
+    match errors.len() {
+        0 => Ok(StyleMessage::ops_success("fetch")),
+        _ => {
+            let msg = StyleMessage::ops_failed("fetch", errors.len());
+            Err(anyhow!(MgitError::OpsError {
+                prefix: msg,
+                errors: OpsErrors(errors),
+            }))
+        }
     }
 }
 
@@ -206,8 +207,11 @@ pub fn exec_fetch(
     args.push("--recurse-submodules=on-demand");
     args.push("--progress");
 
-    let mut command = Command::new("git");
-    let full_command = command.args(args).current_dir(full_path);
-
-    cmd::exec_cmd_with_progress(repo_info, full_command, progress)
+    retry(10, Duration::from_millis(400), || {
+        let args = args.clone();
+        let full_path = full_path.clone();
+        let mut command = Command::new("git");
+        let full_command = command.args(args).current_dir(full_path);
+        cmd::exec_cmd_with_progress(repo_info, full_command, progress)
+    })
 }

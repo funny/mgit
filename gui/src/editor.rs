@@ -135,8 +135,10 @@ impl Editor {
         setup_custom_fonts(&cc.egui_ctx);
         configure_text_styles(&cc.egui_ctx);
 
-        let mut app = Editor::default();
-        app.context = cc.egui_ctx.clone();
+        let mut app = Editor {
+            context: cc.egui_ctx.clone(),
+            ..Editor::default()
+        };
 
         let (is_dependencies_valid, err_msg) = match check_git_valid() {
             Ok(_) => (true, String::new()),

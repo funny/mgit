@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use globset::GlobBuilder;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
@@ -6,6 +7,7 @@ use walkdir::WalkDir;
 use crate::core::git;
 use crate::core::repo::TomlRepo;
 use crate::core::repos::TomlConfig;
+use crate::utils::error::{MgitError, MgitResult};
 
 use crate::utils::logger;
 use crate::utils::path::PathExtension;
@@ -45,7 +47,7 @@ impl SnapshotOptions {
     }
 }
 
-pub fn snapshot_repo(options: SnapshotOptions) {
+pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
     let path = &options.path;
     let config_path = &options.config_path;
     let force = options.force;
@@ -58,13 +60,16 @@ pub fn snapshot_repo(options: SnapshotOptions) {
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         logger::error(StyleMessage::dir_not_found(path));
-        return;
+        return Err(anyhow!(MgitError::DirNotFound(
+            StyleMessage::dir_not_found(path)
+        )));
     }
 
     // check if .gitrepos exists
     if config_path.is_file() && !force {
-        logger::error(StyleMessage::dir_already_inited(path));
-        return;
+        return Err(anyhow!(MgitError::DirAlreadyInited(
+            StyleMessage::dir_already_inited(path)
+        )));
     }
 
     let mut toml_config = TomlConfig {
@@ -175,5 +180,5 @@ pub fn snapshot_repo(options: SnapshotOptions) {
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
     fs::write(config_path, toml_string).expect("Failed to write file .gitrepos!");
-    logger::info(StyleMessage::update_config_succ());
+    Ok(StyleMessage::update_config_succ())
 }

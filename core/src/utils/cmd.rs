@@ -90,3 +90,24 @@ pub fn exec_cmd_with_progress(
     }
     Ok(())
 }
+
+pub fn retry<T>(
+    times: usize,
+    sleep: std::time::Duration,
+    f: impl Fn() -> Result<T, anyhow::Error>,
+) -> Result<T, anyhow::Error> {
+    let mut result = None::<Result<T, anyhow::Error>>;
+    for _ in 0..times {
+        match f() {
+            Ok(r) => {
+                result = Some(Ok(r));
+                break;
+            }
+            Err(e) => {
+                result = Some(Err(e));
+                std::thread::sleep(sleep);
+            }
+        }
+    }
+    result.unwrap()
+}

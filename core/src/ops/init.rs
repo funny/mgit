@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use crate::ops::snapshot_repo;
 use crate::ops::SnapshotOptions;
+use crate::utils::error::MgitResult;
 
 use crate::utils::logger;
 use crate::utils::style_message::StyleMessage;
@@ -25,7 +26,7 @@ impl InitOptions {
     }
 }
 
-pub fn init_repo(options: InitOptions) {
+pub fn init_repo(options: InitOptions) -> MgitResult {
     let path = &options.path;
     let force = options.force;
     let snapshot_type = SnapshotType::Branch;

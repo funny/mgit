@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -7,6 +8,7 @@ use crate::core::git::RemoteRef;
 use crate::core::repo::exclude_ignore;
 use crate::core::repo::TomlRepo;
 use crate::core::repos::load_config;
+use crate::utils::error::{MgitError, MgitResult};
 
 use crate::utils::logger;
 use crate::utils::progress::{Progress, RepoInfo};
@@ -34,7 +36,7 @@ impl TrackOptions {
     }
 }
 
-pub fn track(options: TrackOptions, progress: impl Progress) {
+pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
     let path = &options.path;
     let config_path = &options.config_path;
     let ignore = options.ignore.as_ref();
@@ -43,23 +45,24 @@ pub fn track(options: TrackOptions, progress: impl Progress) {
     logger::info("Track status:");
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
-        logger::error(StyleMessage::dir_not_found(path));
-        return;
+        return Err(anyhow!(MgitError::DirNotFound(
+            StyleMessage::dir_not_found(path)
+        )));
     }
     // check if .gitrepos exists
     if !config_path.is_file() {
-        logger::error(StyleMessage::config_file_not_found());
-        return;
+        return Err(anyhow!(MgitError::ConfigFileNotFound(
+            StyleMessage::config_file_not_found()
+        )));
     }
     // load config file(like .gitrepos)
     let Some(toml_config) = load_config(config_path) else{
-        logger::error("load config file failed!");
-        return;
+        return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
     // handle track
     let Some(toml_repos) = toml_config.repos else {
-        return;
+        return Ok("No repos to track".into());
     };
 
     let default_branch = toml_config.default_branch;
@@ -89,6 +92,7 @@ pub fn track(options: TrackOptions, progress: impl Progress) {
             }
         }
     });
+    Ok(StyleMessage::new())
 }
 
 pub fn set_tracking_remote_branch(

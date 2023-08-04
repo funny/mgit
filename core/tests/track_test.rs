@@ -1,5 +1,6 @@
 use mgit::ops;
 use mgit::ops::{SyncOptions, TrackOptions};
+use mgit::utils::error::MgitResult;
 use std::env;
 use std::path::PathBuf;
 
@@ -20,7 +21,7 @@ mod common;
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_track_simple() {
+fn cli_track_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -60,7 +61,7 @@ fn cli_track_simple() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -95,7 +96,7 @@ fn cli_track_simple() {
     ops::track(
         TrackOptions::new(Some(input_path.clone()), None::<PathBuf>, None),
         TestProgress,
-    );
+    )?;
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -119,6 +120,7 @@ fn cli_track_simple() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
@@ -132,7 +134,7 @@ fn cli_track_simple() {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_track_ignore() {
+fn cli_track_ignore() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -173,7 +175,7 @@ fn cli_track_ignore() {
             Some(true),
         ),
         TestProgress,
-    );
+    )?;
 
     let cur_branch_args = ["branch", "--show-current"];
     let tracking_args = ["rev-parse", "--symbolic-full-name", "--abbrev-ref", "@{u}"];
@@ -212,7 +214,7 @@ fn cli_track_ignore() {
             Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),
         ),
         TestProgress,
-    );
+    )?;
 
     // root: foobar untracked,  checkout failed
     let branch = exec_cmd(root_path, "git", &cur_branch_args).unwrap_or(invald_name.clone());
@@ -233,4 +235,5 @@ fn cli_track_ignore() {
 
     // clean-up
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }

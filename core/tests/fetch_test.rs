@@ -1,5 +1,6 @@
 use mgit::ops;
 use mgit::ops::{FetchOptions, InitOptions};
+use mgit::utils::error::MgitResult;
 use std::env;
 use std::path::PathBuf;
 
@@ -18,7 +19,7 @@ mod common;
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_fetch_simple() {
+fn cli_fetch_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -47,12 +48,12 @@ fn cli_fetch_simple() {
     }
 
     // init command
-    ops::init_repo(InitOptions::new(Some(path.clone()), None));
+    ops::init_repo(InitOptions::new(Some(path.clone()), None))?;
     // fetch command
     ops::fetch_repos(
         FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
         TestProgress,
-    );
+    )?;
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
@@ -60,13 +61,14 @@ fn cli_fetch_simple() {
     }
     // clean-up;
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
 
 /// 测试内容：
 ///     1、运行命令: mgit fetch <path>
 ///     2、仓库的 remote url 变更配置文件中新的 url
 #[test]
-fn cli_fetch_new_remote_url() {
+fn cli_fetch_new_remote_url() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
@@ -106,7 +108,7 @@ fn cli_fetch_new_remote_url() {
     ops::fetch_repos(
         FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
         TestProgress,
-    );
+    )?;
 
     for repo_path in repo_paths {
         let dir = path.join(repo_path);
@@ -116,4 +118,5 @@ fn cli_fetch_new_remote_url() {
     }
     // clean-up;
     std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
 }
