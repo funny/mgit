@@ -29,7 +29,7 @@ fn cli_fetch_simple() -> MgitResult<()> {
     let _ = std::fs::remove_dir_all(&path);
     std::fs::create_dir_all(&path).unwrap();
 
-    let remote = "https://gitee.com/ForthEspada/CS-Books.git";
+    let remote = &CSBOOKS_REPO;
 
     let repo_paths = ["", "foobar-1", "foobar-2"];
 
