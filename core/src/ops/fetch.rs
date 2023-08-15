@@ -1,6 +1,5 @@
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::HashMap;
 
 use anyhow::anyhow;
 use std::env;
@@ -10,7 +9,6 @@ use std::time::Duration;
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
-use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
@@ -74,16 +72,12 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to fetch".into());
     };
     let default_branch = toml_config.default_branch;
 
     // ignore specified repositories
-    let mut toml_repos = toml_repos
-        .into_iter()
-        .enumerate()
-        .collect::<HashMap<usize, TomlRepo>>();
     exclude_ignore(
         &mut toml_repos,
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
@@ -104,11 +98,12 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
     let errors: Vec<_> = thread_pool.install(|| {
         let res = toml_repos
             .iter()
+            .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let repo_info = RepoInfo::new(*index, idx, toml_repo);
+                let repo_info = RepoInfo::new(index, idx, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());

@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -61,17 +60,13 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
     };
 
     // handle track
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to track".into());
     };
 
     let default_branch = toml_config.default_branch;
 
     // ignore specified repositories
-    let mut toml_repos = toml_repos
-        .into_iter()
-        .enumerate()
-        .collect::<HashMap<usize, TomlRepo>>();
     exclude_ignore(
         &mut toml_repos,
         ignore.map(|it| it.iter().collect::<Vec<&String>>()),
@@ -79,19 +74,22 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
 
     progress.repos_start(toml_repos.len());
 
-    toml_repos.iter().for_each(|(id, repo)| {
-        let repo_info = RepoInfo::new(*id, *id, repo);
+    toml_repos.iter().enumerate().for_each(|(id, repo)| {
+        let repo_info = RepoInfo::new(id, id + 1, repo);
         progress.repo_start(&repo_info, "tracking repo".into());
         match set_tracking_remote_branch(path, repo, &default_branch) {
             Ok(msg) => {
-                progress.repo_info(&repo_info, msg);
-                progress.repo_end(&repo_info, "tracked".into());
+                progress.repo_info(&repo_info, "tracking".into());
+                progress.repo_end(&repo_info, msg);
             }
             Err(e) => {
                 progress.repo_error(&repo_info, format!("failed： {}", e).into());
             }
         }
     });
+
+    progress.repos_end();
+
     Ok(StyleMessage::new())
 }
 
