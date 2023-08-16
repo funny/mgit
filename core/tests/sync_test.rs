@@ -1434,7 +1434,7 @@ fn cli_sync_checkout_symple2() -> MgitResult<()> {
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[test]
-fn cli_sync_ignore_symple() -> MgitResult<()> {
+fn cli_sync_ignore_simple() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target/tmp/test_sync_ignore_symple");

@@ -2,7 +2,6 @@ use anyhow::{anyhow, Context};
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
-use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -107,7 +106,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load .gitrepos
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to sync".into());
     };
 
@@ -115,10 +114,6 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
 
     // ignore specified repositories
     let ignore = ignore.map(|r| r.iter().collect::<Vec<&String>>());
-    let mut toml_repos = toml_repos
-        .into_iter()
-        .enumerate()
-        .collect::<HashMap<usize, TomlRepo>>();
     exclude_ignore(&mut toml_repos, ignore);
 
     progress.repos_start(toml_repos.len());
@@ -136,11 +131,12 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     let (succ_repos, error_repos) = thread_pool.install(|| {
         let res: Vec<ParallelResult> = toml_repos
             .iter()
+            .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|(index, toml_repo)| {
                 let idx = counter.inc();
-                let mut repo_info = RepoInfo::new(*index, idx, toml_repo);
+                let mut repo_info = RepoInfo::new(index, idx, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());
@@ -230,7 +226,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
             if !silent {
                 result = result.join("\nTrack status:\n".into());
                 for (_, msg) in succ_repos {
-                    result = result.join(format!("  {}", msg).into());
+                    result = result.join(format!("  {}\n", msg).into());
                 }
             }
             Ok(result)
