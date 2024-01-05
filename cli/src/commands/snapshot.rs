@@ -13,7 +13,7 @@ pub(crate) struct SnapshotCommand {
     pub config: Option<PathBuf>,
 
     /// snapshot by branch
-    #[arg(long, action = ArgAction::SetFalse)]
+    #[arg(long, action = ArgAction::SetTrue)]
     pub branch: bool,
 
     /// Force remove git repos without prompt
