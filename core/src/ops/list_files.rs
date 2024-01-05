@@ -71,7 +71,7 @@ pub fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
                         };
 
                         let path = format!("{}{}{}", rel_path, split_str, right);
-                        let path = path.norm_path();
+                        let path = path.norm_path().trim_matches('/').to_string();
                         Some(format!("{}\t{}", left, path))
                     } else {
                         None
