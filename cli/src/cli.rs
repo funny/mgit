@@ -40,4 +40,8 @@ pub(crate) enum Commands {
 
     /// Track remote branch
     Track(TrackCommand),
+
+    /// Log git repos
+    #[command(name = "log-repos")]
+    LogRepos(LogReposCommand),
 }

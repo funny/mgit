@@ -1,7 +1,6 @@
 use anyhow::Context;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
