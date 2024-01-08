@@ -263,3 +263,13 @@ pub fn ls_files(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
     let args = ["ls-files", "-s"];
     exec_cmd(path, "git", &args)
 }
+
+pub fn log_current(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
+    let args = [
+        "log",
+        "-1",
+        "--pretty=format:\"%H%n%an <%ae>%n%ad%n%s%n\"",
+        "--date=format:\"%Y-%m-%d %H:%M:%S\"",
+    ];
+    exec_cmd(path, "git", &args)
+}

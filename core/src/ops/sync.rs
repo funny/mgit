@@ -92,7 +92,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else{
+    let Some(toml_config) = load_config(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
