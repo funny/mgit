@@ -1,7 +1,8 @@
 [package]
 name = "mgit-cli"
-version = "1.2.2"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+edition.repository = true
 
 [[bin]]
 name = "mgit"

@@ -49,7 +49,7 @@ fn cli_sync_simple() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -81,7 +81,7 @@ fn cli_sync_simple() -> MgitResult<()> {
     // excute sync
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -142,7 +142,7 @@ fn cli_sync_simple_tracking_invalid() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -179,7 +179,7 @@ fn cli_sync_simple_tracking_invalid() -> MgitResult<()> {
     // excute sync
     let result = ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -239,7 +239,7 @@ fn cli_sync_stash() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -275,7 +275,7 @@ fn cli_sync_stash() -> MgitResult<()> {
     // excute sync
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -351,7 +351,7 @@ fn cli_sync_stash_tracking_invalid() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -389,7 +389,7 @@ fn cli_sync_stash_tracking_invalid() -> MgitResult<()> {
 
     let result = ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -457,7 +457,7 @@ fn cli_sync_hard() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -490,7 +490,7 @@ fn cli_sync_hard() -> MgitResult<()> {
     // excute sync --hard
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -925,7 +925,7 @@ fn cli_sync_checkout_invalid_path() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1009,7 +1009,7 @@ fn cli_sync_checkout_symple() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1078,7 +1078,7 @@ fn cli_sync_checkout_symple() -> MgitResult<()> {
     // sync repositories, with checkout
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1110,7 +1110,7 @@ fn cli_sync_checkout_symple() -> MgitResult<()> {
     // sync repositories, with checkout and track
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1189,7 +1189,7 @@ fn cli_sync_checkout_with_conflict() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1277,7 +1277,7 @@ fn cli_sync_checkout_with_conflict() -> MgitResult<()> {
     // sync repositories, with checkout
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1309,7 +1309,7 @@ fn cli_sync_checkout_with_conflict() -> MgitResult<()> {
     // sync repositories, with checkout, track and hard
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1373,7 +1373,7 @@ fn cli_sync_checkout_symple2() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1396,7 +1396,7 @@ fn cli_sync_checkout_symple2() -> MgitResult<()> {
     // sync repositories, with checkout
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1475,7 +1475,7 @@ fn cli_sync_ignore_simple() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1562,7 +1562,7 @@ fn cli_sync_with_depth() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1582,7 +1582,7 @@ fn cli_sync_with_depth() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1653,7 +1653,7 @@ fn cli_sync_new_remote_url() -> MgitResult<()> {
     // initialize the repositories tree
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -1683,7 +1683,7 @@ fn cli_sync_new_remote_url() -> MgitResult<()> {
 
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,

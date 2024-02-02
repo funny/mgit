@@ -42,11 +42,11 @@ pub fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
     }
 
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else{
+    let Some(toml_config) = load_config(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some( toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return Ok(vec![]);
     };
 
@@ -56,7 +56,7 @@ pub fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
             let rel_path = toml_repo.local.as_ref().unwrap();
             let full_path = path.join(rel_path);
             let Ok(content) = git::ls_files(full_path) else {
-                return vec![]
+                return vec![];
             };
 
             content

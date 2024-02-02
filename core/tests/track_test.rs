@@ -49,7 +49,7 @@ fn cli_track_simple() -> MgitResult<()> {
     // initialize repositories, with no-track
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -94,7 +94,7 @@ fn cli_track_simple() -> MgitResult<()> {
 
     // track command
     ops::track(
-        TrackOptions::new(Some(input_path.clone()), None::<PathBuf>, None),
+        TrackOptions::new(Some(input_path), None::<PathBuf>, None),
         TestProgress,
     )?;
 
@@ -163,7 +163,7 @@ fn cli_track_ignore() -> MgitResult<()> {
     // initialize repositories, with no-track
     ops::sync_repo(
         SyncOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             None,
             None,
@@ -209,7 +209,7 @@ fn cli_track_ignore() -> MgitResult<()> {
     // track command
     ops::track(
         TrackOptions::new(
-            Some(input_path.clone()),
+            Some(input_path),
             None::<PathBuf>,
             Some([".", "foobar-1"].map(|s| s.to_string()).to_vec()),
         ),
