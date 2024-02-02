@@ -1,8 +1,8 @@
 [package]
 name = "mgit-gui"
-version = "1.2.2"
-edition = "2021"
-repository = "https://github.com/funny/mgit"
+version.workspace = true
+edition.workspace = true
+edition.repository = true
 
 [dependencies]
 mgit-core = { path = "../core" }

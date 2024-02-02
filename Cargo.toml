@@ -5,6 +5,11 @@ members = [
     "gui",
 ]
 
+[workspace.package]
+version = "1.2.2"
+edition = "2021"
+repository = "https://github.com/funny/mgit"
+
 [profile.release]
 opt-level = 'z'
 lto = true

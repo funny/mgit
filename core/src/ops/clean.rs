@@ -42,7 +42,7 @@ pub fn clean_repo(options: CleanOptions) -> MgitResult {
         )));
     }
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else{
+    let Some(toml_config) = load_config(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
