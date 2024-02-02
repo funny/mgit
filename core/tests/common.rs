@@ -22,6 +22,7 @@ pub mod failed_message {
     pub const GIT_FETCH: &str = "git fetch failed";
     pub const GIT_CONFIG: &str = "git config failed";
     pub const GIT_REV_LIST: &str = "git rev-list failed";
+    pub const GIT_SPARSE_CHECKOUT: &str = "git sparse-checkout failed";
 
     pub const WRITE_FILE: &str = "write file failed";
 }

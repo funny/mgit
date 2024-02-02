@@ -1707,3 +1707,96 @@ fn cli_sync_new_remote_url() -> MgitResult<()> {
     std::fs::remove_dir_all(&path).unwrap();
     Ok(())
 }
+
+/// 测试内容：
+///     1、运行命令 mgit sync <path> --no-checkout
+///     2、检查配置的稀疏检出是否和预期匹配
+///     3、根目录是仓库
+///
+/// 测试目录结构:
+///   cli_sync_with_sparse_checkout_dirs(.git)
+///     ├─Doc
+///     ├─img
+///     └─README.md
+#[test]
+fn cli_sync_with_sparse_checkout_dirs() -> MgitResult<()> {
+    let path = env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("tmp")
+        .join("cli_sync_with_sparse_checkout_dirs");
+    let input_path = path.to_str().unwrap();
+
+    let _ = std::fs::remove_dir_all(&path);
+    std::fs::create_dir_all(&path).unwrap();
+
+    let mut toml_string = TomlBuilder::default()
+        .default_branch("develop")
+        .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
+        .build();
+    let sparse_checkout_dirs = r#"sparse-checkout-dirs = ["Doc", "/*.md"]"#;
+    toml_string.push_str(sparse_checkout_dirs);
+
+    let config_file = path.join(".gitrepos");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+
+    // initialize the repositories tree
+    ops::sync_repo(
+        SyncOptions::new(
+            Some(input_path),
+            None::<PathBuf>,
+            None,
+            None,
+            None,
+            None,
+            Some(true),
+            None,
+            Some(true),
+            None,
+        ),
+        TestProgress,
+    )?;
+
+    // compaire sparse-checkout list
+    if let Ok(output) = exec_cmd(&path, "git", &["sparse-checkout", "list"]) {
+        assert_eq!(output.contains("Doc"), true);
+        assert_eq!(output.contains("img"), false);
+        assert_eq!(output.contains("/*.md"), true);
+
+        assert_eq!(path.join("Doc").exists(), true);
+        assert_eq!(path.join("img").exists(), false);
+        assert_eq!(path.join("README.md").exists(), true);
+    } else {
+        panic!("{}", failed_message::GIT_SPARSE_CHECKOUT);
+    }
+
+    toml_string = toml_string.replace(sparse_checkout_dirs, "");
+    std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
+    // excute sync
+    ops::sync_repo(
+        SyncOptions::new(
+            Some(input_path),
+            None::<PathBuf>,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(true),
+        ),
+        TestProgress,
+    )?;
+
+    // compaire sparse-checkout list
+    let res = exec_cmd(&path, "git", &["sparse-checkout", "list"]);
+    assert!(res.is_err());
+    assert_eq!(path.join("Doc").exists(), true);
+    assert_eq!(path.join("img").exists(), true);
+    assert_eq!(path.join("README.md").exists(), true);
+
+    // clean-up
+    std::fs::remove_dir_all(&path).unwrap();
+    Ok(())
+}
