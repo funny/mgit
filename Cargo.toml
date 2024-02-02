@@ -4,10 +4,12 @@ members = [
     "cli",
     "gui",
 ]
+resolver = "2"
 
 [workspace.package]
 version = "1.2.2"
 edition = "2021"
+rust-version = "1.74.0"
 repository = "https://github.com/funny/mgit"
 
 [profile.release]
