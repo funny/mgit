@@ -1714,17 +1714,17 @@ fn cli_sync_new_remote_url() -> MgitResult<()> {
 ///     3、根目录是仓库
 ///
 /// 测试目录结构:
-///   cli_sync_with_sparse_checkout_dirs(.git)
+///   cli_sync_with_sparse_checkout(.git)
 ///     ├─Doc
 ///     ├─img
 ///     └─README.md
 #[test]
-fn cli_sync_with_sparse_checkout_dirs() -> MgitResult<()> {
+fn cli_sync_with_sparse_checkout() -> MgitResult<()> {
     let path = env::current_dir()
         .unwrap()
         .join("target")
         .join("tmp")
-        .join("cli_sync_with_sparse_checkout_dirs");
+        .join("cli_sync_with_sparse_checkout");
     let input_path = path.to_str().unwrap();
 
     let _ = std::fs::remove_dir_all(&path);
@@ -1734,8 +1734,8 @@ fn cli_sync_with_sparse_checkout_dirs() -> MgitResult<()> {
         .default_branch("develop")
         .join_repo(".", &CSBOOKS_REPO, Some("master"), None, None)
         .build();
-    let sparse_checkout_dirs = r#"sparse-checkout-dirs = ["Doc", "/*.md"]"#;
-    toml_string.push_str(sparse_checkout_dirs);
+    let sparse = r#"sparse = ["Doc", "/*.md"]"#;
+    toml_string.push_str(sparse);
 
     let config_file = path.join(".gitrepos");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
@@ -1770,7 +1770,7 @@ fn cli_sync_with_sparse_checkout_dirs() -> MgitResult<()> {
         panic!("{}", failed_message::GIT_SPARSE_CHECKOUT);
     }
 
-    toml_string = toml_string.replace(sparse_checkout_dirs, "");
+    toml_string = toml_string.replace(sparse, "");
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
     // excute sync
     ops::sync_repo(

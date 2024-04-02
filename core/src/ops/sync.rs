@@ -367,7 +367,7 @@ fn inner_exec(
         }
     }?;
 
-    match repo_info.toml_repo.sparse_checkout_dirs.as_ref() {
+    match repo_info.toml_repo.sparse.as_ref() {
         Some(dirs) => git::sparse_checkout_set(&full_path, dirs),
         None => git::sparse_checkout_disable(&full_path),
     }
