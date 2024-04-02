@@ -82,6 +82,14 @@ Options
 - **--ignore** 忽略不想生成 config 文件的目录，可多次使用
 - **--depth** 设置 sync 的深度
 
+Sparse checkout
+通过配置文件添加 `sparse` 字段支持
+```
+[[repos]]
+sparse = ["Doc", "/*.md"]
+```
+
+
 ### fetch
 
 ```shell
