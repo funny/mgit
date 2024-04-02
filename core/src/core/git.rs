@@ -273,3 +273,20 @@ pub fn log_current(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
     ];
     exec_cmd(path, "git", &args)
 }
+
+pub fn sparse_checkout_set(
+    path: impl AsRef<Path>,
+    dirs: &Vec<String>,
+) -> Result<(), anyhow::Error> {
+    let mut args = vec!["sparse-checkout", "set", "--no-cone"];
+    for dir in dirs {
+        args.push(dir)
+    }
+
+    exec_cmd(path, "git", &args).map(|_| ())
+}
+
+pub fn sparse_checkout_disable(path: impl AsRef<Path>) -> Result<(), anyhow::Error> {
+    let args = vec!["sparse-checkout", "disable"];
+    exec_cmd(path, "git", &args).map(|_| ())
+}

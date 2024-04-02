@@ -365,6 +365,11 @@ fn inner_exec(
             // reset --hard
             exec_reset(input_path, repo_info, progress, ResetType::Hard)
         }
+    }?;
+
+    match repo_info.toml_repo.sparse_checkout_dirs.as_ref() {
+        Some(dirs) => git::sparse_checkout_set(&full_path, dirs),
+        None => git::sparse_checkout_disable(&full_path),
     }
 }
 
@@ -420,7 +425,8 @@ fn exec_reset(
         ResetType::Mixed => "--mixed",
         ResetType::Hard => "--hard",
     };
-    git::reset(full_path, reset_type, remote_ref_str)
+
+    git::reset(&full_path, reset_type, remote_ref_str)
 }
 
 fn exec_stash(
