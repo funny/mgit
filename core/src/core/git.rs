@@ -195,8 +195,30 @@ pub fn reset(
     }
 }
 
+pub fn add_untracked_files(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
+    let path = path.as_ref();
+    let args = ["ls-files", "-o", "--exclude-standard"];
+    let paths_desc = exec_cmd(path, "git", &args)?;
+    if paths_desc.is_empty() {
+        return Ok("not found any unchecked file to add".to_string());
+    }
+
+    let mut args = vec!["add"];
+
+    for file in paths_desc.trim().split("\n") {
+        args.push(file);
+    }
+
+    exec_cmd(path, "git", &args)
+}
+
 pub fn stash(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
-    let args = ["stash", "--include-untracked"];
+    let path = path.as_ref();
+    log::debug!("stash");
+
+    add_untracked_files(path)?;
+
+    let args = ["stash", "-u"];
     exec_cmd(path, "git", &args)
 }
 
