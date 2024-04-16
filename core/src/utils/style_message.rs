@@ -172,14 +172,14 @@ impl StyleMessage {
     }
 
     pub(crate) fn ops_success(prefix: impl AsRef<str>) -> Self {
-        StyleMessage::new().plain_text(format!("{} finished! 0 error(s).", prefix.as_ref()))
+        StyleMessage::new().plain_text(format!("{} finished! 0 error(s).\n", prefix.as_ref()))
     }
 
     pub(crate) fn ops_failed(prefix: impl AsRef<str>, amount: usize) -> Self {
         StyleMessage::new()
             .plain_text(format!("{} finished! ", prefix.as_ref()))
             .styled_text(amount.to_string(), &RED_BOLD)
-            .plain_text(" error(s).")
+            .plain_text(" error(s).\n")
     }
 
     pub fn repo_end(is_success: bool) -> Self {
@@ -201,6 +201,13 @@ impl StyleMessage {
             .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
             .plain_text(" ")
             .styled_text(err_msg.trim(), &RED)
+    }
+
+    pub(crate) fn git_stash(rel_path: impl AsRef<str>, desc: impl AsRef<str>) -> Self {
+        StyleMessage::new()
+            .styled_text(rel_path.as_ref().display_path(), &PURPLE_BOLD)
+            .plain_text(": ")
+            .plain_text(desc.as_ref())
     }
 
     pub(crate) fn git_untracked(path: impl AsRef<Path>, desc: impl AsRef<str>) -> Self {

@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::git::{RemoteRef, ResetType, StashMode};
-use crate::core::repo::TomlRepo;
 use crate::core::repo::{cmp_local_remote, exclude_ignore};
 use crate::core::repos::load_config;
 
@@ -19,6 +18,17 @@ use crate::utils::logger;
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
+
+#[derive(Debug, Default)]
+struct InnerExecResponse {
+    stash: Option<InnerStashResponse>,
+}
+
+#[derive(Debug)]
+enum InnerStashResponse {
+    None,
+    Stash(String),
+}
 
 pub struct SyncOptions {
     pub path: PathBuf,
@@ -125,7 +135,12 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
         return Err(anyhow!(MgitError::CreateThreadPoolFailed));
     };
 
-    type ParallelResult<'a> = Result<(&'a TomlRepo, StyleMessage), StyleMessage>;
+    struct SuccRepoInfo {
+        stash_status: StyleMessage,
+        track_status: StyleMessage,
+    }
+
+    type ParallelResult<'a> = Result<SuccRepoInfo, StyleMessage>;
 
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let (succ_repos, error_repos) = thread_pool.install(|| {
@@ -161,7 +176,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
 
                 // handle result
                 match exec_res {
-                    Ok(_) => {
+                    Ok(response) => {
                         // if not silent, show compare stat betweent local and remote
                         let msg = match silent {
                             true => StyleMessage::new(),
@@ -182,24 +197,34 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
                         // show message in progress bar
                         progress.repo_end(&repo_info, msg);
 
-                        // track remote branch, return track status
-                        let mut track_msg = StyleMessage::new();
+                        // stash status: stash on some commit
+                        let mut stash_status = StyleMessage::new();
+                        if let Some(InnerStashResponse::Stash(msg)) = response.stash {
+                            let repo_rel_path = toml_repo.local.as_ref().unwrap().display_path();
+                            stash_status =
+                                stash_status.join(StyleMessage::git_stash(repo_rel_path, msg));
+                        }
+
+                        // track status: track remote branch
+                        let mut track_status = StyleMessage::new();
                         if !no_track {
                             let track_res =
                                 set_tracking_remote_branch(path, toml_repo, &default_branch);
-                            track_msg = track_msg.try_join(track_res.ok());
+                            track_status = track_status.try_join(track_res.ok());
                         }
 
-                        Ok((toml_repo, track_msg))
+                        let info = SuccRepoInfo {
+                            stash_status,
+                            track_status,
+                        };
+                        Ok(info)
                     }
                     Err(e) => {
                         // show message in progress bar
                         progress.repo_error(&repo_info, StyleMessage::new());
 
-                        Err(StyleMessage::git_error(
-                            toml_repo.local.as_ref().unwrap().display_path(),
-                            &e,
-                        ))
+                        let repo_rel_path = toml_repo.local.as_ref().unwrap().display_path();
+                        Err(StyleMessage::git_error(repo_rel_path, &e))
                     }
                 }
             })
@@ -208,11 +233,11 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
         progress.repos_end();
 
         // collect repos
-        let mut succ_repos: Vec<(&TomlRepo, StyleMessage)> = Vec::new();
-        let mut error_repos: Vec<StyleMessage> = Vec::new();
+        let mut succ_repos = Vec::new();
+        let mut error_repos = Vec::new();
         for r in res {
             match r {
-                Ok((toml_repo, track_msg)) => succ_repos.push((toml_repo, track_msg)),
+                Ok(info) => succ_repos.push(info),
                 Err(error_msg) => error_repos.push(error_msg),
             }
         }
@@ -224,9 +249,23 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
             let mut result = StyleMessage::ops_success("sync");
             // show track status
             if !silent {
-                result = result.join("\nTrack status:\n".into());
-                for (_, msg) in succ_repos {
-                    result = result.join(format!("  {}\n", msg).into());
+                // show stash status
+                if succ_repos.iter().any(|info| !info.stash_status.is_empty()) {
+                    result = result.join("\n".into());
+                    result = result.join("Stash status:\n".into());
+                    for info in &succ_repos {
+                        if info.stash_status.is_empty() {
+                            continue;
+                        }
+                        result = result.join(format!("  {}\n", info.stash_status).into());
+                    }
+                }
+
+                // show track status
+                result = result.join("\n".into());
+                result = result.join("Track status:\n".into());
+                for info in &succ_repos {
+                    result = result.join(format!("  {}\n", info.track_status).into());
                 }
             }
             Ok(result)
@@ -249,7 +288,7 @@ fn inner_exec(
     depth: Option<&usize>,
     default_branch: &Option<String>,
     progress: &impl Progress,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<InnerExecResponse> {
     let full_path = &input_path.join(repo_info.rel_path());
 
     let mut toml_repo = repo_info.toml_repo.to_owned();
@@ -293,17 +332,17 @@ fn inner_exec(
     // check remote-ref valid
     git::is_remote_ref_valid(full_path, remote_ref_str)?;
 
+    let mut exec_response = InnerExecResponse::default();
+
     match stash_mode {
         StashMode::Normal => {
             // try stash → checkout → reset → stash pop
             if !no_checkout {
                 // stash
-                let stash_result = exec_stash(input_path, repo_info, progress);
-                let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
+                let stash_response = exec_stash(input_path, repo_info, progress)?;
 
                 // checkout
-                let mut result: Result<(), anyhow::Error>;
-                result = exec_checkout(input_path, repo_info, progress, false);
+                let mut result = exec_checkout(input_path, repo_info, progress, false);
 
                 if result.is_ok() {
                     // reset --hard
@@ -311,7 +350,7 @@ fn inner_exec(
                 }
 
                 // stash pop, whether checkout succ or failed, whether reset succ or failed
-                if stash_msg.contains("WIP") {
+                if matches!(stash_response, InnerStashResponse::Stash(_)) {
                     let _ = exec_stash_pop(input_path, repo_info, progress);
                 }
                 result
@@ -320,37 +359,38 @@ fn inner_exec(
                 exec_reset(input_path, repo_info, progress, ResetType::Soft)
             }
         }
+
         StashMode::Stash => {
             // stash with `--stash` option, maybe return error if need to initial commit
-            let stash_result = exec_stash(input_path, repo_info, progress);
-            let stash_msg = stash_result.unwrap_or("stash failed.".to_string());
+            let stash_response = exec_stash(input_path, repo_info, progress)?;
 
-            // checkout
             let mut result: Result<(), anyhow::Error> = Ok(());
             let mut reset_type = ResetType::Mixed;
-            if !no_checkout {
-                result = exec_checkout(input_path, repo_info, progress, true)
-                    .with_context(|| stash_msg.clone());
 
+            // checkout
+            if !no_checkout {
+                result = exec_checkout(input_path, repo_info, progress, true);
                 reset_type = ResetType::Hard;
             }
 
-            // reset --mixed
             if result.is_ok() {
-                result = exec_reset(input_path, repo_info, progress, reset_type)
-                    .with_context(|| stash_msg.clone());
+                result = exec_reset(input_path, repo_info, progress, reset_type);
             }
 
-            // undo if checkout failed or reset failed
-            if let Err(e) = result {
-                // if reset failed, pop stash if stash something this time
-                if stash_msg.contains("WIP") {
+            if matches!(stash_response, InnerStashResponse::Stash(_)) {
+                // undo if checkout failed or reset failed
+                if let Err(e) = result {
+                    // if reset failed, pop stash if stash something this time
                     let _ = exec_stash_pop(input_path, repo_info, progress);
+                    return Err(e);
                 }
-                return Err(e);
+
+                // save stash message
+                exec_response.stash = Some(stash_response);
             }
             result
         }
+
         StashMode::Hard => {
             // clean
             if !is_repo_none {
@@ -370,7 +410,9 @@ fn inner_exec(
     match repo_info.toml_repo.sparse.as_ref() {
         Some(dirs) => git::sparse_checkout_set(&full_path, dirs),
         None => git::sparse_checkout_disable(&full_path),
-    }
+    }?;
+
+    Ok(exec_response)
 }
 
 fn exec_init(
@@ -433,11 +475,17 @@ fn exec_stash(
     input_path: &Path,
     repo_info: &RepoInfo,
     progress: &impl Progress,
-) -> Result<String, anyhow::Error> {
+) -> Result<InnerStashResponse, anyhow::Error> {
     progress.repo_info(repo_info, "stash...".into());
 
     let full_path = input_path.join(repo_info.rel_path());
-    git::stash(full_path)
+    let msg = git::stash(full_path)?;
+
+    let response = match msg.find("WIP") {
+        Some(idx) => InnerStashResponse::Stash(msg.trim()[idx..].to_string()),
+        None => InnerStashResponse::None,
+    };
+    Ok(response)
 }
 
 fn exec_stash_pop(
