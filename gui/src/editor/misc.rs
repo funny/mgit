@@ -126,11 +126,17 @@ pub fn open_in_file_explorer(path: String) {
 pub fn check_git_valid() -> Result<(), String> {
     // make sure git is installed
     #[cfg(target_os = "windows")]
-    let output = std::process::Command::new("cmd")
-        .arg("/C")
-        .arg("git --version")
-        .output()
-        .expect("command failed to start");
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        std::process::Command::new("cmd")
+            .creation_flags(CREATE_NO_WINDOW)
+            .arg("/C")
+            .arg("git --version")
+            .output()
+            .expect("command failed to start")
+    };
 
     #[cfg(not(target_os = "windows"))]
     let output = std::process::Command::new("git")
