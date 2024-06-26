@@ -1,13 +1,12 @@
-use std::path::Path;
-
 use eframe::egui;
+use std::path::Path;
 
 use mgit::core::git;
 use mgit::core::repo::TomlRepo;
 use mgit::utils::path::PathExtension;
 use mgit::utils::StyleMessage;
 
-use crate::editor::misc::open_in_file_explorer;
+use crate::editor::misc::{open_in_file_explorer, open_repo_in_fork};
 use crate::editor::ops::{RepoState, StateType};
 use crate::editor::Editor;
 use crate::toml_settings::cmp_toml_repo;
@@ -108,18 +107,30 @@ impl Editor {
             // show repository name
             // text format by sync ignore
             let rel_path = toml_repo.local.to_owned().unwrap();
-            let repository_display =
-                format!("{} {}", hex_code::REPOSITORY, rel_path.display_path());
-            let job = match self.repo_states[idx].no_ignore {
-                true => create_layout_job(repository_display, text_color::PURPLE),
-                false => create_layout_job(repository_display, text_color::DARK_PURPLE),
-            };
+            let rep_display = format!("{} {}", hex_code::REPOSITORY, rel_path.display_path());
 
             // repository name
             ui.horizontal(|ui| {
                 ui.set_row_height(18.0);
                 // display name
-                ui.label(job);
+                let hyperlink_color = ui.visuals().hyperlink_color;
+                ui.visuals_mut().hyperlink_color = match self.repo_states[idx].no_ignore {
+                    true => text_color::PURPLE,
+                    false => text_color::DARK_PURPLE,
+                };
+
+                let response = ui.add(egui::Link::new(rep_display));
+                ui.visuals_mut().hyperlink_color = hyperlink_color;
+
+                if response.clicked() {
+                    let full_path = match rel_path.as_ref() {
+                        "" | "." | "./" => self.project_path.clone(),
+                        _ => format!("{}/{}", &self.project_path, &rel_path),
+                    };
+
+                    open_repo_in_fork(&full_path);
+                }
+                response.on_hover_text_at_pointer("Open in Fork");
 
                 let widget_rect = egui::Rect::from_min_size(
                     egui::pos2(ui.min_rect().max.x + 5.0, ui.min_rect().min.y),
@@ -131,7 +142,7 @@ impl Editor {
                     ui.put(widget_rect, egui::Button::new(hex_code::LINK_EXTERNAL));
                 if button_response.clicked() {
                     let full_path = format!("{}/{}", &self.project_path, &rel_path);
-                    open_in_file_explorer(full_path);
+                    open_in_file_explorer(&full_path);
                 }
             });
 

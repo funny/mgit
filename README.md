@@ -184,7 +184,7 @@ cargo build [--release]
 
 ```bash
 # 位于项目根目录下执行
-git_compose/start_gitea.sh
+gitea_compose/start_gitea.sh
 ```
 
 > Windows 下请使用 `wsl2`

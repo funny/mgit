@@ -1,5 +1,6 @@
 use eframe::egui;
 use eframe::egui::{FontId, TextStyle};
+use home::home_dir;
 
 use crate::utils::defines::{resource, GIT_VERSION};
 
@@ -108,18 +109,34 @@ pub fn load_icon() -> eframe::IconData {
     }
 }
 
-pub fn open_in_file_explorer(path: String) {
+pub fn open_in_file_explorer(path: &str) {
     if cfg!(target_os = "windows") {
         let path = path.replace('/', "\\");
         std::process::Command::new("explorer")
-            .arg(&path)
+            .arg(path)
             .spawn()
             .expect("open in file explorer failed");
     } else {
         std::process::Command::new("open")
-            .arg(&path)
+            .arg(path)
             .spawn()
             .expect("open in file explorer failed");
+    }
+}
+
+pub fn open_repo_in_fork(repo_path: &str) {
+    if cfg!(target_os = "windows") {
+        let fork = format!(
+            "{}/AppData/Local/Fork/Fork.exe",
+            home_dir().unwrap().display()
+        );
+        let _ = std::process::Command::new(fork).arg(repo_path).spawn();
+    } else {
+        let _ = std::process::Command::new("open")
+            .arg("-a")
+            .arg("Fork")
+            .arg(repo_path)
+            .spawn();
     }
 }
 

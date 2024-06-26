@@ -90,7 +90,7 @@ impl Editor {
                     .clicked()
                     && Path::new(&self.project_path).is_dir()
                 {
-                    open_in_file_explorer(self.project_path.clone());
+                    open_in_file_explorer(&self.project_path);
                 }
 
                 // edit text for project
@@ -168,7 +168,7 @@ impl Editor {
                 {
                     if let Some(path) = Path::new(&self.config_file).parent() {
                         if path.is_dir() {
-                            open_in_file_explorer(path.to_str().unwrap().to_string());
+                            open_in_file_explorer(path.to_str().unwrap());
                         }
                     }
                 }
