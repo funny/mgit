@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
-use crate::core::repo::{cmp_local_remote, exclude_ignore};
-use crate::core::repos::load_config;
+use crate::core::repo::{cmp_local_remote, repos_to_map_with_ignore};
+use crate::core::repos::TomlConfig;
 
 use crate::utils::cmd::retry;
 use crate::utils::error::{MgitError, MgitResult, OpsErrors};
@@ -68,24 +68,21 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
         )));
     }
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else {
+    let Some(toml_config) = TomlConfig::load(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return Ok("No repos to fetch".into());
     };
     let default_branch = toml_config.default_branch;
 
-    // ignore specified repositories
-    exclude_ignore(
-        &mut toml_repos,
-        ignore.map(|it| it.iter().collect::<Vec<&String>>()),
-    );
+    // retain repos exclude ignore repositories
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
 
-    progress.repos_start(toml_repos.len());
+    progress.repos_start(repos_map.len());
 
-    // user a counter
+    // use a counter
     let counter = RelaxedCounter::new(1);
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
@@ -96,14 +93,13 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
 
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let errors: Vec<_> = thread_pool.install(|| {
-        let res = toml_repos
+        let res = repos_map
             .iter()
-            .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|(index, toml_repo)| {
-                let idx = counter.inc();
-                let repo_info = RepoInfo::new(index, idx, toml_repo);
+            .map(|(id, toml_repo)| {
+                let index = counter.inc();
+                let repo_info = RepoInfo::new(*id, index, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());

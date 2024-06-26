@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use eframe::egui;
 
-use mgit::core::repos::{load_config, TomlConfig};
+use mgit::core::repos::TomlConfig;
 use mgit::utils::path::PathExtension;
 
 use crate::editor::misc::open_in_file_explorer;
@@ -16,7 +16,7 @@ impl Editor {
     pub(crate) fn load_config(&mut self) {
         let config_file = PathBuf::from(&self.config_file);
         if config_file.is_file() {
-            if let Some(toml_config) = load_config(&config_file) {
+            if let Some(toml_config) = TomlConfig::load(&config_file) {
                 self.toml_config = toml_config;
                 // init repo states and sync ignore
                 if let Some(toml_repos) = &self.toml_config.repos {
