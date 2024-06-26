@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::git::{RemoteRef, ResetType, StashMode};
-use crate::core::repo::{cmp_local_remote, exclude_ignore};
-use crate::core::repos::load_config;
+use crate::core::repo::{cmp_local_remote, repos_to_map_with_ignore};
+use crate::core::repos::TomlConfig;
 
 use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch};
@@ -102,7 +102,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else {
+    let Some(toml_config) = TomlConfig::load(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
@@ -116,17 +116,16 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load .gitrepos
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return Ok("No repos to sync".into());
     };
 
     let default_branch = toml_config.default_branch;
 
-    // ignore specified repositories
-    let ignore = ignore.map(|r| r.iter().collect::<Vec<&String>>());
-    exclude_ignore(&mut toml_repos, ignore);
+    // retain repos exclude ignore repositories
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
 
-    progress.repos_start(toml_repos.len());
+    progress.repos_start(repos_map.len());
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
     let counter = RelaxedCounter::new(1);
@@ -144,14 +143,13 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
 
     // pool.install means that `.par_iter()` will use the thread pool we've built above.
     let (succ_repos, error_repos) = thread_pool.install(|| {
-        let res: Vec<ParallelResult> = toml_repos
+        let res: Vec<ParallelResult> = repos_map
             .iter()
-            .enumerate()
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|(index, toml_repo)| {
-                let idx = counter.inc();
-                let mut repo_info = RepoInfo::new(index, idx, toml_repo);
+            .map(|(id, toml_repo)| {
+                let index = counter.inc();
+                let mut repo_info = RepoInfo::new(*id, index, toml_repo);
 
                 let progress = progress.clone();
                 progress.repo_start(&repo_info, "waiting...".into());

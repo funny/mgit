@@ -4,7 +4,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use crate::core::repos::load_config;
+use crate::core::repos::TomlConfig;
 use crate::utils::error::{MgitError, MgitResult};
 use crate::utils::logger;
 use crate::utils::style_message::StyleMessage;
@@ -42,7 +42,7 @@ pub fn clean_repo(options: CleanOptions) -> MgitResult {
         )));
     }
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else {
+    let Some(toml_config) = TomlConfig::load(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 

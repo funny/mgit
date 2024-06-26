@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
-use crate::core::repo::exclude_ignore;
+use crate::core::repo::repos_to_map_with_ignore;
 use crate::core::repo::TomlRepo;
-use crate::core::repos::load_config;
+use crate::core::repos::TomlConfig;
 use crate::utils::error::{MgitError, MgitResult};
 
 use crate::utils::logger;
@@ -55,27 +55,24 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
         )));
     }
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else {
+    let Some(toml_config) = TomlConfig::load(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
     // handle track
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return Ok("No repos to track".into());
     };
 
     let default_branch = toml_config.default_branch;
 
-    // ignore specified repositories
-    exclude_ignore(
-        &mut toml_repos,
-        ignore.map(|it| it.iter().collect::<Vec<&String>>()),
-    );
+    // retain repos exclude ignore repositories
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
 
-    progress.repos_start(toml_repos.len());
+    progress.repos_start(repos_map.len());
 
-    toml_repos.iter().enumerate().for_each(|(id, repo)| {
-        let repo_info = RepoInfo::new(id, id + 1, repo);
+    repos_map.iter().enumerate().for_each(|(idx, (id, repo))| {
+        let repo_info = RepoInfo::new(*id, idx + 1, repo);
         progress.repo_start(&repo_info, "tracking repo".into());
         match set_tracking_remote_branch(path, repo, &default_branch) {
             Ok(msg) => {
@@ -83,7 +80,7 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
                 progress.repo_end(&repo_info, msg);
             }
             Err(e) => {
-                progress.repo_error(&repo_info, format!("failed： {}", e).into());
+                progress.repo_error(&repo_info, format!("failed: {}", e).into());
             }
         }
     });

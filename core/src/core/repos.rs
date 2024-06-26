@@ -14,6 +14,26 @@ pub struct TomlConfig {
 }
 
 impl TomlConfig {
+    /// deserialize config file (.gitrepos) with full file path
+    pub fn load(path: impl AsRef<Path>) -> Option<Self> {
+        if !path.as_ref().is_file() {
+            return None;
+        }
+
+        // NOTE: mac not recognize "."
+        let content = fs::read_to_string(path).unwrap().replace("\".\"", "\"\"");
+
+        let Ok(mut toml_config) = toml::from_str::<TomlConfig>(&content) else {
+            return None;
+        };
+
+        if let Some(item) = toml_config.repos.as_mut() {
+            item.sort();
+        }
+
+        Some(toml_config)
+    }
+
     // serialize config file .gitrepos
     pub fn serialize(&self) -> String {
         let toml = toml_edit::ser::to_item(self).unwrap();
@@ -78,20 +98,4 @@ impl TomlConfig {
 
         out
     }
-}
-
-/// deserialize config file (.gitrepos) with full file path
-pub fn load_config(config_file: impl AsRef<Path>) -> Option<TomlConfig> {
-    let mut toml_config = None;
-    if config_file.as_ref().is_file() {
-        // NOTE: mac not recognize "."
-        let txt = fs::read_to_string(config_file)
-            .unwrap()
-            .replace("\".\"", "\"\"");
-
-        if let Ok(res) = toml::from_str(txt.as_str()) {
-            toml_config = Some(res);
-        }
-    }
-    toml_config
 }

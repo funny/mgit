@@ -1,11 +1,11 @@
 use anyhow::Context;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
-use crate::utils::path::PathExtension;
 use crate::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -14,7 +14,7 @@ pub struct RepoId {
     pub repo: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "kebab-case")]
 pub struct TomlRepo {
     pub local: Option<String>,
@@ -62,20 +62,35 @@ impl TomlRepo {
     }
 }
 
-pub fn exclude_ignore(toml_repos: &mut Vec<TomlRepo>, ignore: Option<Vec<&String>>) {
-    // let mut toml_repos_map = toml_repos
-    //     .iter()
-    //     .enumerate()
-    //     .collect::<HashMap<usize, &TomlRepo>>();
-    if let Some(ignore_paths) = ignore {
-        let ignore_paths = ignore_paths.into_iter().collect::<HashSet<_>>();
-        toml_repos.retain(|v| {
-            if v.local.is_none() {
-                return false;
-            }
-            !ignore_paths.contains(&v.local.as_ref().unwrap().display_path())
-        });
+pub fn repos_to_map_with_ignore(
+    repos: Vec<TomlRepo>,
+    ignore: Option<&Vec<String>>,
+) -> HashMap<usize, TomlRepo> {
+    let mut map = HashMap::new();
+
+    let mut ignore_paths = match ignore {
+        Some(ignore_paths) => ignore_paths
+            .iter()
+            .map(|p| p.clone())
+            .collect::<HashSet<_>>(),
+        None => HashSet::new(),
+    };
+
+    if ignore_paths.contains(".") {
+        ignore_paths.insert("".to_string());
     }
+
+    for (idx, repo) in repos.into_iter().enumerate() {
+        if repo.local.is_none() {
+            continue;
+        }
+
+        if ignore_paths.contains(repo.local.as_ref().unwrap()) {
+            continue;
+        }
+        map.insert(idx, repo);
+    }
+    map
 }
 
 /// get full ahead/behind values between branches

@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use std::path::{Path, PathBuf};
 
 use crate::core::git;
-use crate::core::repos::load_config;
+use crate::core::repos::TomlConfig;
 use crate::ops::CleanOptions;
 use crate::utils::error::{MgitError, MgitResult};
 use crate::utils::path::PathExtension;
@@ -42,7 +42,7 @@ pub fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
     }
 
     // load config file(like .gitrepos)
-    let Some(toml_config) = load_config(config_path) else {
+    let Some(toml_config) = TomlConfig::load(config_path) else {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
