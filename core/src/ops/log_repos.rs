@@ -8,7 +8,7 @@ use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
 use crate::core::git::log_current;
-use crate::core::repos::{load_config, TomlConfig};
+use crate::core::repos::TomlConfig;
 use crate::utils::error::{MgitError, MgitResult};
 use crate::utils::path::PathExtension;
 use crate::utils::{logger, StyleMessage};
@@ -56,7 +56,7 @@ impl LogReposOptions {
         }
 
         // load config file(like .gitrepos)
-        let Some(toml_config) = load_config(&config_path) else {
+        let Some(toml_config) = TomlConfig::load(&config_path) else {
             return Err(anyhow!(MgitError::LoadConfigFailed));
         };
 
