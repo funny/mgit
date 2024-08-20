@@ -1,6 +1,11 @@
 use clap::Args;
-use mgit::ops::ListFilesOptions;
 use std::path::PathBuf;
+
+use mgit::ops::{self, ListFilesOptions};
+use mgit::utils::error::MgitResult;
+use mgit::utils::StyleMessage;
+
+use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// List tree
@@ -11,6 +16,15 @@ pub(crate) struct ListFilesCommand {
     /// Use specified config file
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
+}
+
+impl CliCommad for ListFilesCommand {
+    fn exec(self) -> MgitResult {
+        let files = ops::list_files(self.into())?;
+        println!("{}", files.join("\n"));
+
+        Ok(StyleMessage::default())
+    }
 }
 
 impl From<ListFilesCommand> for ListFilesOptions {

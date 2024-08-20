@@ -1,6 +1,11 @@
 use clap::Args;
-use mgit::ops::TrackOptions;
 use std::path::PathBuf;
+
+use mgit::ops::{self, TrackOptions};
+use mgit::utils::error::MgitResult;
+
+use crate::utils::progress::MultiProgress;
+use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Track remote branch
@@ -15,6 +20,13 @@ pub(crate) struct TrackCommand {
     /// Ignore specified repositories for track
     #[arg(long)]
     ignore: Option<Vec<String>>,
+}
+
+impl CliCommad for TrackCommand {
+    fn exec(self) -> MgitResult {
+        let progress = MultiProgress::default();
+        ops::track(self.into(), progress)
+    }
 }
 
 impl From<TrackCommand> for TrackOptions {

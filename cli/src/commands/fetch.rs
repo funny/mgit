@@ -1,6 +1,11 @@
 use clap::{ArgAction, Args};
-use mgit::ops::FetchOptions;
 use std::path::PathBuf;
+
+use mgit::ops::{self, FetchOptions};
+use mgit::utils::error::MgitResult;
+
+use crate::utils::progress::MultiProgress;
+use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 pub(crate) struct FetchCommand {
@@ -26,6 +31,13 @@ pub(crate) struct FetchCommand {
     /// Ignore specified repositories for fetch
     #[arg(long)]
     ignore: Option<Vec<String>>,
+}
+
+impl CliCommad for FetchCommand {
+    fn exec(self) -> MgitResult {
+        let progress = MultiProgress::default();
+        ops::fetch_repos(self.into(), progress)
+    }
 }
 
 impl From<FetchCommand> for FetchOptions {
