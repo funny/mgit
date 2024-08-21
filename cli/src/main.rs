@@ -30,6 +30,7 @@ fn main() -> color_eyre::Result<()> {
         Commands::ListFiles(cmd) => cmd.exec(),
         Commands::Track(cmd) => cmd.exec(),
         Commands::LogRepos(cmd) => cmd.exec(),
+        Commands::NewBranch(cmd) => cmd.exec(),
     };
 
     println!("{}", result.map_err(|e| eyre!(e))?);

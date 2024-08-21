@@ -92,6 +92,11 @@ impl TomlConfig {
                     out.push_str(&format!("commit = {}\n", item));
                 }
 
+                // sparse = "[]"
+                if let Some(item) = table.get("sparse") {
+                    out.push_str(&format!("sparse = {}\n", item));
+                }
+
                 out.push('\n');
             }
         }

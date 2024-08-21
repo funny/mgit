@@ -109,10 +109,12 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     // remove unused repositories when use '--config' option
     // also if input_path not exists, skip this process
     if stash_mode == StashMode::Hard && path.is_dir() {
-        clean_repo(CleanOptions::new(
+        let res = clean_repo(CleanOptions::new(
             Some(path.clone()),
             Some(config_path.clone()),
         ))?;
+
+        logger::info(res);
     }
 
     // load .gitrepos

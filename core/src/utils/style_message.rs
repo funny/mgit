@@ -154,13 +154,13 @@ impl StyleMessage {
     pub(crate) fn remove_repo_succ(amount: u32) -> Self {
         let mut msg = StyleMessage::new();
         msg = match amount {
-            0 => msg.plain_text("no repository is removed."),
+            0 => msg.plain_text("no repository is removed.\n"),
             1 => msg
                 .styled_text("1", &GREEN_BOLD)
-                .plain_text(" repository is removed."),
+                .plain_text(" repository is removed.\n"),
             _ => msg
                 .styled_text(amount.to_string(), &GREEN_BOLD)
-                .plain_text(" repositories are removed."),
+                .plain_text(" repositories are removed.\n"),
         };
         msg
     }
@@ -313,6 +313,13 @@ impl StyleMessage {
             diff = diff.plain_text(", ").join(changes_desc)
         }
         diff
+    }
+
+    pub(crate) fn git_new_branch(path: impl AsRef<Path>, branch: impl AsRef<str>) -> Self {
+        StyleMessage::new()
+            .styled_text(path.display_path(), &PURPLE_BOLD)
+            .plain_text(": ")
+            .styled_text(branch.as_ref(), &BLUE)
     }
 }
 
