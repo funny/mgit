@@ -319,6 +319,6 @@ pub fn new_remote_branch(
     new_branch: &str,
 ) -> Result<(), anyhow::Error> {
     let arg = format!("origin/{}:refs/heads/{}", base_branch, new_branch);
-    let args = vec!["push", "origin", arg.as_str()];
+    let args = vec!["push", "origin", arg.as_str(), "--force"];
     exec_cmd(path, "git", &args).map(|_| ())
 }

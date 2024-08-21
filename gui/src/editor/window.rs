@@ -8,6 +8,7 @@ use crate::utils::command::CommandType;
 pub(crate) mod about;
 pub(crate) mod dialog;
 pub(crate) mod error;
+pub(crate) mod new_branch;
 pub(crate) mod options;
 
 impl Editor {
@@ -44,6 +45,15 @@ impl Editor {
         if self.sync_hard_dialog.is_ok() {
             self.exec_ops(CommandType::SyncHard);
         }
+
+        // show new branch window
+        self.new_branch_window
+            .show(ctx, eframe, &mut self.new_branch_is_open);
+        if self.new_branch_window.comfirm_create {
+            self.new_branch_window.comfirm_create = false;
+            self.new_branch_is_open = false;
+            self.exec_ops(CommandType::NewBranch)
+        }
     }
 
     pub(crate) fn close_all_windows(&mut self) {
@@ -51,6 +61,7 @@ impl Editor {
         self.options_is_open = false;
         self.clean_is_open = false;
         self.sync_hard_is_open = false;
+        self.new_branch_is_open = false;
     }
 }
 

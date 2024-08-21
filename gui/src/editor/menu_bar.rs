@@ -34,6 +34,14 @@ impl Editor {
                     ui.close_menu();
                 }
 
+                ui.separator();
+
+                // refresh button
+                if ui.button("  Refresh").clicked() {
+                    self.exec_ops(CommandType::Refresh);
+                    ui.close_menu();
+                }
+
                 // fetch button
                 if ui.button("  Fetch").clicked() {
                     self.exec_ops(CommandType::Fetch);
@@ -52,16 +60,25 @@ impl Editor {
                     ui.close_menu();
                 }
 
+                ui.separator();
+
+                // refresh button
+                if ui.button("  New Branch").clicked() {
+                    self.close_all_windows();
+                    self.new_branch_window.update_repo(
+                        &self.project_path,
+                        &self.config_file,
+                        &self.toml_config,
+                    );
+                    self.new_branch_is_open = true;
+                    ui.close_menu();
+                }
+
+                ui.separator();
                 // clean button - open ok/cancel dialog
                 if ui.button("  Clean").clicked() {
                     self.close_all_windows();
                     self.clean_is_open = true;
-                    ui.close_menu();
-                }
-
-                // refresh button
-                if ui.button("  Refresh").clicked() {
-                    self.exec_ops(CommandType::Refresh);
                     ui.close_menu();
                 }
             });
