@@ -132,7 +132,15 @@ impl Editor {
                         &self.get_snapshot_ignore(),
                     );
 
-                    self.config_file = format!("{}/.gitrepos", &self.project_path);
+                    // restore last config file
+                    self.config_file = match &self.get_recent_configs() {
+                        Some(recent_configs) if !recent_configs.is_empty() => {
+                            recent_configs[0].clone()
+                        }
+                        _ => {
+                            format!("{}/.gitrepos", &self.project_path)
+                        }
+                    }
                 }
                 ui.end_row();
 

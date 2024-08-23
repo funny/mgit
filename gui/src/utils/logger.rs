@@ -12,7 +12,8 @@ use mgit::utils::style_message::StyleMessage;
 
 pub(crate) static GUI_LOGGER: GuiLogger = GuiLogger {};
 lazy_static! {
-    pub(crate) static ref LOG_DIR: PathBuf = PathBuf::from("log");
+    pub(crate) static ref LOG_DIR: PathBuf =
+        home::home_dir().unwrap().join(".mgit/logs").to_path_buf();
 }
 
 #[derive(Clone, Default)]
@@ -30,17 +31,21 @@ impl logger::Log for GuiLogger {
 
 pub(crate) fn init_log() {
     logger::set_logger(&GUI_LOGGER);
-    let regular_name = "regular_out".to_string();
-    let regular_out = FileAppender::builder()
+
+    let _ = std::fs::remove_dir_all(LOG_DIR.as_path());
+
+    let log_file_name = "log.txt".to_string();
+    let log_file_appender = FileAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{l} - {m}{n}")))
-        .build(LOG_DIR.join(&regular_name))
+        .build(LOG_DIR.join(&log_file_name))
         .unwrap();
+
     let config = Config::builder()
-        .appender(Appender::builder().build(&regular_name, Box::new(regular_out)))
-        .logger(Logger::builder().build(&regular_name, LevelFilter::Info))
+        .appender(Appender::builder().build(&log_file_name, Box::new(log_file_appender)))
+        .logger(Logger::builder().build(&log_file_name, LevelFilter::Info))
         .build(
             Root::builder()
-                .appender(&regular_name)
+                .appender(&log_file_name)
                 .build(LevelFilter::Info),
         )
         .unwrap();
