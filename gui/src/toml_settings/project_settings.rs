@@ -6,6 +6,7 @@ pub struct TomlProjectSettings {
     pub project: Option<String>,
     pub recent_configs: Option<Vec<String>>,
     pub snapshot_ignore: Option<String>,
+    pub new_branch_ignore: Option<String>,
     // --ignore for fetch, sync and track
     pub ignore: Option<String>,
 }
@@ -72,6 +73,13 @@ impl TomlProjectSettings {
         self.snapshot_ignore = match snapshot_ignore.is_empty() {
             true => None,
             false => Some(snapshot_ignore),
+        };
+    }
+
+    pub fn save_new_branch_ignore(&mut self, new_branch_ignore: String) {
+        self.new_branch_ignore = match new_branch_ignore.is_empty() {
+            true => None,
+            false => Some(new_branch_ignore),
         };
     }
 

@@ -114,6 +114,42 @@ impl super::Editor {
         })
     }
 
+    pub(crate) fn get_new_branch_ignores(&self) -> Option<Vec<String>> {
+        self.toml_project_settings
+            .new_branch_ignore
+            .as_ref()
+            .map(|content| {
+                content
+                    .trim()
+                    .split('\n')
+                    .filter_map(|s| {
+                        let s = s.trim().to_string();
+                        if s.is_empty() {
+                            None
+                        } else {
+                            Some(s)
+                        }
+                    })
+                    .collect()
+            })
+    }
+
+    pub(crate) fn save_new_branch_ignore(&mut self) {
+        let new_branch_ignore = self
+            .new_branch_window
+            .get_ignore_repos()
+            .iter()
+            .map(|s| s.display_path())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        if !self.recent_projects.is_empty() {
+            self.toml_project_settings
+                .save_new_branch_ignore(new_branch_ignore.to_owned());
+            self.save_project_settings();
+        }
+    }
+
     pub(crate) fn save_snapshot_ignore(&mut self) {
         let snapshot_ignore = &self.options_window.snapshot_ignore;
         if !self.recent_projects.is_empty() {

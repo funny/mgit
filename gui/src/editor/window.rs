@@ -20,6 +20,7 @@ impl Editor {
         // show options window
         self.options_window
             .show(ctx, eframe, &mut self.options_is_open);
+
         if self.options_is_open {
             self.toml_user_settings.save_options(&self.options_window);
             self.save_snapshot_ignore();
@@ -35,6 +36,7 @@ impl Editor {
 
         // show clean dialog
         self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
+
         if self.clean_dialog.is_ok() {
             self.exec_ops(CommandType::Clean);
         }
@@ -42,6 +44,7 @@ impl Editor {
         // show sync hard dialog
         self.sync_hard_dialog
             .show(ctx, eframe, &mut self.sync_hard_is_open);
+
         if self.sync_hard_dialog.is_ok() {
             self.exec_ops(CommandType::SyncHard);
         }
@@ -49,6 +52,11 @@ impl Editor {
         // show new branch window
         self.new_branch_window
             .show(ctx, eframe, &mut self.new_branch_is_open);
+
+        if self.new_branch_is_open {
+            self.save_new_branch_ignore();
+        }
+
         if self.new_branch_window.comfirm_create {
             self.new_branch_window.comfirm_create = false;
             self.new_branch_is_open = false;
