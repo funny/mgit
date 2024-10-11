@@ -3,6 +3,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
+use mgit::utils::logger::Log;
+use mgit::utils::path::PathExtension;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use mgit::core::git;
@@ -17,6 +19,7 @@ use mgit::utils::progress::Progress;
 use crate::editor::Editor;
 use crate::toml_settings::SyncType;
 use crate::utils::command::CommandType;
+use crate::utils::logger::GUI_LOGGER;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum StateType {
@@ -97,6 +100,7 @@ impl Editor {
                         .unwrap();
                 });
             }
+
             CommandType::Snapshot => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
@@ -114,13 +118,17 @@ impl Editor {
 
                 let options = SnapshotOptions::new(path, config_path, force, snapshot_type, ignore);
                 let send = self.send.clone();
+
+                self.push_recent_config();
                 self.clear_status();
+
                 std::thread::spawn(move || {
                     let _ = ops::snapshot_repo(options);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
+
             CommandType::Fetch => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
@@ -137,6 +145,7 @@ impl Editor {
                     let _ = ops::fetch_repos(options, progress);
                 });
             }
+
             CommandType::Sync | CommandType::SyncHard => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
@@ -179,10 +188,12 @@ impl Editor {
 
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
+
                 std::thread::spawn(move || {
                     let _ = ops::sync_repo(options, progress);
                 });
             }
+
             CommandType::Track => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
@@ -192,10 +203,12 @@ impl Editor {
 
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
+
                 std::thread::spawn(move || {
                     let _ = ops::track(options, progress);
                 });
             }
+
             CommandType::Clean => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
@@ -204,12 +217,14 @@ impl Editor {
                 let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
+
                 std::thread::spawn(move || {
                     let _ = ops::clean_repo(options);
                     send.send(RepoMessage::new(command_type, RepoState::default(), None))
                         .unwrap();
                 });
             }
+
             CommandType::Refresh => {
                 self.progress.store(0, Ordering::Relaxed);
                 self.clear_status();
@@ -217,6 +232,28 @@ impl Editor {
                 self.reset_repo_state(StateType::Updating);
                 self.get_repo_states();
             }
+
+            CommandType::NewBranch => {
+                let options = self.new_branch_window.get_options();
+
+                if let Some(path) = options.new_config_path.as_ref() {
+                    self.config_file = path.norm_path();
+                    self.push_recent_config();
+                }
+
+                let send = self.send.clone();
+                self.clear_status();
+
+                std::thread::spawn(move || {
+                    if let Err(e) = ops::new_branch(options) {
+                        GUI_LOGGER.error(e.to_string().into());
+                    }
+
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
+                        .unwrap();
+                });
+            }
+
             CommandType::None => {}
         }
     }

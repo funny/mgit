@@ -6,6 +6,7 @@ use eframe::egui;
 use eframe::egui::FontFamily;
 
 use mgit::core::repos::TomlConfig;
+use window::new_branch::NewBranchWindow;
 
 use crate::editor::misc::{check_git_valid, configure_text_styles, setup_custom_fonts};
 use crate::editor::ops::{RepoMessage, RepoState};
@@ -59,6 +60,10 @@ pub struct Editor {
     options_window: OptionsWindow,
     options_is_open: bool,
 
+    // new branch window
+    new_branch_window: NewBranchWindow,
+    new_branch_is_open: bool,
+
     // clean dialog
     clean_dialog: Dialog,
     clean_is_open: bool,
@@ -104,6 +109,10 @@ impl Default for Editor {
             // option window
             options_window: Default::default(),
             options_is_open: false,
+
+            // new branch windows
+            new_branch_window: Default::default(),
+            new_branch_is_open: false,
 
             // clean dialog
             clean_dialog: Dialog::create("Clean".to_string(), "Confirm clean?".to_string()),

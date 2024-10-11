@@ -40,7 +40,6 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
     let config_path = &options.config_path;
     let ignore = options.ignore.as_ref();
 
-    // starting clean repos
     logger::info("Track status:");
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {

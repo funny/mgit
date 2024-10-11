@@ -1,6 +1,11 @@
 use clap::{ArgAction, Args};
-use mgit::ops::SyncOptions;
 use std::path::PathBuf;
+
+use mgit::ops::{self, SyncOptions};
+use mgit::utils::error::MgitResult;
+
+use crate::utils::progress::MultiProgress;
+use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 pub(crate) struct SyncCommand {
@@ -42,6 +47,13 @@ pub(crate) struct SyncCommand {
     /// Ignore specified repositories for sync
     #[arg(long)]
     ignore: Option<Vec<String>>,
+}
+
+impl CliCommad for SyncCommand {
+    fn exec(self) -> MgitResult {
+        let progress = MultiProgress::default();
+        ops::sync_repo(self.into(), progress)
+    }
 }
 
 impl From<SyncCommand> for SyncOptions {

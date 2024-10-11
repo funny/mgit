@@ -1,6 +1,10 @@
 use clap::{ArgAction, Args};
-use mgit::ops::{SnapshotOptions, SnapshotType};
 use std::path::PathBuf;
+
+use mgit::ops::{self, SnapshotOptions, SnapshotType};
+use mgit::utils::error::MgitResult;
+
+use crate::CliCommad;
 
 /// Snapshot git repos
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
@@ -23,6 +27,12 @@ pub(crate) struct SnapshotCommand {
     /// Ignore specified repositories for snapshot
     #[arg(long)]
     pub ignore: Option<Vec<String>>,
+}
+
+impl CliCommad for SnapshotCommand {
+    fn exec(self) -> MgitResult {
+        ops::snapshot_repo(self.into())
+    }
 }
 
 impl From<SnapshotCommand> for SnapshotOptions {

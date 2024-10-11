@@ -312,3 +312,13 @@ pub fn sparse_checkout_disable(path: impl AsRef<Path>) -> Result<(), anyhow::Err
     let args = vec!["sparse-checkout", "disable"];
     exec_cmd(path, "git", &args).map(|_| ())
 }
+
+pub fn new_remote_branch(
+    path: impl AsRef<Path>,
+    base_branch: &str,
+    new_branch: &str,
+) -> Result<(), anyhow::Error> {
+    let arg = format!("origin/{}:refs/heads/{}", base_branch, new_branch);
+    let args = vec!["push", "origin", arg.as_str(), "--force"];
+    exec_cmd(path, "git", &args).map(|_| ())
+}

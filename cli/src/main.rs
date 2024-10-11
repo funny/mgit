@@ -1,53 +1,36 @@
-mod cli;
-mod commands;
-mod utils;
-
 use clap::Parser;
 use color_eyre::eyre::eyre;
 use log::LevelFilter;
+
 use log4rs::append::console::ConsoleAppender;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::Config;
-use mgit::ops;
+
 use mgit::utils::error::MgitResult;
-use mgit::utils::StyleMessage;
 
 use crate::cli::{Cli, Commands};
+use crate::commands::CliCommad;
 use crate::utils::logger::TERM_LOGGER;
-use crate::utils::progress::MultiProgress;
+
+mod cli;
+mod commands;
+mod utils;
 
 fn main() -> color_eyre::Result<()> {
     init_log();
 
-    let progress = MultiProgress::default();
     let cli = Cli::parse();
     let result: MgitResult = match cli.command {
-        Commands::Init(options) => ops::init_repo(options.into()),
-        Commands::Snapshot(options) => ops::snapshot_repo(options.into()),
-        Commands::Fetch(options) => ops::fetch_repos(options.into(), progress),
-        Commands::Sync(options) => ops::sync_repo(options.into(), progress),
-        Commands::Clean(options) => ops::clean_repo(options.into()),
-        Commands::ListFiles(options) => match ops::list_files(options.into()) {
-            Ok(files) => {
-                println!("{}", files.join("\n"));
-                Ok(StyleMessage::default())
-            }
-            Err(e) => Err(e),
-        },
-        Commands::Track(options) => ops::track(options.into(), progress),
-        Commands::LogRepos(options) => match ops::log_repos(options.into()) {
-            Ok(repo_logs) => {
-                repo_logs.into_iter().for_each(|repo_log| match repo_log {
-                    Ok(repo_log) => {
-                        println!("{}", repo_log);
-                    }
-                    Err(e) => eprintln!("{:?}", eyre!(e)),
-                });
-                Ok(StyleMessage::default())
-            }
-            Err(e) => Err(e),
-        },
+        Commands::Init(cmd) => cmd.exec(),
+        Commands::Snapshot(cmd) => cmd.exec(),
+        Commands::Fetch(cmd) => cmd.exec(),
+        Commands::Sync(cmd) => cmd.exec(),
+        Commands::Clean(cmd) => cmd.exec(),
+        Commands::ListFiles(cmd) => cmd.exec(),
+        Commands::Track(cmd) => cmd.exec(),
+        Commands::LogRepos(cmd) => cmd.exec(),
+        Commands::NewBranch(cmd) => cmd.exec(),
     };
 
     println!("{}", result.map_err(|e| eyre!(e))?);

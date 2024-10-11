@@ -1,6 +1,10 @@
 use clap::{ArgAction, Args};
-use mgit::ops::InitOptions;
 use std::path::PathBuf;
+
+use mgit::ops::{self, InitOptions};
+use mgit::utils::error::MgitResult;
+
+use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 pub(crate) struct InitCommand {
@@ -10,6 +14,12 @@ pub(crate) struct InitCommand {
     /// Force remove git repos without prompt
     #[arg(long, action = ArgAction::SetTrue)]
     pub force: bool,
+}
+
+impl CliCommad for InitCommand {
+    fn exec(self) -> MgitResult {
+        ops::init_repo(self.into())
+    }
 }
 
 impl From<InitCommand> for InitOptions {

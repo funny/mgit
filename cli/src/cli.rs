@@ -44,4 +44,8 @@ pub(crate) enum Commands {
     /// Log git repos
     #[command(name = "log-repos")]
     LogRepos(LogReposCommand),
+
+    /// Log git repos
+    #[command(name = "new-branch")]
+    NewBranch(NewBranchCommand),
 }
