@@ -88,7 +88,7 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
 
     logger::info("search and add git repos:");
 
-    let mut count = 0;
+    let mut file_count = 0;
     let input_path = path.to_owned();
     let mut it = WalkDir::new(&input_path).into_iter();
     let mut repos: Vec<TomlRepo> = Vec::new();
@@ -147,6 +147,16 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
                 }
             }
 
+            // get sparse checkout list
+            let sparse = match git::sparse_checkout_list(pb.as_path()) {
+                Err(_) => None,
+                Ok(content) if content.trim().is_empty() => None,
+                Ok(content) => {
+                    let list: Vec<_> = content.trim().lines().map(|s| s.to_string()).collect();
+                    Some(list)
+                }
+            };
+
             // set toml repo
             let toml_repo = TomlRepo {
                 local: Some(norm_str.clone()),
@@ -154,7 +164,7 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
                 branch,
                 tag: None,
                 commit,
-                sparse: None,
+                sparse,
             };
             repos.push(toml_repo);
             logger::info(format!("  + {}", norm_str));
@@ -164,7 +174,7 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
             continue;
         }
 
-        count += 1;
+        file_count += 1;
     }
 
     // keep list sort same on different device
@@ -175,8 +185,13 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
             .to_lowercase()
             .cmp(&b.local.as_ref().unwrap().to_lowercase())
     });
+
+    let repo_count = repos.len();
     toml_config.repos = Some(repos);
-    logger::info(format!("{} files scanned", count));
+    logger::info(format!(
+        "{} repos are added, {} files are scanned.",
+         repo_count,file_count
+    ));
 
     // serialize .gitrepos
     let toml_string = toml_config.serialize();
