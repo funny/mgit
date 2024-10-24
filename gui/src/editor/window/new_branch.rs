@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use eframe::egui;
@@ -35,9 +36,11 @@ impl NewBranchWindow {
         root_path: impl AsRef<Path>,
         config_path: impl AsRef<Path>,
         toml_config: &TomlConfig,
+        ignore: &[impl AsRef<str>],
     ) {
         self.comfirm_create = false;
         self.repos.clear();
+        let ignore: HashSet<String> = ignore.iter().map(|s| s.as_ref().to_string()).collect();
 
         self.root_path = root_path.as_ref().norm_path();
         self.config_path = config_path.as_ref().norm_path();
@@ -55,20 +58,24 @@ impl NewBranchWindow {
                 continue;
             };
 
-            self.repos.push((local, true));
+            let selected = !ignore.contains(&local.display_path());
+
+            self.repos.push((local, selected));
         }
     }
 
-    pub fn get_options(&self) -> NewBranchOptions {
-        let ignore_repos: Vec<_> = self
-            .repos
+    pub fn get_ignore_repos(&self) -> Vec<String> {
+        self.repos
             .iter()
             .filter_map(|(repo, selected)| match selected {
                 true => None,
                 false => Some(repo.clone()),
             })
-            .collect();
+            .collect()
+    }
 
+    pub fn get_options(&self) -> NewBranchOptions {
+        let ignore_repos: Vec<_> = self.get_ignore_repos();
         let ignore = match ignore_repos.is_empty() {
             true => None,
             false => Some(ignore_repos),
@@ -112,7 +119,7 @@ impl super::View for NewBranchWindow {
         ui.spacing_mut().item_spacing = egui::vec2(0.0, 10.0);
         ui.add_space(10.0);
 
-        ui.label("Tips: This will create new remote branch in force mode.");
+        ui.label("Tips: This will create a new remote branch in force mode.");
         ui.separator();
 
         egui::Grid::new("new_branch_options_grid")
@@ -125,7 +132,7 @@ impl super::View for NewBranchWindow {
                 let singleline_size = Vec2::new(440.0, 20.0);
                 ui.add_sized(
                     singleline_size,
-                    egui::TextEdit::singleline(&mut self.new_branch),
+                    egui::TextEdit::singleline(&mut self.new_branch).hint_text("New branch name"),
                 );
                 ui.end_row();
 

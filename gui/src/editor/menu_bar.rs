@@ -65,11 +65,16 @@ impl Editor {
                 // refresh button
                 if ui.button("  New Branch").clicked() {
                     self.close_all_windows();
+
+                    let new_branch_ignore = self.get_new_branch_ignores().unwrap_or(Vec::new());
+
                     self.new_branch_window.update_repo(
                         &self.project_path,
                         &self.config_file,
                         &self.toml_config,
+                        &new_branch_ignore,
                     );
+
                     self.new_branch_is_open = true;
                     ui.close_menu();
                 }
