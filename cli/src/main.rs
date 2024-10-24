@@ -17,7 +17,7 @@ mod cli;
 mod commands;
 mod utils;
 
-fn main() -> color_eyre::Result<()> {
+fn main() {
     init_log();
 
     let cli = Cli::parse();
@@ -33,8 +33,13 @@ fn main() -> color_eyre::Result<()> {
         Commands::NewBranch(cmd) => cmd.exec(),
     };
 
-    println!("{}", result.map_err(|e| eyre!(e))?);
-    Ok(())
+    match result {
+        Ok(_) => std::process::exit(0),
+        Err(e) => {
+            println!("{}", eyre!(e));
+            std::process::exit(1)
+        }
+    }
 }
 
 fn init_log() {
