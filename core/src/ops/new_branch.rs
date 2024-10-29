@@ -69,22 +69,6 @@ pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
         return Ok("No repos to new branch".into());
     };
 
-    // let default_branch = toml_config.default_branch;
-
-    // retain repos exclude ignore repositories
-    // let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
-
-    // check branch is valid in config
-    for toml_repo in toml_repos.iter() {
-        if toml_repo.branch.is_none() {
-            let msg = format!(
-                "not found branch in config, {}",
-                toml_repo.local.clone().unwrap_or("Empty local".to_string())
-            );
-            return Err(anyhow!(msg));
-        }
-    }
-
     if ignore.contains(&".".to_string()) {
         ignore.push("".to_string());
     }
@@ -94,6 +78,11 @@ pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
         let Some(local) = toml_repo.local.as_ref() else {
             continue;
         };
+
+        // only support new branch from exsit branch
+        if toml_repo.branch.is_none() {
+            continue;
+        }
 
         if ignore.contains(local) {
             continue;
