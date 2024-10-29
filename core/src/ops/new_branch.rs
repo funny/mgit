@@ -14,6 +14,7 @@ pub struct NewBranchOptions {
     pub config_path: PathBuf,
     pub new_config_path: Option<PathBuf>,
     pub new_branch: String,
+    froce: bool,
     pub ignore: Option<Vec<String>>,
 }
 
@@ -23,6 +24,7 @@ impl NewBranchOptions {
         config_path: Option<impl AsRef<Path>>,
         new_config_path: Option<PathBuf>,
         new_branch: String,
+        froce: bool,
         ignore: Option<Vec<String>>,
     ) -> Self {
         let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
@@ -32,19 +34,21 @@ impl NewBranchOptions {
             config_path,
             new_config_path,
             new_branch,
+            froce,
             ignore,
         }
     }
 }
 
-pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
+pub fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
     let new_branch = options.new_branch;
     let new_config_path = options.new_config_path;
+    let force = options.froce;
     let mut ignore = options.ignore.unwrap_or_default();
 
-    logger::info("New branch:");
+    logger::info("New remote branch:");
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         return Err(anyhow!(MgitError::DirNotFound(
@@ -91,9 +95,29 @@ pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
         let rel_path = toml_repo.local.as_ref().unwrap();
         let full_path = Path::new(path).join(rel_path);
         let base_branch = toml_repo.branch.as_ref().unwrap();
+
+        if !force {
+            match git::check_remote_branch_exist(&full_path, &new_branch) {
+                Err(e) => {
+                    let error = StyleMessage::git_error(rel_path, &e);
+                    errors.push(error);
+                    continue;
+                }
+
+                Ok(true) => {
+                    let e:anyhow::Error = anyhow!("origin/{} already exist, try force mode again",&new_branch);
+                    let error = StyleMessage::git_error(rel_path, &e);
+                    errors.push(error);
+                    continue;
+                },
+                Ok(false) => {}
+            }
+        }
+
         if let Err(e) = git::new_remote_branch(full_path, base_branch, &new_branch) {
             let error = StyleMessage::git_error(rel_path, &e);
             errors.push(error);
+            continue;
         }
 
         toml_repo.branch = Some(new_branch.clone());
@@ -104,7 +128,7 @@ pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
     }
 
     if !errors.is_empty() {
-        let msg = StyleMessage::ops_failed("new_branch", errors.len());
+        let msg = StyleMessage::ops_failed("new-branch", errors.len());
         let e = anyhow!(MgitError::OpsError {
             prefix: msg,
             errors: OpsErrors(errors),
@@ -118,5 +142,6 @@ pub fn new_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
         std::fs::write(new_config_path, toml_string).expect("Failed to write file .gitrepos!");
     }
 
-    Ok(StyleMessage::new())
+    let msg = StyleMessage::ops_success("new-branch");
+    Ok(msg)
 }

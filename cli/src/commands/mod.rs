@@ -5,7 +5,7 @@ pub(crate) use fetch::FetchCommand;
 pub(crate) use init::InitCommand;
 pub(crate) use list_files::ListFilesCommand;
 pub(crate) use log_repos::LogReposCommand;
-pub(crate) use new_branch::NewBranchCommand;
+pub(crate) use new_branch::NewRemoteBranchCommand;
 pub(crate) use snapshot::SnapshotCommand;
 pub(crate) use sync::SyncCommand;
 pub(crate) use track::TrackCommand;

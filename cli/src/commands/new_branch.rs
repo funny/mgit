@@ -1,4 +1,4 @@
-use clap::Args;
+use clap::{ArgAction, Args};
 use std::path::PathBuf;
 
 use mgit::ops::{self, NewBranchOptions};
@@ -8,7 +8,7 @@ use crate::CliCommad;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// new branch base on current branch in config
-pub(crate) struct NewBranchCommand {
+pub(crate) struct NewRemoteBranchCommand {
     /// The work directory
     pub path: Option<PathBuf>,
 
@@ -23,24 +23,29 @@ pub(crate) struct NewBranchCommand {
     #[arg(long, value_name = "FILE")]
     pub new_config: Option<PathBuf>,
 
+    /// Force remove git repos without prompt
+    #[arg(long, action = ArgAction::SetTrue)]
+    pub force: bool,
+
     /// Ignore specified repositories to create new branch
     #[arg(long)]
     ignore: Option<Vec<String>>,
 }
 
-impl CliCommad for NewBranchCommand {
+impl CliCommad for NewRemoteBranchCommand {
     fn exec(self) -> MgitResult {
-        ops::new_branch(self.into())
+        ops::new_remote_branch(self.into())
     }
 }
 
-impl From<NewBranchCommand> for NewBranchOptions {
-    fn from(value: NewBranchCommand) -> Self {
+impl From<NewRemoteBranchCommand> for NewBranchOptions {
+    fn from(value: NewRemoteBranchCommand) -> Self {
         NewBranchOptions::new(
             value.path,
             value.config,
             value.new_config,
             value.name,
+            value.force,
             value.ignore,
         )
     }

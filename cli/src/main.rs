@@ -30,7 +30,7 @@ fn main() {
         Commands::ListFiles(cmd) => cmd.exec(),
         Commands::Track(cmd) => cmd.exec(),
         Commands::LogRepos(cmd) => cmd.exec(),
-        Commands::NewBranch(cmd) => cmd.exec(),
+        Commands::NewRemoteBranch(cmd) => cmd.exec(),
     };
 
     match result {
