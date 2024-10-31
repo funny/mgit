@@ -245,7 +245,7 @@ impl Editor {
                 self.clear_status();
 
                 std::thread::spawn(move || {
-                    if let Err(e) = ops::new_branch(options) {
+                    if let Err(e) = ops::new_remote_branch(options) {
                         GUI_LOGGER.error(e.to_string().into());
                     }
 

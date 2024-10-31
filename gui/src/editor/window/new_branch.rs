@@ -86,6 +86,7 @@ impl NewBranchWindow {
             Some(self.config_path.clone()),
             Some(Path::new(&self.new_config_path).to_path_buf()),
             self.new_branch.clone(),
+            true,
             ignore,
         );
 

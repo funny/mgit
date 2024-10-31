@@ -190,7 +190,7 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
     toml_config.repos = Some(repos);
     logger::info(format!(
         "{} repos are added, {} files are scanned.",
-         repo_count,file_count
+        repo_count, file_count
     ));
 
     // serialize .gitrepos

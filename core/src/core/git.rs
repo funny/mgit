@@ -327,3 +327,13 @@ pub fn new_remote_branch(
     let args = vec!["push", "origin", arg.as_str(), "--force"];
     exec_cmd(path, "git", &args).map(|_| ())
 }
+
+pub fn check_remote_branch_exist(
+    path: impl AsRef<Path>,
+    branch: &str,
+) -> Result<bool, anyhow::Error> {
+    let head = format!("refs/heads/{}", branch);
+    let args = vec!["ls-remote", "--heads", "origin", head.as_str()];
+    let output = exec_cmd(path, "git", &args)?;
+    Ok(output.contains(&head))
+}
