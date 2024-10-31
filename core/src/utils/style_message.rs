@@ -321,6 +321,13 @@ impl StyleMessage {
             .plain_text(": ")
             .styled_text(branch.as_ref(), &BLUE)
     }
+
+    pub(crate) fn git_del_branch(path: impl AsRef<Path>, branch: impl AsRef<str>) -> Self {
+        StyleMessage::new()
+            .styled_text(path.display_path(), &PURPLE_BOLD)
+            .plain_text(": deleted ")
+            .styled_text(branch.as_ref(), &BLUE)
+    }
 }
 
 impl Display for StyleMessage {

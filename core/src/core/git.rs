@@ -328,6 +328,11 @@ pub fn new_remote_branch(
     exec_cmd(path, "git", &args).map(|_| ())
 }
 
+pub fn del_remote_branch(path: impl AsRef<Path>, branch: &str) -> Result<(), anyhow::Error> {
+    let args = vec!["push", "origin", "--delete", branch];
+    exec_cmd(path, "git", &args).map(|_| ())
+}
+
 pub fn check_remote_branch_exist(
     path: impl AsRef<Path>,
     branch: &str,

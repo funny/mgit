@@ -17,8 +17,8 @@ pub(crate) struct NewRemoteBranchCommand {
     pub config: Option<PathBuf>,
 
     /// new branch name
-    #[arg(long, value_name = "NAME")]
-    pub name: String,
+    #[arg(long, value_name = "BRANCH")]
+    pub branch: String,
 
     #[arg(long, value_name = "FILE")]
     pub new_config: Option<PathBuf>,
@@ -44,7 +44,7 @@ impl From<NewRemoteBranchCommand> for NewBranchOptions {
             value.path,
             value.config,
             value.new_config,
-            value.name,
+            value.branch,
             value.force,
             value.ignore,
         )
