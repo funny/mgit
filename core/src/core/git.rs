@@ -291,7 +291,7 @@ pub fn log_current(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
         "log",
         "-1",
         "--pretty=format:\"%H%n%an <%ae>%n%ad%n%s%n\"",
-        "--date=format:\"%Y-%m-%d %H:%M:%S\"",
+        "--date=format-local:\"%Y-%m-%d %H:%M:%S\"",
     ];
     exec_cmd(path, "git", &args)
 }
