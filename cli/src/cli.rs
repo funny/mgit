@@ -45,7 +45,11 @@ pub(crate) enum Commands {
     #[command(name = "log-repos")]
     LogRepos(LogReposCommand),
 
-    /// Log git repos
+    /// New Remote Branch
     #[command(name = "new-remote-branch")]
     NewRemoteBranch(NewRemoteBranchCommand),
+
+    /// Delete remote branch
+    #[command(name = "del-remote-branch")]
+    DelRemoteBranch(DelRemoteBranchCommand),
 }

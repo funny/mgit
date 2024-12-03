@@ -31,10 +31,14 @@ fn main() {
         Commands::Track(cmd) => cmd.exec(),
         Commands::LogRepos(cmd) => cmd.exec(),
         Commands::NewRemoteBranch(cmd) => cmd.exec(),
+        Commands::DelRemoteBranch(cmd) => cmd.exec(),
     };
 
     match result {
-        Ok(_) => std::process::exit(0),
+        Ok(msg) => {
+            println!("{}", msg);
+            std::process::exit(0);
+        },
         Err(e) => {
             println!("{}", eyre!(e));
             std::process::exit(1)

@@ -9,6 +9,7 @@ pub(crate) use new_branch::NewRemoteBranchCommand;
 pub(crate) use snapshot::SnapshotCommand;
 pub(crate) use sync::SyncCommand;
 pub(crate) use track::TrackCommand;
+pub(crate) use del_branch::DelRemoteBranchCommand;
 
 mod clean;
 mod fetch;
@@ -19,6 +20,7 @@ mod new_branch;
 mod snapshot;
 mod sync;
 mod track;
+mod del_branch;
 
 pub trait CliCommad {
     fn exec(self) -> MgitResult;
