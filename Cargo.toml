@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.4.5"
+version = "1.4.7"
 edition = "2021"
 rust-version = "1.76.0"
 repository = "https://github.com/funny/mgit"
