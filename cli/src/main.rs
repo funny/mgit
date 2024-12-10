@@ -38,7 +38,7 @@ fn main() {
         Ok(msg) => {
             println!("{}", msg);
             std::process::exit(0);
-        },
+        }
         Err(e) => {
             println!("{}", eyre!(e));
             std::process::exit(1)

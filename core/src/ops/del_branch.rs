@@ -107,7 +107,7 @@ pub fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMessage> 
         }
 
         let rel_path_display = Path::new(rel_path).display_path();
-        let msg = StyleMessage::git_del_branch(rel_path_display, &format!("origin/{}",branch));
+        let msg = StyleMessage::git_del_branch(rel_path_display, &format!("origin/{}", branch));
         logger::info(msg);
     }
 

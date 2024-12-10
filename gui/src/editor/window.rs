@@ -54,7 +54,7 @@ impl Editor {
             .show(ctx, eframe, &mut self.new_branch_is_open);
 
         if self.new_branch_is_open {
-            self.save_new_branch_ignore();
+            self.save_new_branch_option();
         }
 
         if self.new_branch_window.comfirm_create {
