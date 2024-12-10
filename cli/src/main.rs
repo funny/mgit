@@ -32,6 +32,7 @@ fn main() {
         Commands::LogRepos(cmd) => cmd.exec(),
         Commands::NewRemoteBranch(cmd) => cmd.exec(),
         Commands::DelRemoteBranch(cmd) => cmd.exec(),
+        Commands::NewTag(cmd) => cmd.exec(),
     };
 
     match result {

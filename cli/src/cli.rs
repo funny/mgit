@@ -52,4 +52,8 @@ pub(crate) enum Commands {
     /// Delete remote branch
     #[command(name = "del-remote-branch")]
     DelRemoteBranch(DelRemoteBranchCommand),
+
+    /// New tag
+    #[command(name = "new-tag")]
+    NewTag(NewTagCommand),
 }

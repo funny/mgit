@@ -342,3 +342,17 @@ pub fn check_remote_branch_exist(
     let output = exec_cmd(path, "git", &args)?;
     Ok(output.contains(&head))
 }
+
+pub fn new_local_tag(
+    path: impl AsRef<Path>,
+    local_ref: &str,
+    tag: &str,
+) -> Result<(), anyhow::Error> {
+    let args = vec!["tag", tag, local_ref, "--force"];
+    exec_cmd(path, "git", &args).map(|_| ())
+}
+
+pub fn push_tag(path: impl AsRef<Path>, tag: &str) -> Result<(), anyhow::Error> {
+    let args = vec!["push", "origin", tag, "--force"];
+    exec_cmd(path, "git", &args).map(|_| ())
+}
