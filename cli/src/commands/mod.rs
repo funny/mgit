@@ -1,6 +1,7 @@
 use mgit::utils::error::MgitResult;
 
 pub(crate) use clean::CleanCommand;
+pub(crate) use del_branch::DelRemoteBranchCommand;
 pub(crate) use fetch::FetchCommand;
 pub(crate) use init::InitCommand;
 pub(crate) use list_files::ListFilesCommand;
@@ -9,9 +10,9 @@ pub(crate) use new_branch::NewRemoteBranchCommand;
 pub(crate) use snapshot::SnapshotCommand;
 pub(crate) use sync::SyncCommand;
 pub(crate) use track::TrackCommand;
-pub(crate) use del_branch::DelRemoteBranchCommand;
 
 mod clean;
+mod del_branch;
 mod fetch;
 mod init;
 mod list_files;
@@ -20,7 +21,6 @@ mod new_branch;
 mod snapshot;
 mod sync;
 mod track;
-mod del_branch;
 
 pub trait CliCommad {
     fn exec(self) -> MgitResult;

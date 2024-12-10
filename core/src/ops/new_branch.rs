@@ -104,11 +104,12 @@ pub fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> 
                 }
 
                 Ok(true) => {
-                    let e:anyhow::Error = anyhow!("origin/{} already exist, try force mode again",&new_branch);
+                    let e: anyhow::Error =
+                        anyhow!("origin/{} already exist, try force mode again", &new_branch);
                     let error = StyleMessage::git_error(rel_path, &e);
                     errors.push(error);
                     continue;
-                },
+                }
 
                 Ok(false) => {}
             }

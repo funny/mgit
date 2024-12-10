@@ -31,11 +31,13 @@ impl Default for NewBranchWindow {
 }
 
 impl NewBranchWindow {
-    pub fn update_repo(
+    pub fn update_settings(
         &mut self,
         root_path: impl AsRef<Path>,
         config_path: impl AsRef<Path>,
         toml_config: &TomlConfig,
+        new_branch: impl ToString,
+        new_config_path: impl ToString,
         ignore: &[impl AsRef<str>],
     ) {
         self.comfirm_create = false;
@@ -44,10 +46,8 @@ impl NewBranchWindow {
 
         self.root_path = root_path.as_ref().norm_path();
         self.config_path = config_path.as_ref().norm_path();
-
-        if let Some(parent) = config_path.as_ref().parent() {
-            self.new_config_path = parent.join("new_config.toml").norm_path();
-        }
+        self.new_branch = new_branch.to_string();
+        self.new_config_path = new_config_path.to_string();
 
         let Some(repos) = toml_config.repos.as_ref() else {
             return;

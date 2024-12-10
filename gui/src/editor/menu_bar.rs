@@ -67,11 +67,16 @@ impl Editor {
                     self.close_all_windows();
 
                     let new_branch_ignore = self.get_new_branch_ignores().unwrap_or(Vec::new());
+                    let new_branch = self.get_new_branch_name().unwrap_or(String::new());
+                    let new_config_path =
+                        self.get_new_branch_config_path().unwrap_or(String::new());
 
-                    self.new_branch_window.update_repo(
+                    self.new_branch_window.update_settings(
                         &self.project_path,
                         &self.config_file,
                         &self.toml_config,
+                        new_branch,
+                        new_config_path,
                         &new_branch_ignore,
                     );
 

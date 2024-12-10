@@ -1,4 +1,4 @@
-use clap::{ Args};
+use clap::Args;
 use std::path::PathBuf;
 
 use mgit::ops::{self, DelBranchOptions};
@@ -33,11 +33,6 @@ impl CliCommad for DelRemoteBranchCommand {
 
 impl From<DelRemoteBranchCommand> for DelBranchOptions {
     fn from(value: DelRemoteBranchCommand) -> Self {
-        DelBranchOptions::new(
-            value.path,
-            value.config,
-            value.branch,
-            value.ignore,
-        )
+        DelBranchOptions::new(value.path, value.config, value.branch, value.ignore)
     }
 }

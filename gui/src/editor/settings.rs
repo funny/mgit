@@ -134,7 +134,15 @@ impl super::Editor {
             })
     }
 
-    pub(crate) fn save_new_branch_ignore(&mut self) {
+    pub(crate) fn get_new_branch_name(&self) -> Option<String> {
+        self.toml_project_settings.new_branch_name.clone()
+    }
+
+    pub(crate) fn get_new_branch_config_path(&self) -> Option<String> {
+        self.toml_project_settings.new_branch_config_path.clone()
+    }
+
+    pub(crate) fn save_new_branch_option(&mut self) {
         let new_branch_ignore = self
             .new_branch_window
             .get_ignore_repos()
@@ -146,6 +154,15 @@ impl super::Editor {
         if !self.recent_projects.is_empty() {
             self.toml_project_settings
                 .save_new_branch_ignore(new_branch_ignore.to_owned());
+
+            let new_branch_name = self.new_branch_window.new_branch.clone();
+            self.toml_project_settings
+                .save_new_branch_name(new_branch_name);
+
+            let new_config_path = self.new_branch_window.new_config_path.clone();
+            self.toml_project_settings
+                .save_new_branch_config_path(new_config_path);
+
             self.save_project_settings();
         }
     }
