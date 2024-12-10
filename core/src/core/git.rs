@@ -118,6 +118,24 @@ pub fn get_tracking_branch(path: impl AsRef<Path>) -> Result<String, anyhow::Err
     Err(anyhow::anyhow!("untracked."))
 }
 
+pub fn get_head_tags(path: impl AsRef<Path>) -> Result<Vec<String>, anyhow::Error> {
+    is_repository(&path)?;
+    let args = ["tag", "--points-at", "HEAD"];
+
+    let output = exec_cmd(path, "git", &args)?;
+
+    if output.contains("fatal:") {
+        return Err(anyhow::anyhow!(output));
+    }
+
+    let mut tags = Vec::new();
+    for line in output.trim().lines() {
+        tags.push(line.to_string());
+    }
+
+    Ok(tags)
+}
+
 pub fn get_current_branch(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
     is_repository(&path)?;
     let args = ["branch", "--show-current"];
@@ -353,7 +371,6 @@ pub fn new_local_tag(
         args.push(local_ref);
     }
 
-    println!("net tag: {:?}", args);
     exec_cmd(path, "git", &args).map(|_| ())
 }
 
