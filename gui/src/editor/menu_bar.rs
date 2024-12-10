@@ -62,7 +62,7 @@ impl Editor {
 
                 ui.separator();
 
-                // refresh button
+                // new branch button
                 if ui.button("  New Branch").clicked() {
                     self.close_all_windows();
 
@@ -80,7 +80,28 @@ impl Editor {
                         &new_branch_ignore,
                     );
 
-                    self.new_branch_is_open = true;
+                    self.show_new_branch_window = true;
+                    ui.close_menu();
+                }
+
+                // new tag button
+                if ui.button("  New Tag").clicked() {
+                    self.close_all_windows();
+
+                    let new_tag_ignore = self.get_new_tag_ignores().unwrap_or(Vec::new());
+                    let new_tag = self.get_new_tag_name().unwrap_or(String::new());
+                    let new_tag_push = self.get_new_tag_push();
+
+                    self.new_tag_window.update_settings(
+                        &self.project_path,
+                        &self.config_file,
+                        &self.toml_config,
+                        new_tag,
+                        new_tag_push,
+                        &new_tag_ignore,
+                    );
+
+                    self.show_new_tag_window = true;
                     ui.close_menu();
                 }
 
@@ -88,7 +109,7 @@ impl Editor {
                 // clean button - open ok/cancel dialog
                 if ui.button("  Clean").clicked() {
                     self.close_all_windows();
-                    self.clean_is_open = true;
+                    self.show_clean_dialog = true;
                     ui.close_menu();
                 }
             });
@@ -99,7 +120,7 @@ impl Editor {
                 // option button
                 if ui.button("  Options").clicked() {
                     self.close_all_windows();
-                    self.options_is_open = true;
+                    self.show_options_window = true;
                     ui.close_menu();
                 }
 
@@ -115,7 +136,7 @@ impl Editor {
                 // about button
                 if ui.button("  About").clicked() {
                     self.close_all_windows();
-                    self.about_is_open = true;
+                    self.show_about_window = true;
                     ui.close_menu();
                 }
             });

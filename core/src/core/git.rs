@@ -348,7 +348,12 @@ pub fn new_local_tag(
     local_ref: &str,
     tag: &str,
 ) -> Result<(), anyhow::Error> {
-    let args = vec!["tag", tag, local_ref, "--force"];
+    let mut args = vec!["tag", tag, "--force"];
+    if !local_ref.is_empty() {
+        args.push(local_ref);
+    }
+
+    println!("net tag: {:?}", args);
     exec_cmd(path, "git", &args).map(|_| ())
 }
 

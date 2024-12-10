@@ -33,7 +33,7 @@ impl Editor {
             );
             if sync_hard_button_response.clicked() {
                 self.close_all_windows();
-                self.sync_hard_is_open = true;
+                self.show_sync_hard_dialog = true;
             }
 
             // refress button

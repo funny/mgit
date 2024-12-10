@@ -11,6 +11,10 @@ pub struct TomlProjectSettings {
     pub new_branch_name: Option<String>,
     pub new_branch_config_path: Option<String>,
 
+    pub new_tag_ignore: Option<String>,
+    pub new_tag_name: Option<String>,
+    pub new_tag_push: Option<bool>,
+
     // --ignore for fetch, sync and track
     pub ignore: Option<String>,
 }
@@ -99,6 +103,24 @@ impl TomlProjectSettings {
             true => None,
             false => Some(config_path),
         };
+    }
+
+    pub fn save_new_tag_ignore(&mut self, new_tag_ignore: String) {
+        self.new_tag_ignore = match new_tag_ignore.is_empty() {
+            true => None,
+            false => Some(new_tag_ignore),
+        };
+    }
+
+    pub fn save_new_tag_name(&mut self, tag_name: String) {
+        self.new_tag_name = match tag_name.is_empty() {
+            true => None,
+            false => Some(tag_name),
+        };
+    }
+
+    pub fn save_new_tag_push(&mut self, push: bool) {
+        self.new_tag_push = Some(push);
     }
 
     fn serialize(&self) -> String {

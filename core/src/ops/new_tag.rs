@@ -9,6 +9,7 @@ use crate::utils::logger;
 use crate::utils::path::PathExtension;
 use crate::utils::StyleMessage;
 
+#[derive(Debug)]
 pub struct NewTagOptions {
     pub path: PathBuf,
     pub config_path: PathBuf,
@@ -83,17 +84,8 @@ pub fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
         let rel_path = toml_repo.local.as_ref().unwrap();
         let full_path = Path::new(path).join(rel_path);
 
-        let target_ref = if let Some(commit) = toml_repo.branch.as_ref() {
-            commit.clone()
-        } else if let Some(tag) = toml_repo.tag.as_ref() {
-            tag.clone()
-        } else if let Some(branch) = toml_repo.branch.as_ref() {
-            branch.clone()
-        } else if let Some(branch) = toml_config.default_branch.as_ref() {
-            branch.clone()
-        } else {
-            "develop".to_string()
-        };
+        // NOTE: current head ref
+        let target_ref = "";
 
         if let Err(e) = git::new_local_tag(&full_path, &target_ref, &new_tag) {
             let error = StyleMessage::git_error(rel_path, &e);

@@ -254,6 +254,23 @@ impl Editor {
                 });
             }
 
+            CommandType::NewTag => {
+                let options = self.new_tag_window.get_options();
+                println!("exec new tag: {:?}", options);
+
+                let send = self.send.clone();
+                self.clear_status();
+
+                std::thread::spawn(move || {
+                    if let Err(e) = ops::new_tag(options) {
+                        GUI_LOGGER.error(e.to_string().into());
+                    }
+
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
+                        .unwrap();
+                });
+            }
+
             CommandType::None => {}
         }
     }
