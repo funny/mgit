@@ -5,39 +5,39 @@ use eframe::egui;
 use eframe::egui::Vec2;
 
 use mgit::core::repos::TomlConfig;
-use mgit::ops::NewBranchOptions;
+use mgit::ops::NewTagOptions;
 use mgit::utils::path::PathExtension;
 
-pub struct NewBranchWindow {
+pub struct NewTagWindow {
     pub root_path: String,
-    pub new_branch: String,
+    pub new_tag: String,
     pub config_path: String,
-    pub new_config_path: String,
     pub repos: Vec<(String, bool)>,
+    pub push: bool,
     pub comfirm_create: bool,
 }
 
-impl Default for NewBranchWindow {
+impl Default for NewTagWindow {
     fn default() -> Self {
         Self {
             root_path: String::new(),
-            new_branch: String::new(),
+            new_tag: String::new(),
             config_path: String::new(),
-            new_config_path: String::new(),
             repos: Vec::new(),
+            push: true,
             comfirm_create: false,
         }
     }
 }
 
-impl NewBranchWindow {
+impl NewTagWindow {
     pub fn update_settings(
         &mut self,
         root_path: impl AsRef<Path>,
         config_path: impl AsRef<Path>,
         toml_config: &TomlConfig,
-        new_branch: impl ToString,
-        new_config_path: impl ToString,
+        new_tag: impl ToString,
+        push: bool,
         ignore: &[impl AsRef<str>],
     ) {
         self.comfirm_create = false;
@@ -46,14 +46,8 @@ impl NewBranchWindow {
 
         self.root_path = root_path.as_ref().norm_path();
         self.config_path = config_path.as_ref().norm_path();
-        self.new_branch = new_branch.to_string();
-        self.new_config_path = new_config_path.to_string();
-
-        if self.new_config_path.is_empty() {
-            if let Some(parent) = config_path.as_ref().parent() {
-                self.new_config_path = parent.join("new_config.toml").norm_path();
-            }
-        }
+        self.new_tag = new_tag.to_string();
+        self.push = push;
 
         let Some(repos) = toml_config.repos.as_ref() else {
             return;
@@ -80,19 +74,18 @@ impl NewBranchWindow {
             .collect()
     }
 
-    pub fn get_options(&self) -> NewBranchOptions {
+    pub fn get_options(&self) -> NewTagOptions {
         let ignore_repos: Vec<_> = self.get_ignore_repos();
         let ignore = match ignore_repos.is_empty() {
             true => None,
             false => Some(ignore_repos),
         };
 
-        let options = NewBranchOptions::new(
+        let options = NewTagOptions::new(
             Some(self.root_path.clone()),
             Some(self.config_path.clone()),
-            Some(Path::new(&self.new_config_path).to_path_buf()),
-            self.new_branch.clone(),
-            true,
+            self.new_tag.clone(),
+            self.push,
             ignore,
         );
 
@@ -100,9 +93,9 @@ impl NewBranchWindow {
     }
 }
 
-impl super::WindowBase for NewBranchWindow {
+impl super::WindowBase for NewTagWindow {
     fn name(&self) -> String {
-        "New Branch Options".to_string()
+        "New Tag Options".to_string()
     }
 
     fn width(&self) -> f32 {
@@ -121,33 +114,30 @@ impl super::WindowBase for NewBranchWindow {
     }
 }
 
-impl super::View for NewBranchWindow {
+impl super::View for NewTagWindow {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing = egui::vec2(0.0, 10.0);
         ui.add_space(10.0);
 
-        ui.label("Tips: This will create a new remote branch in force mode.");
+        ui.label("Tips: This will create a new tag in force mode.");
         ui.separator();
 
-        egui::Grid::new("new_branch_options_grid")
+        egui::Grid::new("new_tag_options_grid")
             .num_columns(2)
             .min_col_width(160.0)
             .striped(false)
             .show(ui, |ui| {
-                ui.label("New Branch");
+                ui.label("New Tag");
 
                 let singleline_size = Vec2::new(440.0, 20.0);
                 ui.add_sized(
                     singleline_size,
-                    egui::TextEdit::singleline(&mut self.new_branch).hint_text("New branch name"),
+                    egui::TextEdit::singleline(&mut self.new_tag).hint_text("New branch name"),
                 );
                 ui.end_row();
 
-                ui.label("New Config Path");
-                ui.add_sized(
-                    singleline_size,
-                    egui::TextEdit::singleline(&mut self.new_config_path),
-                );
+                ui.label("Push");
+                ui.checkbox(&mut self.push, "");
                 ui.end_row();
 
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
@@ -170,7 +160,7 @@ impl super::View for NewBranchWindow {
         ui.vertical_centered(|ui| {
             ui.allocate_space(ui.available_size() - Vec2::new(0.0, 100.0));
 
-            ui.add_enabled_ui(!self.new_branch.is_empty(), |ui| {
+            ui.add_enabled_ui(!self.new_tag.is_empty(), |ui| {
                 let create_btn = egui::Button::new("Create");
                 let response = ui.add_sized([100.0, 20.0], create_btn);
 

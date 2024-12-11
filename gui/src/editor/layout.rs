@@ -26,7 +26,7 @@ impl Editor {
                 },
             )
             .show(ctx, |ui| {
-                ui.set_enabled(!self.error_is_open);
+                ui.set_enabled(!self.show_error_window);
                 ui.spacing_mut().item_spacing = egui::vec2(10.0, 5.0);
 
                 // menu bar
@@ -48,7 +48,7 @@ impl Editor {
     /// content_view of app
     pub(crate) fn content_view(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.set_enabled(!self.error_is_open);
+            ui.set_enabled(!self.show_error_window);
             ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                 ui.set_min_width(DEFAULT_WIDTH);
                 ui.heading("Configuration");

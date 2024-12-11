@@ -9,33 +9,37 @@ pub(crate) mod about;
 pub(crate) mod dialog;
 pub(crate) mod error;
 pub(crate) mod new_branch;
+pub(crate) mod new_tag;
 pub(crate) mod options;
 
 impl Editor {
     /// part of app
     pub(crate) fn handle_windows(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         // show about window
-        self.about_window.show(ctx, eframe, &mut self.about_is_open);
+        self.about_window
+            .show(ctx, eframe, &mut self.show_about_window);
 
         // show options window
         self.options_window
-            .show(ctx, eframe, &mut self.options_is_open);
+            .show(ctx, eframe, &mut self.show_options_window);
 
-        if self.options_is_open {
+        if self.show_options_window {
             self.toml_user_settings.save_options(&self.options_window);
             self.save_snapshot_ignore();
         }
 
         // show error window
-        if self.error_is_open {
-            self.error_window.show(ctx, eframe, &mut self.error_is_open);
-            if !self.error_is_open {
+        if self.show_error_window {
+            self.error_window
+                .show(ctx, eframe, &mut self.show_error_window);
+            if !self.show_error_window {
                 std::process::exit(0x0100);
             }
         }
 
         // show clean dialog
-        self.clean_dialog.show(ctx, eframe, &mut self.clean_is_open);
+        self.clean_dialog
+            .show(ctx, eframe, &mut self.show_clean_dialog);
 
         if self.clean_dialog.is_ok() {
             self.exec_ops(CommandType::Clean);
@@ -43,7 +47,7 @@ impl Editor {
 
         // show sync hard dialog
         self.sync_hard_dialog
-            .show(ctx, eframe, &mut self.sync_hard_is_open);
+            .show(ctx, eframe, &mut self.show_sync_hard_dialog);
 
         if self.sync_hard_dialog.is_ok() {
             self.exec_ops(CommandType::SyncHard);
@@ -51,25 +55,39 @@ impl Editor {
 
         // show new branch window
         self.new_branch_window
-            .show(ctx, eframe, &mut self.new_branch_is_open);
+            .show(ctx, eframe, &mut self.show_new_branch_window);
 
-        if self.new_branch_is_open {
+        if self.show_new_branch_window {
             self.save_new_branch_option();
         }
 
         if self.new_branch_window.comfirm_create {
             self.new_branch_window.comfirm_create = false;
-            self.new_branch_is_open = false;
+            self.show_new_branch_window = false;
             self.exec_ops(CommandType::NewBranch)
+        }
+
+        // show new tag window
+        self.new_tag_window
+            .show(ctx, eframe, &mut self.show_new_tag_window);
+
+        if self.show_new_tag_window {
+            self.save_new_tag_option();
+        }
+
+        if self.new_tag_window.comfirm_create {
+            self.new_tag_window.comfirm_create = false;
+            self.show_new_tag_window = false;
+            self.exec_ops(CommandType::NewTag)
         }
     }
 
     pub(crate) fn close_all_windows(&mut self) {
-        self.about_is_open = false;
-        self.options_is_open = false;
-        self.clean_is_open = false;
-        self.sync_hard_is_open = false;
-        self.new_branch_is_open = false;
+        self.show_about_window = false;
+        self.show_options_window = false;
+        self.show_clean_dialog = false;
+        self.show_sync_hard_dialog = false;
+        self.show_new_branch_window = false;
     }
 }
 

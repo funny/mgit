@@ -142,6 +142,37 @@ impl super::Editor {
         self.toml_project_settings.new_branch_config_path.clone()
     }
 
+    pub(crate) fn get_new_tag_ignores(&self) -> Option<Vec<String>> {
+        self.toml_project_settings
+            .new_tag_ignore
+            .as_ref()
+            .map(|content| {
+                content
+                    .trim()
+                    .split('\n')
+                    .filter_map(|s| {
+                        let s = s.trim().to_string();
+                        if s.is_empty() {
+                            None
+                        } else {
+                            Some(s)
+                        }
+                    })
+                    .collect()
+            })
+    }
+
+    pub(crate) fn get_new_tag_name(&self) -> Option<String> {
+        self.toml_project_settings.new_tag_name.clone()
+    }
+
+    pub(crate) fn get_new_tag_push(&self) -> bool {
+        match self.toml_project_settings.new_tag_push {
+            Some(flag) => flag,
+            None => true,
+        }
+    }
+
     pub(crate) fn save_new_branch_option(&mut self) {
         let new_branch_ignore = self
             .new_branch_window
@@ -162,6 +193,29 @@ impl super::Editor {
             let new_config_path = self.new_branch_window.new_config_path.clone();
             self.toml_project_settings
                 .save_new_branch_config_path(new_config_path);
+
+            self.save_project_settings();
+        }
+    }
+
+    pub(crate) fn save_new_tag_option(&mut self) {
+        let new_tag_ignore = self
+            .new_tag_window
+            .get_ignore_repos()
+            .iter()
+            .map(|s| s.display_path())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        if !self.recent_projects.is_empty() {
+            self.toml_project_settings
+                .save_new_tag_ignore(new_tag_ignore.to_owned());
+
+            let new_tag = self.new_tag_window.new_tag.clone();
+            self.toml_project_settings.save_new_tag_name(new_tag);
+
+            let new_tag_push = self.new_tag_window.push.clone();
+            self.toml_project_settings.save_new_tag_push(new_tag_push);
 
             self.save_project_settings();
         }

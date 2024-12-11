@@ -16,14 +16,15 @@ pub(crate) struct NewRemoteBranchCommand {
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
 
-    /// new branch name
+    /// New branch name
     #[arg(long, value_name = "BRANCH")]
     pub branch: String,
 
+    /// New git repos config file
     #[arg(long, value_name = "FILE")]
     pub new_config: Option<PathBuf>,
 
-    /// Force remove git repos without prompt
+    /// Force remove git repo remote branch without prompt
     #[arg(long, action = ArgAction::SetTrue)]
     pub force: bool,
 

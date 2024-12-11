@@ -35,6 +35,7 @@ pub struct RepoState {
     pub current_branch: String,
     pub tracking_branch: String,
     pub track_state: StateType,
+    pub tags: Vec<String>,
     pub cmp_obj: String,
     pub cmp_commit: String,
     pub cmp_changes: String,
@@ -49,6 +50,7 @@ impl Default for RepoState {
             current_branch: String::new(),
             tracking_branch: String::new(),
             track_state: StateType::Disconnected,
+            tags: Vec::new(),
             cmp_obj: String::new(),
             cmp_commit: String::new(),
             cmp_changes: String::new(),
@@ -254,6 +256,23 @@ impl Editor {
                 });
             }
 
+            CommandType::NewTag => {
+                let options = self.new_tag_window.get_options();
+                println!("exec new tag: {:?}", options);
+
+                let send = self.send.clone();
+                self.clear_status();
+
+                std::thread::spawn(move || {
+                    if let Err(e) = ops::new_tag(options) {
+                        GUI_LOGGER.error(e.to_string().into());
+                    }
+
+                    send.send(RepoMessage::new(command_type, RepoState::default(), None))
+                        .unwrap();
+                });
+            }
+
             CommandType::None => {}
         }
     }
@@ -380,6 +399,18 @@ pub(crate) fn get_repo_state(
     if let Err(e) = git::has_authenticity(&full_path) {
         repo_state.err_msg = e.to_string();
         is_ok = false;
+    }
+
+    if is_ok {
+        // get tags
+        match git::get_head_tags(&full_path) {
+            Ok(res) => {
+                repo_state.tags = res;
+            }
+            Err(_) => {
+                repo_state.tags.clear();
+            }
+        }
     }
 
     if is_ok {

@@ -9,5 +9,6 @@ pub enum CommandType {
     SyncHard,
     Track,
     NewBranch,
+    NewTag,
     Clean,
 }

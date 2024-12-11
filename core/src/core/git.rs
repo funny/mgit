@@ -118,6 +118,24 @@ pub fn get_tracking_branch(path: impl AsRef<Path>) -> Result<String, anyhow::Err
     Err(anyhow::anyhow!("untracked."))
 }
 
+pub fn get_head_tags(path: impl AsRef<Path>) -> Result<Vec<String>, anyhow::Error> {
+    is_repository(&path)?;
+    let args = ["tag", "--points-at", "HEAD"];
+
+    let output = exec_cmd(path, "git", &args)?;
+
+    if output.contains("fatal:") {
+        return Err(anyhow::anyhow!(output));
+    }
+
+    let mut tags = Vec::new();
+    for line in output.trim().lines() {
+        tags.push(line.to_string());
+    }
+
+    Ok(tags)
+}
+
 pub fn get_current_branch(path: impl AsRef<Path>) -> Result<String, anyhow::Error> {
     is_repository(&path)?;
     let args = ["branch", "--show-current"];
@@ -341,4 +359,22 @@ pub fn check_remote_branch_exist(
     let args = vec!["ls-remote", "--heads", "origin", head.as_str()];
     let output = exec_cmd(path, "git", &args)?;
     Ok(output.contains(&head))
+}
+
+pub fn new_local_tag(
+    path: impl AsRef<Path>,
+    local_ref: &str,
+    tag: &str,
+) -> Result<(), anyhow::Error> {
+    let mut args = vec!["tag", tag, "--force"];
+    if !local_ref.is_empty() {
+        args.push(local_ref);
+    }
+
+    exec_cmd(path, "git", &args).map(|_| ())
+}
+
+pub fn push_tag(path: impl AsRef<Path>, tag: &str) -> Result<(), anyhow::Error> {
+    let args = vec!["push", "origin", tag, "--force"];
+    exec_cmd(path, "git", &args).map(|_| ())
 }

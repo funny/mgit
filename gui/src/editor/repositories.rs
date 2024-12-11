@@ -339,12 +339,25 @@ impl Editor {
                     }
                     // show Warning
                     StateType::Warning => {
-                        let job = create_layout_job(
-                            format!("{} Warning", hex_code::WARNING),
-                            text_color::YELLOW,
-                        );
+                        ui.horizontal(|ui| {
+                            let job = create_layout_job(
+                                format!("{} Warning", hex_code::WARNING),
+                                text_color::YELLOW,
+                            );
+                            ui.label(job);
 
-                        ui.label(job);
+                            for (idx, tag) in repo_state.tags.iter().enumerate() {
+                                let job = create_layout_job(
+                                    format!("{} {}", hex_code::TAG, tag),
+                                    text_color::LIGHT_GRAY,
+                                );
+                                ui.label(job);
+
+                                if idx >= 3 {
+                                    break;
+                                }
+                            }
+                        });
                         ui.add_space(4.0);
 
                         // show untracked
@@ -365,12 +378,27 @@ impl Editor {
                         ui.label(job);
                     }
                     _ => {
-                        // show normal
-                        let job = create_layout_job(
-                            format!("{} Normal", hex_code::NORMAL),
-                            text_color::GREEN,
-                        );
-                        ui.label(job);
+                        ui.horizontal(|ui| {
+                            // show normal
+                            let job = create_layout_job(
+                                format!("{} Normal", hex_code::NORMAL),
+                                text_color::GREEN,
+                            );
+                            ui.label(job);
+
+                            for (idx, tag) in repo_state.tags.iter().enumerate() {
+                                let job = create_layout_job(
+                                    format!("{} {}", hex_code::TAG, tag),
+                                    text_color::LIGHT_GRAY,
+                                );
+                                ui.label(job);
+
+                                if idx >= 3 {
+                                    break;
+                                }
+                            }
+                        });
+
                         ui.add_space(4.0);
 
                         // show track
