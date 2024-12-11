@@ -49,6 +49,12 @@ impl NewBranchWindow {
         self.new_branch = new_branch.to_string();
         self.new_config_path = new_config_path.to_string();
 
+        if self.new_config_path.is_empty() {
+            if let Some(parent) = config_path.as_ref().parent() {
+                self.new_config_path = parent.join("new_config.toml").norm_path();
+            }
+        }
+
         let Some(repos) = toml_config.repos.as_ref() else {
             return;
         };
