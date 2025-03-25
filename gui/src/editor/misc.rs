@@ -53,22 +53,38 @@ pub fn setup_custom_fonts(ctx: &egui::Context) {
     // chinese character on macos
     #[cfg(target_os = "macos")]
     {
-        let font = std::fs::read("/System/Library/Fonts/PingFang.ttc").unwrap();
-        fonts
-            .font_data
-            .insert("PingFang".to_owned(), egui::FontData::from_owned(font));
+        let font_pair = [
+            ("/System/Library/Fonts/PingFang.ttc", "PingFang"),
+            ("/System/Library/Fonts/STHeiti Light.ttc", "STHeiti Light"),
+        ];
 
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .push("PingFang".to_owned());
+        let mut load_font = false;
+        for (path, key) in font_pair {
+            let Ok(font) = std::fs::read(path) else {
+                continue;
+            };
+            fonts
+                .font_data
+                .insert(key.to_owned(), egui::FontData::from_owned(font));
 
-        fonts
-            .families
-            .entry(egui::FontFamily::Monospace)
-            .or_default()
-            .push("PingFang".to_owned());
+            fonts
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .push(key.to_owned());
+
+            fonts
+                .families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push(key.to_owned());
+            load_font = true;
+            break;
+        }
+
+        if !load_font {
+            panic!("please install PingFang or STHeiti font")
+        }
     }
 
     // tell egui to use these fonts:
