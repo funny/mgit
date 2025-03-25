@@ -1,6 +1,6 @@
 #该镜像版本默认安装的glibc不满足egui要求的最低版本，所以使用rust镜像并安装gtk依赖
 #FROM ghcr.io/cross-rs/x86_64-unknown-linux-gnu:0.2.5
-FROM arm64v8/rust:1.76.0
+FROM arm64v8/rust:1.85.1
 
 ENV DEBIAN_FRONTEND=noninteractive
 
