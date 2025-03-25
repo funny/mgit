@@ -88,7 +88,7 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: 1.76.0
+        toolchain: 1.85.1
         target: ${{ matrix.target }}
 
     - name: Use Cross
