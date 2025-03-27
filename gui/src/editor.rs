@@ -2,9 +2,10 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
-use eframe::egui;
 use eframe::egui::FontFamily;
+use eframe::{egui, Theme};
 
+use egui::Visuals;
 use mgit::core::repos::TomlConfig;
 
 use crate::editor::misc::{check_git_valid, configure_text_styles, setup_custom_fonts};
@@ -171,6 +172,12 @@ impl Editor {
 
         app.load_setting();
         app.exec_ops(CommandType::Refresh);
+
+        match app.toml_user_settings.theme {
+            Some(Theme::Dark) => cc.egui_ctx.set_visuals(Visuals::dark()),
+            Some(Theme::Light) => cc.egui_ctx.set_visuals(Visuals::light()),
+            None => {}
+        }
         app
     }
 }

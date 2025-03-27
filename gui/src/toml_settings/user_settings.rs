@@ -1,3 +1,4 @@
+use eframe::Theme;
 use serde::{Deserialize, Serialize};
 
 use crate::editor::window::options::OptionsWindow;
@@ -18,6 +19,7 @@ pub struct TomlUserSettings {
     pub sync_depth: Option<u32>,
     pub fetch_thread: Option<u32>,
     pub fetch_depth: Option<u32>,
+    pub theme: Option<Theme>,
 }
 
 impl Default for TomlUserSettings {
@@ -36,6 +38,7 @@ impl Default for TomlUserSettings {
             sync_depth: None,
             fetch_thread: Some(4),
             fetch_depth: None,
+            theme: None,
         }
     }
 }

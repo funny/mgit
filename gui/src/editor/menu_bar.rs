@@ -1,7 +1,8 @@
 use std::path::Path;
 
-use eframe::egui;
+use eframe::{egui, Theme};
 
+use egui::Ui;
 use mgit::utils::path::PathExtension;
 
 use crate::editor::Editor;
@@ -126,7 +127,10 @@ impl Editor {
 
                 // theme button
                 ui.menu_button("  Theme", |ui| {
-                    egui::widgets::global_dark_light_mode_buttons(ui);
+                    if let Some(theme) = global_dark_light_mode_buttons(ui) {
+                        self.toml_user_settings.theme = Some(theme);
+                        self.toml_user_settings.save_options(&self.options_window);
+                    }
                 });
             });
 
@@ -141,5 +145,31 @@ impl Editor {
                 }
             });
         });
+    }
+}
+
+fn global_dark_light_mode_buttons(ui: &mut Ui) -> Option<Theme> {
+    let mut visuals = (*ui.ctx().style()).visuals.clone();
+    let mut clicked = false;
+    ui.horizontal(|ui| {
+        clicked |= ui
+            .selectable_value(&mut visuals, egui::Visuals::light(), "☀ Light")
+            .clicked();
+        clicked |= ui
+            .selectable_value(&mut visuals, egui::Visuals::dark(), "🌙 Dark")
+            .clicked();
+    });
+
+    if !clicked {
+        return None;
+    }
+
+    let dark_mode = visuals.dark_mode;
+    ui.ctx().set_visuals(visuals);
+
+    if dark_mode {
+        Some(Theme::Dark)
+    } else {
+        Some(Theme::Light)
     }
 }
