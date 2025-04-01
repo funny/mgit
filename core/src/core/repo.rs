@@ -23,6 +23,7 @@ pub struct TomlRepo {
     pub tag: Option<String>,
     pub commit: Option<String>,
     pub sparse: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
 }
 
 impl RepoId {

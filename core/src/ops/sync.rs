@@ -14,6 +14,7 @@ use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch};
 use crate::utils::error::{MgitError, MgitResult, OpsErrors};
 
+use crate::utils::label;
 use crate::utils::logger;
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
@@ -37,6 +38,7 @@ pub struct SyncOptions {
     pub silent: bool,
     pub depth: Option<usize>,
     pub ignore: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
     pub hard: bool,
     pub stash: bool,
     pub no_track: bool,
@@ -52,6 +54,7 @@ impl SyncOptions {
         silent: Option<bool>,
         depth: Option<usize>,
         ignore: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
         hard: Option<bool>,
         stash: Option<bool>,
         no_track: Option<bool>,
@@ -66,6 +69,7 @@ impl SyncOptions {
             silent: silent.unwrap_or(false),
             depth,
             ignore,
+            labels,
             hard: hard.unwrap_or(false),
             stash: stash.unwrap_or(false),
             no_track: no_track.unwrap_or(false),
@@ -118,9 +122,13 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load .gitrepos
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to sync".into());
     };
+
+    if let Some(labels) = options.labels {
+        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
+    }
 
     let default_branch = toml_config.default_branch;
 

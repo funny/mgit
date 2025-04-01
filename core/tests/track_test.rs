@@ -57,6 +57,7 @@ fn cli_track_simple() -> MgitResult<()> {
             None,
             None,
             None,
+            None,
             Some(true),
             Some(true),
         ),
@@ -165,6 +166,7 @@ fn cli_track_ignore() -> MgitResult<()> {
         SyncOptions::new(
             Some(input_path),
             None::<PathBuf>,
+            None,
             None,
             None,
             None,

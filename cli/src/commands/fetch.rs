@@ -31,6 +31,10 @@ pub(crate) struct FetchCommand {
     /// Ignore specified repositories for fetch
     #[arg(long)]
     ignore: Option<Vec<String>>,
+
+    /// Labels for fetch
+    #[arg(long)]
+    labels: Option<Vec<String>>,
 }
 
 impl CliCommad for FetchCommand {
@@ -49,6 +53,7 @@ impl From<FetchCommand> for FetchOptions {
             Some(value.silent),
             value.depth,
             value.ignore,
+            value.labels,
         )
     }
 }

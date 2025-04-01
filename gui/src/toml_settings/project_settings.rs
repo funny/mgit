@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 use sha256::digest;
 
@@ -17,6 +19,9 @@ pub struct TomlProjectSettings {
 
     // --ignore for fetch, sync and track
     pub ignore: Option<String>,
+
+    #[serde(default)]
+    pub labels: BTreeSet<String>,
 }
 
 impl TomlProjectSettings {

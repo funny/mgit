@@ -17,7 +17,7 @@ use crate::utils::error::{MgitError, MgitResult, OpsErrors};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
-use crate::utils::{cmd, logger};
+use crate::utils::{cmd, label, logger};
 
 pub struct FetchOptions {
     pub path: PathBuf,
@@ -26,6 +26,7 @@ pub struct FetchOptions {
     pub silent: bool,
     pub depth: Option<usize>,
     pub ignore: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
 }
 
 impl FetchOptions {
@@ -36,6 +37,7 @@ impl FetchOptions {
         silent: Option<bool>,
         depth: Option<usize>,
         ignore: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
     ) -> Self {
         let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
@@ -46,6 +48,7 @@ impl FetchOptions {
             silent: silent.unwrap_or(false),
             depth,
             ignore,
+            labels,
         }
     }
 }
@@ -72,9 +75,14 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to fetch".into());
     };
+
+    if let Some(labels) = options.labels {
+        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
+    }
+
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories

@@ -22,6 +22,7 @@ use crate::utils::command::CommandType;
 use crate::utils::progress::OpsMessageCollector;
 
 pub(crate) mod configuration;
+pub(crate) mod labels;
 pub(crate) mod layout;
 pub(crate) mod menu_bar;
 pub(crate) mod misc;

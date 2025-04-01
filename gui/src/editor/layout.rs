@@ -64,6 +64,8 @@ impl Editor {
                     _ => 0,
                 };
 
+                self.labels_list_panel(ui);
+
                 ui.heading(format!("Repositories ({})", repos_count));
                 self.repositories_list_panel(ui);
             });

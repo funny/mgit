@@ -114,7 +114,7 @@ impl Editor {
                 ui.set_row_height(18.0);
                 // display name
                 let hyperlink_color = ui.visuals().hyperlink_color;
-                ui.visuals_mut().hyperlink_color = match self.repo_states[idx].no_ignore {
+                ui.visuals_mut().hyperlink_color = match !self.repo_states[idx].is_disable() {
                     true => text_color::PURPLE,
                     false => text_color::DARK_PURPLE,
                 };
@@ -285,6 +285,11 @@ impl Editor {
                     false => Some(commit_text),
                 };
             });
+
+            if let Some(labels) = &toml_repo.labels {
+                let text = format!("{} {}", hex_code::LABEL, labels.join(" "));
+                ui.label(text);
+            }
 
             // show remote url
             let url = format!(

@@ -51,7 +51,15 @@ fn cli_fetch_simple() -> MgitResult<()> {
     ops::init_repo(InitOptions::new(Some(path.clone()), None))?;
     // fetch command
     ops::fetch_repos(
-        FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
+        FetchOptions::new(
+            Some(path.clone()),
+            None::<PathBuf>,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
         TestProgress,
     )?;
 
@@ -106,7 +114,15 @@ fn cli_fetch_new_remote_url() -> MgitResult<()> {
 
     // fetch command
     ops::fetch_repos(
-        FetchOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None, None),
+        FetchOptions::new(
+            Some(path.clone()),
+            None::<PathBuf>,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ),
         TestProgress,
     )?;
 
