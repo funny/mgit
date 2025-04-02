@@ -323,6 +323,15 @@ impl Editor {
         ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
             ui.set_width(desired_width);
 
+            if repo_state.disable_by_label {
+                let job = create_layout_job(
+                    format!("{} Disconnected", hex_code::DISCONNECTED),
+                    text_color::GRAY,
+                );
+                ui.label(job);
+                ui.add_space(4.0);
+                return;
+            }
             if repo_state.err_msg.is_empty() {
                 // show states
                 match repo_state.track_state {
