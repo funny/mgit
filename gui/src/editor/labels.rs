@@ -45,7 +45,7 @@ impl Editor {
         for (repo, state) in repos.iter().zip(&mut self.repo_states) {
             state.disable_by_label = match &labels {
                 Some(labels) => !mgit::utils::label::check(repo, labels),
-                None => true,
+                None => false,
             }
         }
     }

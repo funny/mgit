@@ -116,6 +116,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
         let res = clean_repo(CleanOptions::new(
             Some(path.clone()),
             Some(config_path.clone()),
+            options.labels.clone(),
         ))?;
 
         logger::info(res);

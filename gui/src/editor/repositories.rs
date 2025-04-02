@@ -34,12 +34,17 @@ impl Editor {
                                 |ui| {
                                     ui.set_min_width(desired_width);
                                     ui.horizontal(|ui| {
+                                        ui.set_enabled(!self.repo_states[idx].disable_by_label);
                                         // show check box for sync ignore
                                         // save ignore
-                                        if ui
-                                            .checkbox(&mut self.repo_states[idx].no_ignore, "")
-                                            .changed()
-                                        {
+
+                                        let checked = if self.repo_states[idx].disable_by_label {
+                                            &mut false
+                                        } else {
+                                            &mut self.repo_states[idx].no_ignore
+                                        };
+
+                                        if ui.checkbox(checked, "").changed() {
                                             if let Some(rel_path) = &toml_repo.local {
                                                 self.save_ignore(
                                                     rel_path.display_path(),
@@ -114,10 +119,15 @@ impl Editor {
                 ui.set_row_height(18.0);
                 // display name
                 let hyperlink_color = ui.visuals().hyperlink_color;
-                ui.visuals_mut().hyperlink_color = match !self.repo_states[idx].is_disable() {
+
+                ui.visuals_mut().hyperlink_color = match self.repo_states[idx].no_ignore {
                     true => text_color::PURPLE,
                     false => text_color::DARK_PURPLE,
                 };
+
+                if self.repo_states[idx].disable_by_label {
+                    ui.visuals_mut().hyperlink_color = text_color::GRAY;
+                }
 
                 let response = ui.add(egui::Link::new(rep_display));
                 ui.visuals_mut().hyperlink_color = hyperlink_color;

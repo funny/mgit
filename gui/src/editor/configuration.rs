@@ -32,7 +32,7 @@ impl Editor {
                         let do_ignore = ignores.contains(&rel_path.display_path());
                         let disable_by_label = match &labels {
                             Some(labels) => !mgit::utils::label::check(toml_repo, labels),
-                            None => true,
+                            None => false,
                         };
 
                         // init repo state

@@ -227,8 +227,10 @@ impl Editor {
             CommandType::Clean => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
+                // option --labels
+                let labels = self.get_labels();
 
-                let options = CleanOptions::new(path, config_path);
+                let options = CleanOptions::new(path, config_path, labels);
                 let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);

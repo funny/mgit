@@ -98,7 +98,7 @@ fn cli_clean1() -> MgitResult<()> {
 
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>))?;
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>, None))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -178,7 +178,7 @@ fn cli_clean2() -> MgitResult<()> {
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>))?;
+    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>, None))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -258,7 +258,11 @@ fn cli_clean3() -> MgitResult<()> {
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     let config_path = &path.join(".gitrepos");
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), Some(config_path)))?;
+    ops::clean_repo(CleanOptions::new(
+        Some(path.clone()),
+        Some(config_path),
+        None,
+    ))?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
