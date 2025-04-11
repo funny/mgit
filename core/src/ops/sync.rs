@@ -14,7 +14,6 @@ use crate::ops::CleanOptions;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch};
 use crate::utils::error::{MgitError, MgitResult, OpsErrors};
 
-use crate::utils::label;
 use crate::utils::logger;
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
@@ -130,10 +129,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let mut repos_map = repos_to_map_with_ignore(toml_repos, ignore);
-    if let Some(labels) = options.labels {
-        repos_map.retain(|_, repo| label::check(repo, &labels));
-    }
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore, options.labels.as_ref());
 
     progress.repos_start(repos_map.len());
 

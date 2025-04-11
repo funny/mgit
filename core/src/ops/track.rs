@@ -66,7 +66,7 @@ pub fn track(options: TrackOptions, progress: impl Progress) -> MgitResult {
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore, None);
 
     progress.repos_start(repos_map.len());
 

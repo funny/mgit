@@ -17,7 +17,7 @@ use crate::utils::error::{MgitError, MgitResult, OpsErrors};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
-use crate::utils::{cmd, label, logger};
+use crate::utils::{cmd, logger};
 
 pub struct FetchOptions {
     pub path: PathBuf,
@@ -82,10 +82,8 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let mut repos_map = repos_to_map_with_ignore(toml_repos, ignore);
-    if let Some(labels) = options.labels {
-        repos_map.retain(|_, repo| label::check(repo, &labels));
-    }
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore, options.labels.as_ref());
+
     progress.repos_start(repos_map.len());
 
     // use a counter
