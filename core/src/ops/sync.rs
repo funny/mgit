@@ -123,18 +123,17 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     }
 
     // load .gitrepos
-    let Some(mut toml_repos) = toml_config.repos else {
+    let Some(toml_repos) = toml_config.repos else {
         return Ok("No repos to sync".into());
     };
-
-    if let Some(labels) = options.labels {
-        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
-    }
 
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
+    let mut repos_map = repos_to_map_with_ignore(toml_repos, ignore);
+    if let Some(labels) = options.labels {
+        repos_map.retain(|_, repo| label::check(repo, &labels));
+    }
 
     progress.repos_start(repos_map.len());
 
