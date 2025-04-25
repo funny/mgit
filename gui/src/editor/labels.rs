@@ -4,7 +4,8 @@ impl Editor {
     pub(crate) fn labels_list_panel(&mut self, ui: &mut egui::Ui) {
         if let Some(repos) = &self.toml_config.repos {
             ui.heading("Labels");
-            let labels = mgit::utils::label::collect(repos);
+            let mut labels = mgit::utils::label::collect(repos);
+            labels.insert("none");
             self.toml_project_settings
                 .labels
                 .retain(|x| labels.contains(x.as_str()));
