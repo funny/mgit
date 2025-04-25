@@ -130,7 +130,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
 
     // retain repos exclude ignore repositories
     let repos_map = repos_to_map_with_ignore(toml_repos, ignore, options.labels.as_ref());
-
+    log::info!("{}", repos_map.len());
     progress.repos_start(repos_map.len());
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`
