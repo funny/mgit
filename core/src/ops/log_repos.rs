@@ -11,12 +11,13 @@ use crate::core::git::log_current;
 use crate::core::repos::TomlConfig;
 use crate::utils::error::{MgitError, MgitResult};
 use crate::utils::path::PathExtension;
-use crate::utils::{logger, StyleMessage};
+use crate::utils::{label, logger, StyleMessage};
 
 pub struct LogReposOptions {
     pub path: PathBuf,
     pub config_path: PathBuf,
     pub thread_count: usize,
+    pub labels: Option<Vec<String>>,
 }
 
 impl LogReposOptions {
@@ -24,6 +25,7 @@ impl LogReposOptions {
         path: Option<impl AsRef<Path>>,
         config_path: Option<impl AsRef<Path>>,
         thread_count: Option<usize>,
+        labels: Option<Vec<String>>,
     ) -> Self {
         let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
@@ -31,14 +33,16 @@ impl LogReposOptions {
             path,
             config_path,
             thread_count: thread_count.unwrap_or(4),
+            labels,
         }
     }
 
-    pub fn validate(self) -> MgitResult<(PathBuf, TomlConfig, usize)> {
+    pub fn validate(self) -> MgitResult<(PathBuf, TomlConfig, usize, Option<Vec<String>>)> {
         let LogReposOptions {
             path,
             config_path,
             thread_count,
+            labels,
         } = self;
 
         // if directory doesn't exist, return
@@ -60,7 +64,7 @@ impl LogReposOptions {
             return Err(anyhow!(MgitError::LoadConfigFailed));
         };
 
-        Ok((path, toml_config, thread_count))
+        Ok((path, toml_config, thread_count, labels))
     }
 }
 
@@ -86,11 +90,15 @@ impl Display for RepoLog {
 }
 
 pub fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<RepoLog>>> {
-    let (path, toml_config, thread_count) = options.validate()?;
+    let (path, toml_config, thread_count, labels) = options.validate()?;
 
     logger::info(StyleMessage::ops_start("log repos", &path));
 
-    let toml_repos = toml_config.repos.unwrap_or_default();
+    let mut toml_repos = toml_config.repos.unwrap_or_default();
+
+    if let Some(labels) = labels {
+        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
+    }
 
     let thread_pool = rayon::ThreadPoolBuilder::new()
         .num_threads(thread_count)

@@ -26,6 +26,7 @@ pub struct FetchOptions {
     pub silent: bool,
     pub depth: Option<usize>,
     pub ignore: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
 }
 
 impl FetchOptions {
@@ -36,6 +37,7 @@ impl FetchOptions {
         silent: Option<bool>,
         depth: Option<usize>,
         ignore: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
     ) -> Self {
         let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
@@ -46,6 +48,7 @@ impl FetchOptions {
             silent: silent.unwrap_or(false),
             depth,
             ignore,
+            labels,
         }
     }
 }
@@ -75,10 +78,11 @@ pub fn fetch_repos(options: FetchOptions, progress: impl Progress) -> MgitResult
     let Some(toml_repos) = toml_config.repos else {
         return Ok("No repos to fetch".into());
     };
+
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore, options.labels.as_ref());
 
     progress.repos_start(repos_map.len());
 

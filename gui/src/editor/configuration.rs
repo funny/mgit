@@ -21,6 +21,7 @@ impl Editor {
                 // init repo states and sync ignore
                 if let Some(toml_repos) = &self.toml_config.repos {
                     let ignores = self.get_ignores().unwrap_or(vec![]);
+                    let labels = self.get_labels();
                     toml_repos.iter().for_each(|toml_repo| {
                         let rel_path = toml_repo
                             .local
@@ -29,10 +30,15 @@ impl Editor {
 
                         // get ignore state
                         let do_ignore = ignores.contains(&rel_path.display_path());
+                        let disable_by_label = match &labels {
+                            Some(labels) => !mgit::utils::label::check(toml_repo, labels),
+                            None => false,
+                        };
 
                         // init repo state
                         self.repo_states.push(RepoState {
                             no_ignore: !do_ignore,
+                            disable_by_label,
                             ..RepoState::default()
                         });
                     });

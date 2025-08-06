@@ -6,19 +6,28 @@ use walkdir::WalkDir;
 
 use crate::core::repos::TomlConfig;
 use crate::utils::error::{MgitError, MgitResult};
-use crate::utils::logger;
 use crate::utils::style_message::StyleMessage;
+use crate::utils::{label, logger};
 
 pub struct CleanOptions {
     pub path: PathBuf,
     pub config_path: PathBuf,
+    pub labels: Option<Vec<String>>,
 }
 
 impl CleanOptions {
-    pub fn new(path: Option<impl AsRef<Path>>, config_path: Option<impl AsRef<Path>>) -> Self {
+    pub fn new(
+        path: Option<impl AsRef<Path>>,
+        config_path: Option<impl AsRef<Path>>,
+        labels: Option<Vec<String>>,
+    ) -> Self {
         let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
-        Self { path, config_path }
+        Self {
+            path,
+            config_path,
+            labels,
+        }
     }
 }
 
@@ -46,9 +55,13 @@ pub fn clean_repo(options: CleanOptions) -> MgitResult {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some(toml_repos) = &toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok("No repos to clean".into());
     };
+
+    if let Some(labels) = options.labels {
+        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
+    }
 
     let config_repo_paths: Vec<PathBuf> = toml_repos
         .iter()

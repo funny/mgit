@@ -37,6 +37,7 @@ pub struct SyncOptions {
     pub silent: bool,
     pub depth: Option<usize>,
     pub ignore: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
     pub hard: bool,
     pub stash: bool,
     pub no_track: bool,
@@ -52,6 +53,7 @@ impl SyncOptions {
         silent: Option<bool>,
         depth: Option<usize>,
         ignore: Option<Vec<String>>,
+        labels: Option<Vec<String>>,
         hard: Option<bool>,
         stash: Option<bool>,
         no_track: Option<bool>,
@@ -66,6 +68,7 @@ impl SyncOptions {
             silent: silent.unwrap_or(false),
             depth,
             ignore,
+            labels,
             hard: hard.unwrap_or(false),
             stash: stash.unwrap_or(false),
             no_track: no_track.unwrap_or(false),
@@ -112,6 +115,7 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
         let res = clean_repo(CleanOptions::new(
             Some(path.clone()),
             Some(config_path.clone()),
+            options.labels.clone(),
         ))?;
 
         logger::info(res);
@@ -125,8 +129,8 @@ pub fn sync_repo(options: SyncOptions, progress: impl Progress) -> MgitResult {
     let default_branch = toml_config.default_branch;
 
     // retain repos exclude ignore repositories
-    let repos_map = repos_to_map_with_ignore(toml_repos, ignore);
-
+    let repos_map = repos_to_map_with_ignore(toml_repos, ignore, options.labels.as_ref());
+    log::info!("{}", repos_map.len());
     progress.repos_start(repos_map.len());
 
     // create thread pool, and set the number of thread to use by using `.num_threads(count)`

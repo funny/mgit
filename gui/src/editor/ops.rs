@@ -42,6 +42,7 @@ pub struct RepoState {
     pub cmp_state: StateType,
     pub err_msg: String,
     pub no_ignore: bool,
+    pub disable_by_label: bool,
 }
 
 impl Default for RepoState {
@@ -57,7 +58,14 @@ impl Default for RepoState {
             cmp_state: StateType::Disconnected,
             err_msg: String::new(),
             no_ignore: true,
+            disable_by_label: false,
         }
+    }
+}
+
+impl RepoState {
+    pub fn is_disable(&self) -> bool {
+        !self.no_ignore || self.disable_by_label
     }
 }
 
@@ -137,9 +145,11 @@ impl Editor {
                 let thread = self.toml_user_settings.sync_thread.map(|t| t as usize);
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 let ignore: Option<Vec<String>> = self.get_ignores();
+                let labels = self.get_labels();
                 let silent = Some(true);
 
-                let options = FetchOptions::new(path, config_path, thread, silent, depth, ignore);
+                let options =
+                    FetchOptions::new(path, config_path, thread, silent, depth, ignore, labels);
 
                 self.reset_repo_state(StateType::Updating);
                 let progress = self.progress(command_type);
@@ -172,6 +182,8 @@ impl Editor {
                 let depth = self.toml_user_settings.sync_depth.map(|d| d as usize);
                 // option --ignore
                 let ignore: Option<Vec<String>> = self.get_ignores();
+                // option --labels
+                let labels = self.get_labels();
                 // option --silent
                 let silent = Some(true);
 
@@ -182,6 +194,7 @@ impl Editor {
                     silent,
                     depth,
                     ignore,
+                    labels,
                     hard,
                     stash,
                     no_track,
@@ -214,8 +227,10 @@ impl Editor {
             CommandType::Clean => {
                 let path = Some(&self.project_path);
                 let config_path = Some(&self.config_file);
+                // option --labels
+                let labels = self.get_labels();
 
-                let options = CleanOptions::new(path, config_path);
+                let options = CleanOptions::new(path, config_path, labels);
                 let send = self.send.clone();
 
                 self.reset_repo_state(StateType::Updating);
@@ -284,6 +299,7 @@ impl Editor {
                 if let Some(id) = repo_message.id {
                     self.repo_states[id] = RepoState {
                         no_ignore: self.repo_states[id].no_ignore,
+                        disable_by_label: self.repo_states[id].disable_by_label,
                         ..repo_message.repo_state
                     };
                 };
@@ -316,13 +332,14 @@ impl Editor {
 
     pub(crate) fn reset_repo_state(&mut self, state_type: StateType) {
         for repo_state in &mut self.repo_states {
-            if !repo_state.no_ignore {
+            if repo_state.is_disable() {
                 continue;
             }
             *repo_state = RepoState {
                 track_state: state_type,
                 cmp_state: state_type,
                 no_ignore: repo_state.no_ignore,
+                disable_by_label: repo_state.disable_by_label,
                 ..RepoState::default()
             };
         }

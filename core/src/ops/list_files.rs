@@ -5,20 +5,27 @@ use crate::core::git;
 use crate::core::repos::TomlConfig;
 use crate::ops::CleanOptions;
 use crate::utils::error::{MgitError, MgitResult};
+use crate::utils::label;
 use crate::utils::path::PathExtension;
 use crate::utils::style_message::StyleMessage;
 
 pub struct ListFilesOptions {
     pub path: PathBuf,
     pub config_path: PathBuf,
+    pub labels: Option<Vec<String>>,
 }
 
 impl ListFilesOptions {
-    pub fn new(path: Option<impl AsRef<Path>>, config_path: Option<impl AsRef<Path>>) -> Self {
-        let clean_options = CleanOptions::new(path, config_path);
+    pub fn new(
+        path: Option<impl AsRef<Path>>,
+        config_path: Option<impl AsRef<Path>>,
+        labels: Option<Vec<String>>,
+    ) -> Self {
+        let clean_options = CleanOptions::new(path, config_path, labels);
         Self {
             path: clean_options.path,
             config_path: clean_options.config_path,
+            labels: clean_options.labels,
         }
     }
 }
@@ -46,9 +53,13 @@ pub fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
         return Err(anyhow!(MgitError::LoadConfigFailed));
     };
 
-    let Some(toml_repos) = toml_config.repos else {
+    let Some(mut toml_repos) = toml_config.repos else {
         return Ok(vec![]);
     };
+
+    if let Some(labels) = options.labels {
+        toml_repos = label::filter(&toml_repos, &labels).cloned().collect();
+    }
 
     let files = toml_repos
         .iter()

@@ -97,6 +97,10 @@ impl TomlConfig {
                     out.push_str(&format!("sparse = {}\n", item));
                 }
 
+                if let Some(item) = table.get("labels") {
+                    out.push_str(&format!("labels = {}\n", item));
+                }
+
                 out.push('\n');
             }
         }

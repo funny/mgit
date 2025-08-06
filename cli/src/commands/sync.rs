@@ -47,6 +47,10 @@ pub(crate) struct SyncCommand {
     /// Ignore specified repositories for sync
     #[arg(long)]
     ignore: Option<Vec<String>>,
+
+    /// Labels for sync
+    #[arg(long)]
+    labels: Option<Vec<String>>,
 }
 
 impl CliCommad for SyncCommand {
@@ -65,6 +69,7 @@ impl From<SyncCommand> for SyncOptions {
             Some(value.silent),
             value.depth,
             value.ignore,
+            value.labels,
             Some(value.hard),
             Some(value.stash),
             Some(value.no_track),

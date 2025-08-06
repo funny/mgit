@@ -1,5 +1,6 @@
 pub mod cmd;
 pub mod error;
+pub mod label;
 pub mod logger;
 pub mod path;
 pub mod progress;

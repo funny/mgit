@@ -165,6 +165,7 @@ pub fn snapshot_repo(options: SnapshotOptions) -> MgitResult {
                 tag: None,
                 commit,
                 sparse,
+                labels: None,
             };
             repos.push(toml_repo);
             logger::info(format!("  + {}", norm_str));

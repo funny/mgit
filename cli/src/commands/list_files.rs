@@ -16,6 +16,10 @@ pub(crate) struct ListFilesCommand {
     /// Use specified config file
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
+
+    /// Labels for list-files
+    #[arg(long)]
+    labels: Option<Vec<String>>,
 }
 
 impl CliCommad for ListFilesCommand {
@@ -29,6 +33,6 @@ impl CliCommad for ListFilesCommand {
 
 impl From<ListFilesCommand> for ListFilesOptions {
     fn from(value: ListFilesCommand) -> Self {
-        ListFilesOptions::new(value.path, value.config)
+        ListFilesOptions::new(value.path, value.config, value.labels)
     }
 }

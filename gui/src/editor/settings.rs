@@ -114,6 +114,14 @@ impl super::Editor {
         })
     }
 
+    pub(crate) fn get_labels(&self) -> Option<Vec<String>> {
+        if self.toml_project_settings.labels.is_empty() {
+            None
+        } else {
+            Some(self.toml_project_settings.labels.iter().cloned().collect())
+        }
+    }
+
     pub(crate) fn get_new_branch_ignores(&self) -> Option<Vec<String>> {
         self.toml_project_settings
             .new_branch_ignore
@@ -277,7 +285,7 @@ impl super::Editor {
         }
     }
 
-    fn save_project_settings(&self) {
+    pub(crate) fn save_project_settings(&self) {
         self.toml_project_settings.save(self.project_path.clone());
     }
 

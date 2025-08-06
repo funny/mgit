@@ -6,6 +6,7 @@ use std::{collections::HashSet, path::Path};
 
 use crate::core::git;
 use crate::core::git::RemoteRef;
+use crate::utils::label;
 use crate::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -23,6 +24,7 @@ pub struct TomlRepo {
     pub tag: Option<String>,
     pub commit: Option<String>,
     pub sparse: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
 }
 
 impl RepoId {
@@ -65,6 +67,7 @@ impl TomlRepo {
 pub fn repos_to_map_with_ignore(
     repos: Vec<TomlRepo>,
     ignore: Option<&Vec<String>>,
+    labels: Option<&Vec<String>>,
 ) -> HashMap<usize, TomlRepo> {
     let mut map = HashMap::new();
 
@@ -87,6 +90,12 @@ pub fn repos_to_map_with_ignore(
 
         if ignore_paths.contains(repo.local.as_ref().unwrap()) {
             continue;
+        }
+
+        if let Some(labels) = labels {
+            if !label::check(&repo, labels) {
+                continue;
+            };
         }
         map.insert(idx, repo);
     }

@@ -15,6 +15,9 @@ pub(crate) struct CleanCommand {
     /// Use specified config file
     #[arg(long, value_name = "FILE")]
     pub config: Option<PathBuf>,
+
+    #[arg(long)]
+    pub labels: Option<Vec<String>>,
 }
 
 impl CliCommad for CleanCommand {
@@ -25,6 +28,6 @@ impl CliCommad for CleanCommand {
 
 impl From<CleanCommand> for CleanOptions {
     fn from(value: CleanCommand) -> Self {
-        CleanOptions::new(value.path, value.config)
+        CleanOptions::new(value.path, value.config, value.labels)
     }
 }

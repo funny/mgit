@@ -15,10 +15,11 @@ pub(crate) struct ProgressBar {
 
 impl ProgressBar {
     pub fn new(current: Arc<AtomicUsize>, repos: &[RepoState], context: egui::Context) -> Self {
-        let total = repos.iter().fold(
-            0,
-            |total, repo| if repo.no_ignore { total + 1 } else { total },
-        );
+        let total = repos
+            .iter()
+            .filter(|repo| repo.no_ignore && !repo.disable_by_label)
+            .count();
+
         let current_rate = current.load(Ordering::Relaxed);
         let progress = if total > 0 {
             current_rate as f32 / total as f32

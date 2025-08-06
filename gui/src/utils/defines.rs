@@ -88,4 +88,5 @@ pub mod hex_code {
     pub const BRANCH: &str = "\u{fb2b}";
     pub const TAG: &str = "\u{f9f8}";
     pub const COMMIT: &str = "\u{fc16}";
+    pub const LABEL: &str = "\u{f815}";
 }
