@@ -1,0 +1,46 @@
+[package]
+name = "mgit-core"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "mgit"
+
+[dependencies]
+# Async & System
+tokio.workspace = true
+tracing.workspace = true
+snafu.workspace = true
+
+# Utilities
+globset.workspace = true
+serde.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+walkdir.workspace = true
+console.workspace = true
+ansi_term.workspace = true
+regex.workspace = true
+home.workspace = true
+
+# Internal
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59.0", features = [
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_Foundation",
+    "Win32_Security",
+] }
+
+[dev-dependencies]
+# Testing
+anyhow.workspace = true
+assert_cmd = "2.0.16"
+tempfile = "3.10.1"
+
+[features]
+default = []
+use_gitea = []
