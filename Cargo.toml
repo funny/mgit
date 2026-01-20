@@ -1,5 +1,5 @@
 [workspace]
-members = ["mgit-core", "mgit-cli", "mgit-gui"]
+members = ["mgit", "mgit-cli", "mgit-gui"]
 resolver = "2"
 
 [workspace.package]
@@ -50,7 +50,7 @@ strip-ansi-escapes = "0.2.1"
 filetime = "0.2.26"
 
 # Internal Crates
-mgit-core = { path = "./mgit-core" }
+mgit = { path = "./mgit" }
 
 [profile.release]
 opt-level = 'z'

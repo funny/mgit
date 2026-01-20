@@ -1,8 +1,10 @@
 use snafu::Snafu;
 use std::path::PathBuf;
 
+/// Result type alias for MGIT operations
 pub type MgitResult<T = ()> = Result<T, MgitError>;
 
+/// Error types for MGIT operations
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 #[snafu(context(suffix(Snafu)))] // Explicitly set the suffix

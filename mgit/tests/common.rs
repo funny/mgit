@@ -191,6 +191,50 @@ fn use_gitea() -> bool {
     cfg!(feature = "use_gitea")
 }
 
+/// Helper function to setup git author identity for tests
+pub fn check_git_author_identity(path: &std::path::PathBuf) {
+    if exec_cmd(path, "git", &["config", "--global", "user.email"]).is_err() {
+        exec_cmd(
+            path,
+            "git",
+            &["config", "--global", "user.email", "foobar@xmfunny.com"],
+        )
+        .expect(failed_message::GIT_CONFIG);
+        exec_cmd(path, "git", &["config", "--global", "user.name", "foobar"])
+            .expect(failed_message::GIT_CONFIG);
+    }
+}
+
+/// Helper function to write config file
+pub fn write_config_file(path: &std::path::Path, content: &str) {
+    std::fs::write(path, content.trim()).expect(failed_message::WRITE_FILE);
+}
+
+/// Helper function to create a test repository setup
+pub struct TestRepoSetup {
+    pub tmp_dir: TempDir,
+    pub path: std::path::PathBuf,
+    pub config_file: std::path::PathBuf,
+}
+
+impl TestRepoSetup {
+    pub fn new(prefix: &str) -> Self {
+        let tmp_dir = create_test_dir(prefix);
+        let path = tmp_dir.path().to_path_buf();
+        let config_file = path.join(".gitrepos");
+        std::fs::create_dir_all(&path).expect("Failed to create test directory");
+        Self {
+            tmp_dir,
+            path,
+            config_file,
+        }
+    }
+
+    pub fn input_path(&self) -> &str {
+        self.path.to_str().unwrap()
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct TestProgress;
 

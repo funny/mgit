@@ -29,9 +29,10 @@ pub async fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> MgitR
     if output.status.success() {
         Ok(stdout)
     } else {
+        let command_str = format!("{} {}", cmd, args.join(" "));
         return Err(crate::error::MgitError::GitCommandError {
             code: output.status.code().unwrap_or(-1),
-            output: stderr,
+            output: format!("Command '{}' failed: {}", command_str, stderr),
         });
     }
 }
@@ -68,9 +69,10 @@ pub async fn exec_cmd_with_progress(
 
     if !output.status.success() {
         let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
+        let command_str = format!("{:?}", command);
         return Err(crate::error::MgitError::GitCommandError {
             code: output.status.code().unwrap_or(-1),
-            output: stderr_str,
+            output: format!("Command '{}' failed: {}", command_str, stderr_str),
         });
     } else {
         Ok(())
@@ -83,14 +85,18 @@ where
     Fut: std::future::Future<Output = MgitResult<T>>,
 {
     let mut last_err = None;
-    for _ in 0..times {
+    for attempt in 1..=times {
         match f().await {
             Ok(r) => return Ok(r),
             Err(e) => {
                 last_err = Some(e);
-                tokio::time::sleep(sleep).await;
+                if attempt < times {
+                    tokio::time::sleep(sleep).await;
+                }
             }
         }
     }
-    Err(last_err.unwrap())
+    Err(last_err.unwrap_or_else(|| crate::error::MgitError::OpsError {
+        message: format!("Retry failed after {} attempts", times),
+    }))
 }
