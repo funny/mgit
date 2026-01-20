@@ -949,12 +949,12 @@ async fn cli_sync_checkout_invalid_path() -> MgitResult<()> {
 ///     4、根目录是仓库
 ///
 /// 测试目录结构:
-///   test_sync_checkout_symple(.git)
+///   test_sync_checkout_simple(.git)
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[tokio::test]
-async fn cli_sync_checkout_symple() -> MgitResult<()> {
-    let tmp_dir = create_test_dir("test_sync_checkout_symple");
+async fn cli_sync_checkout_simple() -> MgitResult<()> {
+    let tmp_dir = create_test_dir("test_sync_checkout_simple");
     let path = tmp_dir.path().to_path_buf();
     let input_path = path.to_str().unwrap();
 
@@ -1317,10 +1317,10 @@ async fn cli_sync_checkout_with_conflict() -> MgitResult<()> {
 ///     2、默认使用 checkout 时，不应存在 local changes
 ///
 /// 测试目录结构:
-///   test_sync_checkout_symple2(.git)
+///   test_sync_checkout_simple2(.git)
 #[tokio::test]
-async fn cli_sync_checkout_symple2() -> MgitResult<()> {
-    let tmp_dir = create_test_dir("test_sync_checkout_symple2");
+async fn cli_sync_checkout_simple2() -> MgitResult<()> {
+    let tmp_dir = create_test_dir("test_sync_checkout_simple2");
     let path = tmp_dir.path().to_path_buf();
     let input_path = path.to_str().unwrap();
 
@@ -1395,12 +1395,12 @@ async fn cli_sync_checkout_symple2() -> MgitResult<()> {
 ///     3、根目录是仓库
 ///
 /// 测试目录结构:
-///   test_sync_ignore_symple(.git)
+///   test_sync_ignore_simple(.git)
 ///     ├─foobar-1 (.git)
 ///     └─foobar-2 (.git)
 #[tokio::test]
 async fn cli_sync_ignore_simple() -> MgitResult<()> {
-    let tmp_dir = create_test_dir("test_sync_ignore_symple");
+    let tmp_dir = create_test_dir("test_sync_ignore_simple");
     let path = tmp_dir.path().to_path_buf();
     let input_path = path.to_str().unwrap();
 

@@ -1,5 +1,5 @@
 [package]
-name = "mgit-core"
+name = "mgit"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

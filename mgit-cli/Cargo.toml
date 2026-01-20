@@ -25,5 +25,5 @@ console.workspace = true
 home = "0.5"
 
 # Internal
-mgit-core.workspace = true
+mgit.workspace = true
 ansi_term.workspace = true

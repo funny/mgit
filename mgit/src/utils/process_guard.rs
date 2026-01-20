@@ -53,10 +53,18 @@ mod windows {
 
 #[cfg(not(windows))]
 mod unix {
-    // For Unix, we rely on tokio::process::Command behavior or pdeathsig if implemented
-    // Currently tokio handles child cleanup reasonably well, but for stricter control
-    // we might need nix crate. For now, we leave it simple.
-    pub fn assign_process_to_job<T>(_process: &T) -> bool {
+    /// Set up process cleanup for Unix systems
+    /// 
+    /// Note: PR_SET_PDEATHSIG requires setting it in the child process itself via pre_exec,
+    /// which tokio::process::Command doesn't support. Tokio's runtime does handle child
+    /// cleanup reasonably well on Unix when the parent process exits normally.
+    /// 
+    /// For now, we rely on tokio's built-in cleanup mechanisms. If stricter control is needed,
+    /// consider using std::process::Command with pre_exec and converting to async manually.
+    pub fn set_pdeathsig(_child: &tokio::process::Child) -> bool {
+        // Tokio's runtime will clean up child processes when the parent exits normally.
+        // If the parent crashes, child processes may become zombies, but this is a limitation
+        // of using tokio::process::Command without pre_exec support.
         true
     }
 }
@@ -81,7 +89,7 @@ impl ProcessGuard {
         }
     }
 
-    /// Attach a spawned child to the global job object
+    /// Attach a spawned child to the global job object (Windows) or set up process cleanup (Unix)
     pub fn attach(child: &tokio::process::Child) {
         #[cfg(windows)]
         {
@@ -94,7 +102,7 @@ impl ProcessGuard {
         }
         #[cfg(not(windows))]
         {
-            let _ = child;
+            unix::set_pdeathsig(child);
         }
     }
 }

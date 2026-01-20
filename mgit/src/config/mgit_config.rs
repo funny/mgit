@@ -3,22 +3,41 @@ use std::{fs, path::Path};
 
 use crate::config::repo_config::RepoConfig;
 
+/// Main configuration structure for MGIT
+///
+/// This structure represents the `.gitrepos` configuration file format.
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct MgitConfig {
+    /// Version of the configuration file format
     pub version: Option<String>,
+    /// Default branch name to use when not specified in repo config
     pub default_branch: Option<String>,
+    /// Default remote name to use when not specified in repo config
     pub default_remote: Option<String>,
+    /// List of repository configurations
     pub repos: Option<Vec<RepoConfig>>,
 }
 
 impl MgitConfig {
+    /// Load configuration from a TOML file
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the `.gitrepos` configuration file
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(MgitConfig)` if the file exists and can be parsed, `None` otherwise.
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
         if !path.as_ref().is_file() {
             return None;
         }
 
-        let content = fs::read_to_string(path).unwrap().replace("\".\"", "\"\"");
+        let content = match fs::read_to_string(path.as_ref()) {
+            Ok(c) => c.replace("\".\"", "\"\""),
+            Err(_) => return None,
+        };
 
         let Ok(mut toml_config) = toml::from_str::<MgitConfig>(&content) else {
             return None;
@@ -31,6 +50,11 @@ impl MgitConfig {
         Some(toml_config)
     }
 
+    /// Serialize configuration to TOML string format
+    ///
+    /// # Returns
+    ///
+    /// Returns a formatted TOML string representation of the configuration.
     pub fn serialize(&self) -> String {
         let toml_string = toml::to_string(self).unwrap_or_default();
         let mut out = String::new();
@@ -63,11 +87,15 @@ impl MgitConfig {
         out.push('\n');
 
         if let Some(repos) = table.get("repos") {
-            let list = repos.as_array().expect("repos must be an array");
+            let Some(list) = repos.as_array() else {
+                return toml_string;
+            };
 
             for entry in list {
                 out.push_str("[[repos]]\n");
-                let table = entry.as_inline_table().expect("repo must be table");
+                let Some(table) = entry.as_inline_table() else {
+                    continue;
+                };
 
                 if let Some(item) = table.get("local") {
                     out.push_str(&format!("local = {}\n", item));
