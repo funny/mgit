@@ -1,0 +1,199 @@
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+
+use std::collections::HashMap;
+use std::{collections::HashSet, path::Path};
+
+use crate::error::MgitResult;
+use crate::git;
+use crate::git::RemoteRef;
+use crate::utils::label;
+use crate::utils::style_message::StyleMessage;
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct RepoId {
+    pub id: usize,
+    pub repo: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case")]
+pub struct RepoConfig {
+    pub local: Option<String>,
+    pub remote: Option<String>,
+    pub branch: Option<String>,
+    pub tag: Option<String>,
+    pub commit: Option<String>,
+    pub sparse: Option<Vec<String>>,
+    pub labels: Option<Vec<String>>,
+}
+
+impl RepoId {
+    pub fn new(id: usize, repo: impl AsRef<str>) -> Self {
+        Self {
+            id,
+            repo: repo.as_ref().to_string().replace(['/', '\\'], "_"),
+        }
+    }
+}
+
+impl RepoConfig {
+    pub async fn get_remote_name(&self, path: impl AsRef<Path>) -> MgitResult<String> {
+        let remote_url = self
+            .remote
+            .as_ref()
+            .ok_or_else(|| crate::error::MgitError::OpsError {
+                message: "remote url is null.".into(),
+            })?;
+        git::find_remote_name_by_url(path, remote_url).await
+    }
+
+    pub async fn get_remote_ref(&self, path: &Path) -> MgitResult<RemoteRef> {
+        let remote_name = &self.get_remote_name(path).await?;
+        let remote_ref = {
+            if let Some(commit) = &self.commit {
+                RemoteRef::Commit(commit.to_string())
+            } else if let Some(tag) = &self.tag {
+                RemoteRef::Tag(tag.to_string())
+            } else if let Some(branch) = &self.branch {
+                let branch = format!("{}/{}", remote_name, branch);
+                RemoteRef::Branch(branch)
+            } else {
+                return Err(crate::error::MgitError::OpsError {
+                    message: "remote ref is invalid!".into(),
+                });
+            }
+        };
+        Ok(remote_ref)
+    }
+}
+
+pub fn repos_to_map_with_ignore(
+    repos: Vec<RepoConfig>,
+    ignore: Option<&Vec<String>>,
+    labels: Option<&Vec<String>>,
+) -> HashMap<usize, RepoConfig> {
+    let mut map = HashMap::new();
+
+    let mut ignore_paths = match ignore {
+        Some(ignore_paths) => ignore_paths
+            .iter()
+            .map(|p| p.clone())
+            .collect::<HashSet<_>>(),
+        None => HashSet::new(),
+    };
+
+    if ignore_paths.contains(".") {
+        ignore_paths.insert("".to_string());
+    }
+
+    for (idx, repo) in repos.into_iter().enumerate() {
+        if repo.local.is_none() {
+            continue;
+        }
+
+        if ignore_paths.contains(repo.local.as_ref().unwrap()) {
+            continue;
+        }
+
+        if let Some(labels) = labels {
+            if !label::check(&repo, labels) {
+                continue;
+            };
+        }
+        map.insert(idx, repo);
+    }
+    map
+}
+
+pub async fn cmp_local_remote(
+    input_path: impl AsRef<Path>,
+    toml_repo: &RepoConfig,
+    default_branch: &Option<String>,
+    use_tracking_remote: bool,
+) -> MgitResult<StyleMessage> {
+    let rel_path = toml_repo.local.as_ref().unwrap();
+    let full_path = input_path.as_ref().join(rel_path);
+
+    let mut toml_repo = toml_repo.to_owned();
+    if toml_repo.branch.is_none() {
+        toml_repo.branch = default_branch.to_owned();
+    }
+
+    let (remote_ref_str, remote_desc) = {
+        if use_tracking_remote {
+            let remote_ref_str: String = git::get_tracking_branch(&full_path).await?;
+            (remote_ref_str.clone(), remote_ref_str)
+        } else {
+            let remote_ref = toml_repo.get_remote_ref(&full_path).await?;
+            let remote_ref_str = match remote_ref.clone() {
+                RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
+            };
+            let remote_desc = match remote_ref {
+                RemoteRef::Commit(commit) => commit[..7].to_string(),
+                RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
+            };
+            (remote_ref_str, remote_desc)
+        }
+    };
+
+    if remote_desc.is_empty() {
+        return Ok("not tracking".into());
+    }
+
+    let mut changed_files: HashSet<String> = HashSet::new();
+
+    if let Ok(output) = git::get_untrack_files(&full_path).await {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    if let Ok(output) = git::get_changed_files(&full_path).await {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    if let Ok(output) = git::get_staged_files(&full_path).await {
+        for file in output.trim().lines() {
+            changed_files.insert(file.to_string());
+        }
+    }
+
+    let mut changes_desc: Option<StyleMessage> = None;
+    if !changed_files.is_empty() {
+        changes_desc = StyleMessage::git_changes(changed_files.len());
+    }
+
+    let branch: String = git::get_current_branch(&full_path).await?;
+
+    if branch.is_empty() {
+        return Ok("init commit".into());
+    }
+
+    let branch_pair = format!("{}...{}", &branch, &remote_ref_str);
+    let mut commit_desc: Option<StyleMessage> = None;
+    if let Ok(output) = git::get_rev_list_count(&full_path, branch_pair).await {
+        let re = Regex::new(r"(\d+)\s*(\d+)").unwrap();
+
+        if let Some(caps) = re.captures(&output) {
+            let (ahead, behind) = (&caps[1], &caps[2]);
+            commit_desc = StyleMessage::git_commits(ahead, behind);
+        }
+    } else {
+        commit_desc = Some(StyleMessage::git_unknown_revision());
+    }
+
+    let desc = match (commit_desc, changes_desc) {
+        (None, None) => {
+            let branch_log = git::get_branch_log(&full_path, branch).await;
+            StyleMessage::git_update_to_date(branch_log)
+        }
+        (commit_desc, changes_desc) => {
+            StyleMessage::git_diff(remote_desc, commit_desc, changes_desc)
+        }
+    };
+
+    Ok(desc)
+}

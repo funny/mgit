@@ -1,5 +1,5 @@
 [target.x86_64-unknown-linux-gnu]
-dockerfile = "gitea_compose/Dockerfile.amd64"
+dockerfile = "tests/gitea-env/Dockerfile.amd64"
 
 [target.aarch64-unknown-linux-gnu]
-dockerfile = "gitea_compose/Dockerfile.aarch64"
+dockerfile = "tests/gitea-env/Dockerfile.aarch64"

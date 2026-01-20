@@ -1,11 +1,11 @@
 <p align="center">
-  <img width="128" alt="mgit logo" src="./imgs/logo-128.png">
+  <img width="128" alt="mgit logo" src="./docs/imgs/logo-128.png">
 </p>
 
 <h1 align="center">MGIT - git 多仓库管理工具</h1>
 
 <p align="center">
-  <img width="1000" alt="mgit" src="./imgs/mgit.png">
+  <img width="1000" alt="mgit" src="./docs/imgs/mgit.png">
 </p>
 
 mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能有：
@@ -184,7 +184,7 @@ cargo build [--release]
 
 ```bash
 # 位于项目根目录下执行
-gitea_compose/start_gitea.sh
+tests/gitea-env/start_gitea.sh
 ```
 
 > Windows 下请使用 `wsl2`

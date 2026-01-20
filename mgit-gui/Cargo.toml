@@ -1,0 +1,46 @@
+[package]
+name = "mgit-gui"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# UI Stack
+egui.workspace = true
+eframe.workspace = true
+egui_extras.workspace = true
+image.workspace = true
+rfd.workspace = true
+poll-promise.workspace = true
+strip-ansi-escapes.workspace = true
+
+# Async & System
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+anyhow.workspace = true
+snafu.workspace = true
+
+# Utilities
+console.workspace = true
+home.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
+serde.workspace = true
+sha256.workspace = true
+filetime.workspace = true
+semver.workspace = true
+regex.workspace = true
+
+# Internal
+mgit-core.workspace = true
+futures = "0.3.31"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+[features]
+dev = []
+persistence = []
