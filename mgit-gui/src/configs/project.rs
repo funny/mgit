@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha256::digest;
+use tracing::warn;
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct TomlProjectSettings {
@@ -29,16 +30,27 @@ impl TomlProjectSettings {
         if let Some(path) = home::home_dir() {
             let recent_dir = path.join(".mgit/tmp");
             let recent_file = match is_hash_name {
-                true => recent_dir.join(project),
+                true => recent_dir.join(project.clone()),
                 false => {
-                    let hash_name = digest(project);
+                    let hash_name = digest(project.clone());
                     recent_dir.join(hash_name)
                 }
             };
 
             if recent_file.is_file() {
-                let txt = std::fs::read_to_string(path.join(recent_file)).unwrap();
-                recent_config = toml::from_str(txt.as_str()).unwrap();
+                let file_path = path.join(&recent_file);
+                let txt = std::fs::read_to_string(&file_path).unwrap();
+                match toml::from_str::<TomlProjectSettings>(txt.as_str()) {
+                    Ok(config) => recent_config = config,
+                    Err(e) => {
+                        warn!(
+                            path = file_path.to_string_lossy().as_ref(),
+                            project = project.as_str(),
+                            error = %e,
+                            "toml_project_settings_load_failed"
+                        );
+                    }
+                }
             }
         }
         recent_config

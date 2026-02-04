@@ -569,6 +569,37 @@ async fn inner_exec(
         }
 
         StashMode::Hard => {
+            // lock file deletion logic - before clean operation
+            let lock_files = [".git/shallow.lock", ".git/index.lock"];
+            for lock_file in &lock_files {
+                let lock_path = full_path.join(lock_file);
+                if lock_path.exists() {
+                    let repo_path = repo_info.rel_path();
+                    tracing::info!(
+                        repo = %repo_path,
+                        lock_file = lock_file,
+                        "lock_file_detected_hard_mode_force_delete"
+                    );
+                    match tokio::fs::remove_file(&lock_path).await {
+                        Ok(_) => {
+                            tracing::info!(
+                                repo = %repo_path,
+                                lock_file = lock_file,
+                                "lock_file_delete_success"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                repo = %repo_path,
+                                lock_file = lock_file,
+                                error = %e,
+                                "lock_file_delete_failed"
+                            );
+                        }
+                    }
+                }
+            }
+
             // clean
             if !is_repo_none {
                 exec_clean(input_path, current_repo_info, progress).await?;

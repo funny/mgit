@@ -33,7 +33,13 @@ pub fn open_repo_in_fork(repo_path: &str) {
     }
 }
 
-pub fn check_git_valid() -> Result<(), String> {
+#[derive(Debug)]
+pub struct GitVersionInfo {
+    pub version_desc: String,
+    pub version: Option<String>,
+}
+
+pub fn check_git_valid() -> Result<GitVersionInfo, String> {
     // make sure git is installed
     #[cfg(target_os = "windows")]
     let output = {
@@ -66,8 +72,13 @@ pub fn check_git_valid() -> Result<(), String> {
         let expect_version = semver::VersionReq::parse(GIT_VERSION).expect("semver error");
         let current_version = semver::Version::parse(&version).expect("semver error");
 
+        let info = GitVersionInfo {
+            version_desc: version_desc.trim().to_string(),
+            version: Some(version.clone()),
+        };
+
         match expect_version.matches(&current_version) {
-            true => Ok(()),
+            true => Ok(info),
             false => Err(format!(
                 "git version {} is required, current version is {}\n",
                 GIT_VERSION, version

@@ -34,7 +34,7 @@ anyhow = "1.0.95"
 # Utilities
 clap = { version = "4.5.54", features = ["derive", "cargo", "env"] }
 toml = "0.8.20"
-toml_edit = { version = "0.22.22", features = ["serde"] }
+toml_edit = { version = "0.24.0", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 regex = "1.12.2"
 globset = "0.4.18"

@@ -17,6 +17,14 @@ pub(crate) mod utils;
 fn main() -> eframe::Result {
     let _guard = init_log();
 
+    // Log mgit-gui version at startup
+    let version = std::env!("CARGO_PKG_VERSION");
+    tracing::info!(
+        name = std::env!("CARGO_PKG_NAME"),
+        version = version,
+        "mgit_gui_started"
+    );
+
     let native_options = NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_inner_size([DEFAULT_WIDTH, DEFAULT_HEIGHT])

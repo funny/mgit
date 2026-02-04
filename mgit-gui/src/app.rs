@@ -20,7 +20,7 @@ pub mod repo_manager;
 pub mod session_manager;
 
 use crate::ui::style::{configure_text_styles, setup_custom_fonts};
-use crate::utils::system::check_git_valid;
+use crate::utils::system::{check_git_valid, GIT_VERSION};
 
 use crate::app::repo_manager::RepoManager;
 use crate::app::session_manager::SessionManager;
@@ -74,8 +74,24 @@ impl GuiApp {
         };
 
         let (is_dependencies_valid, err_msg) = match check_git_valid() {
-            Ok(_) => (true, String::new()),
-            Err(msg) => (false, msg),
+            Ok(git_info) => {
+                // Log git version info
+                tracing::info!(
+                    current_version = git_info.version_desc.as_str(),
+                    required_version = GIT_VERSION,
+                    parsed_version = git_info.version.as_deref(),
+                    "git_version_check_passed"
+                );
+                (true, String::new())
+            }
+            Err(msg) => {
+                tracing::error!(
+                    error = msg.as_str(),
+                    required_version = GIT_VERSION,
+                    "git_version_check_failed"
+                );
+                (false, msg)
+            }
         };
 
         if !is_dependencies_valid {
