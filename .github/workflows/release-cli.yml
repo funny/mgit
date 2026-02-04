@@ -20,39 +20,10 @@ on:
     # branches:
     # - ag/work
     tags:
-    - "[0-9]+.[0-9]+.[0-9]+"
+    - "[0-9]*"
 jobs:
-  create-release:
-    name: create-release
-    runs-on: ubuntu-22.04
-    # env:
-      # Set to force version number, e.g., when no tag exists.
-      # MGIT_VERSION: TEST-0.0.0
-    outputs:
-      upload_url: ${{ steps.release.outputs.upload_url }}
-      mgit_version: ${{ env.MGIT_VERSION }}
-    steps:
-      - name: Get the release version from the tag
-        shell: bash
-        if: env.MGIT_VERSION == ''
-        run: |
-          # Apparently, this is the right way to get a tag name. Really?
-          #
-          # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
-          echo "MGIT_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          echo "version is: ${{ env.MGIT_VERSION }}"
-      - name: Create GitHub release
-        id: release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.MGIT_VERSION }}
-          release_name: ${{ env.MGIT_VERSION }}
-
   build-release:
     name: build-release
-    needs: ['create-release']
     runs-on: ${{ matrix.os }}
     env:
       # For some builds, we use cross to test on 32-bit and big-endian
@@ -75,10 +46,10 @@ jobs:
           os: ubuntu-22.04
           target: aarch64-unknown-linux-musl
         - build: macos-x86_64
-          os: macos-13
+          os: macos-14
           target: x86_64-apple-darwin
         - build: macos-aarch64
-          os: macos-13
+          os: macos-14
           target: aarch64-apple-darwin
         - build: win64-msvc
           os: windows-2022
@@ -86,12 +57,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 1.85.1
+        toolchain: 1.92.0
         target: ${{ matrix.target }}
 
     - name: Use Cross
@@ -127,12 +98,9 @@ jobs:
     - name: Build archive
       shell: bash
       run: |
-        staging="mgit-${{ needs.create-release.outputs.mgit_version }}-${{ matrix.target }}"
+        staging="mgit-${GITHUB_REF#refs/tags/}-${{ matrix.target }}"
         mkdir -p "$staging"
         cp README.md "$staging/"
-        # DISABLE
-        # mkdir -p "$staging"/{complete,doc}
-        # cp complete/_mgit "$staging/complete/"
 
         if [ "${{ matrix.os }}" = "windows-2022" ]; then
           cp "target/${{ matrix.target }}/release/mgit.exe" "$staging/"
@@ -145,11 +113,10 @@ jobs:
         fi
 
     - name: Upload release archive
-      uses: actions/upload-release-asset@v1.0.2
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ${{ env.ASSET }}
-        asset_name: ${{ env.ASSET }}
-        asset_content_type: application/octet-stream
+        tag_name: ${{ github.ref_name }}
+        files: ${{ env.ASSET }}
