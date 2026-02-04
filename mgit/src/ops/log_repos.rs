@@ -93,7 +93,7 @@ impl Display for RepoLog {
 pub async fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<RepoLog>>> {
     let (path, mgit_config, thread_count, labels) = options.validate()?;
 
-    tracing::info!(message = %StyleMessage::ops_start("log repos", &path));
+    tracing::info!(message = %StyleMessage::ops_start("log repos", &path).to_plain_text());
 
     let mut repo_configs = mgit_config.repos.unwrap_or_default();
 

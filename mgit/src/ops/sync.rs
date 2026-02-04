@@ -229,7 +229,7 @@ pub async fn sync_repo(
     let depth = options.depth;
     let ignore = options.ignore.as_ref();
 
-    tracing::info!(message = %StyleMessage::ops_start("sync repos", path));
+    tracing::info!(message = %StyleMessage::ops_start("sync repos", path).to_plain_text());
 
     let stash_mode = match (stash, hard) {
         (false, false) => StashMode::Normal,
@@ -261,7 +261,7 @@ pub async fn sync_repo(
         ))
         .await?;
 
-        tracing::info!(message = %res);
+        tracing::info!(message = %res.to_plain_text());
     }
 
     // load .gitrepos

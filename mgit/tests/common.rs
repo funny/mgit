@@ -79,8 +79,6 @@ pub fn create_test_dir(prefix: &str) -> TempDir {
     // Try to find the workspace root's target directory
     // This assumes we are running tests from within the workspace structure
     // d:\ai-projects\mgit\mgit-core\tests\common.rs -> d:\ai-projects\mgit\target\tmp
-    let mut target_tmp = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-
     // Walk up until we find Cargo.toml of the workspace or just go up a few levels
     // Heuristic: If we are in mgit-core, we want ../target/tmp
 
@@ -192,6 +190,7 @@ fn use_gitea() -> bool {
 }
 
 /// Helper function to setup git author identity for tests
+#[allow(dead_code)]
 pub fn check_git_author_identity(path: &std::path::PathBuf) {
     if exec_cmd(path, "git", &["config", "--global", "user.email"]).is_err() {
         exec_cmd(
@@ -206,11 +205,13 @@ pub fn check_git_author_identity(path: &std::path::PathBuf) {
 }
 
 /// Helper function to write config file
+#[allow(dead_code)]
 pub fn write_config_file(path: &std::path::Path, content: &str) {
     std::fs::write(path, content.trim()).expect(failed_message::WRITE_FILE);
 }
 
 /// Helper function to create a test repository setup
+#[allow(dead_code)]
 pub struct TestRepoSetup {
     pub tmp_dir: TempDir,
     pub path: std::path::PathBuf,

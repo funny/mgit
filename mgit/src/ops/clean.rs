@@ -127,7 +127,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
         // remove unused directory
         if !contained_paths.is_empty() {
             if let Err(e) = remove_unused_files(&input_path, &unused_path, &contained_paths).await {
-                tracing::error!(message = %StyleMessage::remove_file_failed(&unused_path, &e));
+                tracing::error!(message = %StyleMessage::remove_file_failed(&unused_path, &e).to_plain_text());
             };
         } else {
             match tokio::fs::remove_dir_all(input_path.join(&unused_path)).await {
@@ -142,7 +142,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
         }
         count += 1;
 
-        tracing::info!(message = %StyleMessage::remove_file_succ(&unused_path));
+        tracing::info!(message = %StyleMessage::remove_file_succ(&unused_path).to_plain_text());
     }
 
     // show statistics info
