@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::GuiOptions;
 use super::SyncType;
+use tracing::warn;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TomlUserSettings {
@@ -46,9 +47,17 @@ impl TomlUserSettings {
         if let Some(path) = home::home_dir() {
             let setting_file = path.join(".mgit/settings.toml");
             if setting_file.is_file() {
-                let txt = std::fs::read_to_string(setting_file).unwrap();
-                let user_settings: TomlUserSettings = toml::from_str(txt.as_str()).unwrap();
-                return user_settings;
+                let txt = std::fs::read_to_string(&setting_file).unwrap();
+                match toml::from_str::<TomlUserSettings>(txt.as_str()) {
+                    Ok(user_settings) => return user_settings,
+                    Err(e) => {
+                        warn!(
+                            path = setting_file.to_string_lossy().as_ref(),
+                            error = %e,
+                            "toml_user_settings_load_failed"
+                        );
+                    }
+                }
             }
         }
         let mut user_settings = TomlUserSettings::default();

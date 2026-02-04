@@ -1,4 +1,4 @@
-﻿use mgit::utils::progress::{Progress, RepoInfo};
+use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::StyleMessage;
 use std::path::Path;
 use std::process::Stdio;

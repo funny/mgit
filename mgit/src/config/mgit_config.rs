@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
+use tracing::warn;
 
 use crate::config::repo_config::RepoConfig;
 
@@ -30,24 +31,39 @@ impl MgitConfig {
     ///
     /// Returns `Some(MgitConfig)` if the file exists and can be parsed, `None` otherwise.
     pub fn load(path: impl AsRef<Path>) -> Option<Self> {
-        if !path.as_ref().is_file() {
+        let path_ref = path.as_ref();
+        if !path_ref.is_file() {
             return None;
         }
 
-        let content = match fs::read_to_string(path.as_ref()) {
+        let content = match fs::read_to_string(path_ref) {
             Ok(c) => c.replace("\".\"", "\"\""),
-            Err(_) => return None,
+            Err(e) => {
+                warn!(
+                    path = path_ref.to_string_lossy().as_ref(),
+                    error = %e,
+                    "toml_mgit_config_read_failed"
+                );
+                return None;
+            }
         };
 
-        let Ok(mut toml_config) = toml::from_str::<MgitConfig>(&content) else {
-            return None;
-        };
-
-        if let Some(item) = toml_config.repos.as_mut() {
-            item.sort();
+        match toml::from_str::<MgitConfig>(&content) {
+            Ok(mut toml_config) => {
+                if let Some(item) = toml_config.repos.as_mut() {
+                    item.sort();
+                }
+                Some(toml_config)
+            }
+            Err(e) => {
+                warn!(
+                    path = path_ref.to_string_lossy().as_ref(),
+                    error = %e,
+                    "toml_mgit_config_parse_failed"
+                );
+                None
+            }
         }
-
-        Some(toml_config)
     }
 
     /// Serialize configuration to TOML string format
