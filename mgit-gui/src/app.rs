@@ -1,4 +1,4 @@
-﻿use std::collections::VecDeque;
+use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
@@ -307,6 +307,10 @@ impl GuiApp {
                             .repo_manager
                             .load_config(Path::new(&self.app_context.session_manager.config_file));
                     }
+                    self.app_context.repo_manager.recompute_repo_filters(
+                        self.app_context.session_manager.get_ignores().as_ref(),
+                        self.app_context.session_manager.get_labels().as_ref(),
+                    );
                     self.app_context
                         .repo_manager
                         .reset_repo_state(crate::app::repo_manager::StateType::Updating);
