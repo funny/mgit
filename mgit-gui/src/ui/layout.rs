@@ -1,4 +1,4 @@
-﻿use eframe::egui;
+use eframe::egui;
 use eframe::egui::{CornerRadius, Frame, Margin, Stroke};
 use tracing::info;
 
@@ -75,9 +75,9 @@ impl GuiApp {
                     );
 
                     {
-                        if let Some(path) =
-                            ui.ctx()
-                                .input(|i| i.raw.dropped_files.first().and_then(|x| x.path.clone()))
+                        if let Some(path) = ui
+                            .ctx()
+                            .input(|i| i.raw.dropped_files.first().and_then(|x| x.path.clone()))
                         {
                             self.app_context.session_manager.config_file =
                                 path.as_path().norm_path();
@@ -127,9 +127,7 @@ impl GuiApp {
                             config_file = self.app_context.session_manager.config_file.as_str(),
                             "ui_open_config_dir"
                         );
-                        open_in_file_explorer_select(
-                            &self.app_context.session_manager.config_file,
-                        );
+                        open_in_file_explorer_select(&self.app_context.session_manager.config_file);
                     }
 
                     is_project_changed |= out.project_changed;

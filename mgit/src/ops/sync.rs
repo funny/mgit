@@ -181,9 +181,9 @@ impl SyncOptionsBuilder {
 
     /// Build the SyncOptions
     pub fn build(self) -> SyncOptions {
-        let path = self.path.unwrap_or_else(|| {
-            env::current_dir().expect("Failed to get current directory")
-        });
+        let path = self
+            .path
+            .unwrap_or_else(|| env::current_dir().expect("Failed to get current directory"));
         let config_path = self.config_path.unwrap_or_else(|| path.join(".gitrepos"));
         SyncOptions {
             path,
@@ -460,8 +460,7 @@ async fn inner_exec(
 
     // Create local_repo_info based on the (possibly modified) repo_config
     // Since repo_config is local and owned, we can reference it.
-    let mut local_repo_info =
-        RepoInfo::new(repo_info.id, repo_info.index, &repo_config);
+    let mut local_repo_info = RepoInfo::new(repo_info.id, repo_info.index, &repo_config);
     let current_repo_info = &mut local_repo_info;
 
     let mut stash_mode = stash_mode.to_owned();
@@ -502,8 +501,7 @@ async fn inner_exec(
             // try stash -> checkout -> reset -> stash pop
             if !no_checkout {
                 // stash
-                let stash_response =
-                    exec_stash(input_path, current_repo_info, progress).await?;
+                let stash_response = exec_stash(input_path, current_repo_info, progress).await?;
 
                 // checkout
                 let mut result =
@@ -511,13 +509,8 @@ async fn inner_exec(
 
                 if result.is_ok() {
                     // reset --hard
-                    result = exec_reset(
-                        input_path,
-                        current_repo_info,
-                        progress,
-                        ResetType::Hard,
-                    )
-                    .await;
+                    result =
+                        exec_reset(input_path, current_repo_info, progress, ResetType::Hard).await;
                 }
 
                 // stash pop, whether checkout succ or failed, whether reset succ or failed
@@ -527,13 +520,7 @@ async fn inner_exec(
                 result
             } else {
                 // reset --soft
-                exec_reset(
-                    input_path,
-                    current_repo_info,
-                    progress,
-                    ResetType::Soft,
-                )
-                .await
+                exec_reset(input_path, current_repo_info, progress, ResetType::Soft).await
             }
         }
 
@@ -611,13 +598,7 @@ async fn inner_exec(
             }
 
             // reset --hard
-            exec_reset(
-                input_path,
-                current_repo_info,
-                progress,
-                ResetType::Hard,
-            )
-            .await
+            exec_reset(input_path, current_repo_info, progress, ResetType::Hard).await
         }
     }?;
 

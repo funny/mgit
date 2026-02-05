@@ -54,11 +54,11 @@ mod windows {
 #[cfg(not(windows))]
 mod unix {
     /// Set up process cleanup for Unix systems
-    /// 
+    ///
     /// Note: PR_SET_PDEATHSIG requires setting it in the child process itself via pre_exec,
     /// which tokio::process::Command doesn't support. Tokio's runtime does handle child
     /// cleanup reasonably well on Unix when the parent process exits normally.
-    /// 
+    ///
     /// For now, we rely on tokio's built-in cleanup mechanisms. If stricter control is needed,
     /// consider using std::process::Command with pre_exec and converting to async manually.
     pub fn set_pdeathsig(_child: &tokio::process::Child) -> bool {
