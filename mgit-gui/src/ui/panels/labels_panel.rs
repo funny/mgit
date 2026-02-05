@@ -7,8 +7,12 @@ pub(crate) struct LabelsPanel;
 impl LabelsPanel {
     pub(crate) fn show(ui: &mut egui::Ui, app: &mut GuiApp) {
         if let Some(repos) = &app.app_context.repo_manager.mgit_config.repos {
-            ui.strong("Labels");
             let mut labels = mgit::utils::label::collect(repos);
+            if labels.is_empty() {
+                return;
+            }
+
+            ui.strong("Labels");
             labels.insert("none");
             app.app_context
                 .session_manager
