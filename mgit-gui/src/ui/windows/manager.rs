@@ -1,4 +1,4 @@
-﻿use eframe::egui;
+use eframe::egui;
 
 use crate::app::events::CommandType;
 use crate::app::events::OpsCommand;
@@ -62,7 +62,8 @@ impl Default for WindowManager {
             clean_dialog_open: false,
             sync_hard_dialog: Dialog::create(
                 "Sync Hard".to_string(),
-                "Confirm sync hard?\n\nThis will force delete:\n.git/shallow.lock\n.git/index.lock".to_string(),
+                "Confirm sync hard?\n\nThis will force delete:\n.git/shallow.lock\n.git/index.lock"
+                    .to_string(),
             ),
             sync_hard_dialog_open: false,
         }

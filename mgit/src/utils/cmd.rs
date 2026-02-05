@@ -1,4 +1,4 @@
-﻿use snafu::ResultExt;
+use snafu::ResultExt;
 use std::path::Path;
 use std::process::Stdio;
 use tokio::process::Command;
@@ -96,7 +96,9 @@ where
             }
         }
     }
-    Err(last_err.unwrap_or_else(|| crate::error::MgitError::OpsError {
-        message: format!("Retry failed after {} attempts", times),
-    }))
+    Err(
+        last_err.unwrap_or_else(|| crate::error::MgitError::OpsError {
+            message: format!("Retry failed after {} attempts", times),
+        }),
+    )
 }

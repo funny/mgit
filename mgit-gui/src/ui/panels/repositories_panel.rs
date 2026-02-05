@@ -1,4 +1,4 @@
-﻿use std::path::Path;
+use std::path::Path;
 use std::time::Instant;
 
 use eframe::egui;
@@ -42,7 +42,7 @@ impl RepositoriesPanel {
                                     &mut app.app_context.repo_manager.repo_states[idx].no_ignore
                                 };
 
-                            if ui.checkbox(checked, "").changed() {
+                            if ui.checkbox(checked, "").on_hover_text("ignore").changed() {
                                 if let Some(rel_path) = &repo_config.local {
                                     info!(
                                         repo_rel_path = rel_path.display_path(),
@@ -135,7 +135,9 @@ impl RepositoriesPanel {
                     ui.visuals_mut().hyperlink_color = text_color::GRAY;
                 }
 
-                let response = ui.add(egui::Link::new(rep_display));
+                let response = ui
+                    .add(egui::Link::new(rep_display))
+                    .on_hover_text("LMB open folder, RMB open in fork");
                 ui.visuals_mut().hyperlink_color = hyperlink_color;
 
                 if response.clicked() {
