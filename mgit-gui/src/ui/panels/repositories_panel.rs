@@ -21,6 +21,62 @@ impl RepositoriesPanel {
     pub(crate) fn show(ui: &mut egui::Ui, app: &mut GuiApp) {
         let desired_width = ui.ctx().used_size().x - 60.0;
 
+        {
+            let mut total = 0usize;
+            let mut unignored = 0usize;
+            if let Some(repo_configs) = &app.app_context.repo_manager.mgit_config.repos {
+                for (repo_config, state) in repo_configs
+                    .iter()
+                    .zip(&app.app_context.repo_manager.repo_states)
+                {
+                    if state.disable_by_label {
+                        continue;
+                    }
+                    if repo_config.local.is_some() {
+                        total += 1;
+                        if state.no_ignore {
+                            unignored += 1;
+                        }
+                    }
+                }
+            }
+            let mut all_unignored = total > 0 && unignored == total;
+            let indeterminate = unignored > 0 && unignored < total;
+            let response = ui.add(
+                egui::Checkbox::new(&mut all_unignored, " Unignore All / Ignore All")
+                    .indeterminate(indeterminate),
+            );
+            if response.changed() {
+                let target_ignore = !all_unignored;
+                if let Some(repo_configs) = &app.app_context.repo_manager.mgit_config.repos {
+                    for (repo_config, state) in repo_configs
+                        .iter()
+                        .zip(&app.app_context.repo_manager.repo_states)
+                    {
+                        if state.disable_by_label {
+                            continue;
+                        }
+                        if let Some(rel_path) = &repo_config.local {
+                            app.app_context
+                                .session_manager
+                                .project_settings
+                                .save_ignore(rel_path.display_path(), target_ignore);
+                        }
+                    }
+                    app.app_context.session_manager.save_project_settings();
+                    for (_, state) in repo_configs
+                        .iter()
+                        .zip(&mut app.app_context.repo_manager.repo_states)
+                    {
+                        if state.disable_by_label {
+                            continue;
+                        }
+                        state.no_ignore = !target_ignore;
+                    }
+                }
+            }
+        }
+
         let scroll_area = egui::ScrollArea::vertical().auto_shrink([true; 2]);
         scroll_area.show(ui, |ui| {
             ui.vertical(|ui| {
