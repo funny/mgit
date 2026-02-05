@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Use Guide
-# ./util/cross_for_linux --release -p mgit-gui
 
 export CROSS_ROOTLESS_CONTAINER_ENGINE=1
 

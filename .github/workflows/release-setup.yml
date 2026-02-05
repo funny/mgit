@@ -1,0 +1,288 @@
+name: release-setup
+on:
+  push:
+    tags:
+    - "[0-9]*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-matrix:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: win-x64
+            archive_ext: zip
+            archive_cmd: 7z a
+            exe_ext: .exe
+          # macOS x64 (Intel)
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            name: mac-x64
+            archive_ext: tar.gz
+            archive_cmd: tar czf
+            exe_ext: ""
+          # macOS ARM64 (Apple Silicon)
+          - os: macos-14
+            target: aarch64-apple-darwin
+            name: mac-arm64
+            archive_ext: tar.gz
+            archive_cmd: tar czf
+            exe_ext: ""
+          # Linux x64 (musl)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            name: linux-x64-musl
+            archive_ext: tar.gz
+            archive_cmd: tar czf
+            exe_ext: ""
+            use_cross: true
+          # Linux ARM64 (musl)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            name: linux-arm64-musl
+            archive_ext: tar.gz
+            archive_cmd: tar czf
+            exe_ext: ""
+            use_cross: true
+          # Linux x64 (gnu) - Mainly for GUI DEB/Tarball
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux-x64-gnu
+            archive_ext: tar.gz
+            archive_cmd: tar czf
+            exe_ext: ""
+            use_cross: false
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.92.0
+        target: ${{ matrix.target }}
+
+    - name: Install musl-tools (Linux musl)
+      if: contains(matrix.target, 'musl') && matrix.use_cross == false
+      run: sudo apt-get install -y musl-tools
+
+    - name: Install Cross
+      if: matrix.use_cross
+      run: cargo install cross
+
+    - name: Build Binaries
+      shell: bash
+      run: |
+        CMD="cargo"
+        if [ "${{ matrix.use_cross }}" = "true" ]; then
+          CMD="cross"
+        fi
+
+        echo "Building mgit-cli..."
+        $CMD build --release --verbose -p mgit-cli --target ${{ matrix.target }}
+
+        if [[ "${{ matrix.target }}" != *"musl"* ]]; then
+          echo "Building mgit-gui..."
+          $CMD build --release --verbose -p mgit-gui --target ${{ matrix.target }}
+        fi
+
+    - name: Prepare Archives
+      shell: bash
+      run: |
+        mkdir -p dist
+        CLI_NAME="mgit-cli-${{ github.ref_name }}-${{ matrix.target }}"
+        GUI_NAME="mgit-gui-${{ github.ref_name }}-${{ matrix.target }}"
+
+        # Staging directories
+        mkdir -p "$CLI_NAME"
+
+        # Copy CLI binary
+        cp "target/${{ matrix.target }}/release/mgit${{ matrix.exe_ext }}" "$CLI_NAME/"
+        cp README.md "$CLI_NAME/"
+
+        if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+          7z a "dist/${CLI_NAME}.zip" "$CLI_NAME"
+        else
+          tar czf "dist/${CLI_NAME}.tar.gz" "$CLI_NAME"
+        fi
+
+        # Handle GUI if not musl
+        if [[ "${{ matrix.target }}" != *"musl"* ]]; then
+          mkdir -p "$GUI_NAME"
+          cp "target/${{ matrix.target }}/release/mgit-gui${{ matrix.exe_ext }}" "$GUI_NAME/"
+          cp README.md "$GUI_NAME/"
+
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            7z a "dist/${GUI_NAME}.zip" "$GUI_NAME"
+          else
+            tar czf "dist/${GUI_NAME}.tar.gz" "$GUI_NAME"
+          fi
+        fi
+
+    - name: Upload Release Assets (Archives)
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Artifacts (Binaries for Packaging)
+      uses: actions/upload-artifact@v4
+      with:
+        name: binaries-${{ matrix.name }}
+        path: |
+          target/${{ matrix.target }}/release/mgit${{ matrix.exe_ext }}
+          target/${{ matrix.target }}/release/mgit-gui${{ matrix.exe_ext }}
+        retention-days: 1
+        if-no-files-found: ignore
+
+  package-windows:
+    name: Package Windows (Installer)
+    needs: build-matrix
+    runs-on: windows-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download Windows Binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: binaries-win-x64
+        path: target/release
+
+    - name: Install NSIS
+      shell: powershell
+      run: |
+        choco install nsis
+        # Add NSIS to PATH for subsequent steps
+        echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Create Installer
+      run: |
+        "C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION="${{ github.ref_name }}" scripts/windows/mgit.nsi
+      shell: cmd
+
+    - name: Rename Installer
+      run: |
+        mv scripts/windows/mgit-setup.exe scripts/windows/mgit-${{ github.ref_name }}-setup.exe
+      shell: bash
+
+    - name: Upload Installer
+      uses: softprops/action-gh-release@v2
+      with:
+        files: scripts/windows/mgit-${{ github.ref_name }}-setup.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package-macos:
+    name: Package macOS (Universal DMG)
+    needs: build-matrix
+    runs-on: macos-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download macOS x64 Binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: binaries-mac-x64
+        path: binaries/x64
+
+    - name: Download macOS ARM64 Binaries
+      uses: actions/download-artifact@v4
+      with:
+        name: binaries-mac-arm64
+        path: binaries/arm64
+
+    - name: Create Universal Binaries
+      run: |
+        mkdir -p target/release
+        
+        # Debug structure
+        echo "Listing binaries directory:"
+        ls -R binaries
+        
+        # Locate binaries dynamically to avoid path issues
+        CLI_X64=$(find binaries/x64 -name mgit -type f | head -n 1)
+        GUI_X64=$(find binaries/x64 -name mgit-gui -type f | head -n 1)
+        CLI_ARM=$(find binaries/arm64 -name mgit -type f | head -n 1)
+        GUI_ARM=$(find binaries/arm64 -name mgit-gui -type f | head -n 1)
+        
+        echo "Found binaries:"
+        echo "CLI x64: $CLI_X64"
+        echo "GUI x64: $GUI_X64"
+        echo "CLI arm: $CLI_ARM"
+        echo "GUI arm: $GUI_ARM"
+        
+        lipo -create -output target/release/mgit "$CLI_X64" "$CLI_ARM"
+        lipo -create -output target/release/mgit-gui "$GUI_X64" "$GUI_ARM"
+        chmod +x target/release/mgit target/release/mgit-gui
+
+    - name: Install create-dmg
+      run: brew install create-dmg
+
+    - name: Create DMG
+      run: |
+        chmod +x scripts/macos/build_dmg.sh
+        ./scripts/macos/build_dmg.sh "${{ github.ref_name }}" "scripts/macos/mgit-${{ github.ref_name }}-universal.dmg"
+
+    - name: Upload DMG
+      uses: softprops/action-gh-release@v2
+      with:
+        files: scripts/macos/mgit-${{ github.ref_name }}-universal.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  package-linux:
+    name: Package Linux (DEB)
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.92.0
+
+    - name: Install cargo-deb
+      run: cargo install cargo-deb
+
+    - name: Download Linux x64 GNU Binaries
+      # We use GNU binaries for DEB because GUI apps on Linux usually link dynamically against system libs
+      uses: actions/download-artifact@v4
+      with:
+        name: binaries-linux-x64-gnu
+        path: target/release
+
+    - name: Flatten Artifact Path
+      run: |
+        # download-artifact preserves directory structure, we need to move binaries to expected location
+        # Path is target/release/target/x86_64-unknown-linux-gnu/release/
+        # We need them in target/release/
+        find target/release -name mgit -exec mv {} target/release/ \;
+        find target/release -name mgit-gui -exec mv {} target/release/ \;
+        chmod +x target/release/mgit target/release/mgit-gui
+
+    - name: Build DEB Package
+      run: |
+        # We use --no-build because we already have the binaries
+        # We point to mgit-gui because that's where we configured the combined DEB
+        cargo deb -p mgit-gui --no-build --output target/debian/mgit_${{ github.ref_name }}_amd64.deb
+
+    - name: Upload DEB
+      uses: softprops/action-gh-release@v2
+      with:
+        files: target/debian/*.deb
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

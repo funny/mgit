@@ -1,5 +1,8 @@
 name: test-core
-on: [push]
+on:
+  push:
+    branches:
+      - "**"
 
 env:
   CARGO_TERM_COLOR: always
