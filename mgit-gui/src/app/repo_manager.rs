@@ -745,6 +745,10 @@ impl RepoManager {
                 self.progress.store(0, Ordering::Relaxed);
                 self.clear_status();
                 self.load_config(Path::new(&session.config_file));
+                self.recompute_repo_filters(
+                    session.get_ignores().as_ref(),
+                    session.get_labels().as_ref(),
+                );
                 self.reset_repo_state(StateType::Updating);
                 let _ = self
                     .event_tx
