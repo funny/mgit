@@ -38,6 +38,19 @@ regex.workspace = true
 mgit.workspace = true
 futures = "0.3.31"
 
+[package.metadata.deb]
+name = "mgit"
+maintainer = "Sofunny Team"
+copyright = "2024, Sofunny Team"
+depends = "$auto"
+section = "utils"
+priority = "optional"
+assets = [
+    ["../target/release/mgit", "usr/bin/", "755"],
+    ["../target/release/mgit-gui", "usr/bin/", "755"],
+    ["resource/logo64x64.png", "usr/share/icons/hicolor/64x64/apps/mgit-gui.png", "644"],
+]
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
