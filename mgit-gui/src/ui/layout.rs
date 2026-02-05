@@ -19,14 +19,15 @@ use crate::utils::system::{open_in_file_explorer, open_in_file_explorer_select};
 impl GuiApp {
     /// quick bar panel of app
     pub(crate) fn top_view(&mut self, ctx: &egui::Context) {
+        let frame = Frame {
+            inner_margin: Margin::symmetric(8, 0),
+            corner_radius: CornerRadius::ZERO,
+            fill: ctx.style().visuals.window_fill(),
+            stroke: Stroke::NONE,
+            ..Default::default()
+        };
         egui::TopBottomPanel::top("mgit_gui_top_bar")
-            .frame(Frame {
-                inner_margin: Margin::symmetric(8, 2),
-                corner_radius: CornerRadius::ZERO,
-                fill: ctx.style().visuals.window_fill(),
-                stroke: Stroke::NONE,
-                ..Default::default()
-            })
+            .frame(frame)
             .show(ctx, |ui| {
                 ui.add_enabled_ui(!self.windows.is_error_open(), |ui| {
                     ui.spacing_mut().item_spacing = egui::vec2(10.0, 5.0);
@@ -41,7 +42,7 @@ impl GuiApp {
                     });
                     self.windows.sync_hard_dialog_open = sync_hard_dialog_open;
 
-                    ui.add_space(2.0);
+                    ui.add_space(0.0);
 
                     ui.add(ProgressBar::new(
                         self.app_context.repo_manager.progress.clone(),

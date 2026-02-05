@@ -1,4 +1,4 @@
-﻿use std::fs::{File, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
