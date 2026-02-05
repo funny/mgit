@@ -1,4 +1,4 @@
-﻿use home::home_dir;
+use home::home_dir;
 
 pub const GIT_VERSION: &str = ">= 2.22.0";
 
@@ -11,6 +11,23 @@ pub fn open_in_file_explorer(path: &str) {
             .expect("open in file explorer failed");
     } else {
         std::process::Command::new("open")
+            .arg(path)
+            .spawn()
+            .expect("open in file explorer failed");
+    }
+}
+
+pub fn open_in_file_explorer_select(path: &str) {
+    if cfg!(target_os = "windows") {
+        let path = path.replace('/', "\\");
+        std::process::Command::new("explorer")
+            .arg("/select,")
+            .arg(path)
+            .spawn()
+            .expect("open in file explorer failed");
+    } else {
+        std::process::Command::new("open")
+            .arg("-R")
             .arg(path)
             .spawn()
             .expect("open in file explorer failed");

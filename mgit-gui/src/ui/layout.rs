@@ -11,7 +11,7 @@ use crate::ui::panels::{
     ConfigurationPanel, LabelsPanel, MenuBarPanel, QuickBarPanel, RepositoriesPanel,
 };
 use crate::ui::style::DEFAULT_WIDTH;
-use crate::utils::system::open_in_file_explorer;
+use crate::utils::system::{open_in_file_explorer, open_in_file_explorer_select};
 
 // ========================================
 // ui design for app
@@ -74,10 +74,21 @@ impl GuiApp {
                         recent_configs.as_deref(),
                     );
 
+                    {
+                        if let Some(path) =
+                            ui.ctx()
+                                .input(|i| i.raw.dropped_files.first().and_then(|x| x.path.clone()))
+                        {
+                            self.app_context.session_manager.config_file =
+                                path.as_path().norm_path();
+                            is_config_changed = true;
+                        }
+                    }
+
                     if out.pick_project_dir {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
                             self.app_context.session_manager.project_path =
-                                path.display().to_string().norm_path();
+                                path.as_path().norm_path();
                             info!(
                                 project_path =
                                     self.app_context.session_manager.project_path.as_str(),
@@ -100,7 +111,7 @@ impl GuiApp {
                     if out.pick_config_file {
                         if let Some(path) = rfd::FileDialog::new().pick_file() {
                             self.app_context.session_manager.config_file =
-                                path.display().to_string().norm_path();
+                                path.as_path().norm_path();
                             info!(
                                 config_file = self.app_context.session_manager.config_file.as_str(),
                                 "ui_pick_config_file"
@@ -116,16 +127,9 @@ impl GuiApp {
                             config_file = self.app_context.session_manager.config_file.as_str(),
                             "ui_open_config_dir"
                         );
-                        if let Some(path) =
-                            std::path::Path::new(&self.app_context.session_manager.config_file)
-                                .parent()
-                        {
-                            if path.is_dir() {
-                                if let Some(path) = path.to_str() {
-                                    open_in_file_explorer(path);
-                                }
-                            }
-                        }
+                        open_in_file_explorer_select(
+                            &self.app_context.session_manager.config_file,
+                        );
                     }
 
                     is_project_changed |= out.project_changed;
