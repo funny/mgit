@@ -1,4 +1,4 @@
-﻿use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -40,7 +40,7 @@ impl Widget for ProgressBar {
         let progress = self.progress;
 
         let width = ui.available_size_before_wrap().x.at_least(96.0);
-        let height = 0.0f32;
+        let height = 2.0f32;
 
         let (outer_rect, response) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
 
@@ -48,38 +48,36 @@ impl Widget for ProgressBar {
             let visual = ui.style().visuals.clone();
             let rounding = 0.0;
 
-            if progress > 0.0 {
-                ui.painter().hline(
-                    outer_rect.x_range(),
-                    outer_rect.center().y,
-                    visual.widgets.noninteractive.bg_stroke,
-                );
+            ui.painter().hline(
+                outer_rect.x_range(),
+                outer_rect.center().y,
+                visual.widgets.noninteractive.bg_stroke,
+            );
 
-                let inner_rect = Rect::from_min_size(
-                    outer_rect.min,
-                    vec2(
-                        (outer_rect.width() * progress).at_least(0.0),
-                        outer_rect.height(),
-                    ),
-                );
+            let inner_rect = Rect::from_min_size(
+                outer_rect.min,
+                vec2(
+                    (outer_rect.width() * progress).at_least(0.0),
+                    outer_rect.height(),
+                ),
+            );
 
-                ui.painter().rect(
-                    inner_rect,
-                    rounding,
-                    egui::Color32::LIGHT_BLUE,
-                    Stroke::new(0.0, visual.text_color()),
-                    egui::StrokeKind::Inside,
-                );
+            ui.painter().rect(
+                inner_rect,
+                rounding,
+                egui::Color32::WHITE,
+                Stroke::new(0.0, visual.text_color()),
+                egui::StrokeKind::Inside,
+            );
 
-                if progress >= 1.0 {
-                    let current = self.current;
-                    let context = self.context.clone();
-                    thread::spawn(move || {
-                        thread::sleep(Duration::from_secs(1));
-                        current.store(0, Ordering::Relaxed);
-                        context.request_repaint();
-                    });
-                }
+            if progress >= 1.0 {
+                let current = self.current;
+                let context = self.context.clone();
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_secs(1));
+                    current.store(0, Ordering::Relaxed);
+                    context.request_repaint();
+                });
             }
         }
 
