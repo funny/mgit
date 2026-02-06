@@ -17,6 +17,9 @@ pub(crate) mod utils;
 fn main() -> eframe::Result {
     let _guard = init_log();
 
+    // Initialize global Tokio runtime for background async operations
+    crate::utils::runtime::init_runtime();
+
     // Log mgit-gui version at startup
     let version = std::env!("CARGO_PKG_VERSION");
     tracing::info!(
