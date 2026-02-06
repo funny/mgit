@@ -11,7 +11,7 @@ use crate::config::{cmp_local_remote, repos_to_map_with_ignore, MgitConfig};
 use crate::git;
 use crate::git::RemoteRef;
 
-use crate::error::MgitResult;
+use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu};
 use crate::utils::cmd;
 use crate::utils::cmd::retry;
 use crate::utils::path::PathExtension;
@@ -98,9 +98,9 @@ pub async fn fetch_repos(
 
     for (id, repo_config) in repos_map {
         let permit = semaphore.clone().acquire_owned().await
-            .map_err(|_| crate::error::MgitError::OpsError {
+            .map_err(|_| AcquirePermitFailedSnafu {
                 message: "Failed to acquire semaphore permit for parallel execution".to_string()
-            })?;
+            }.build())?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -170,9 +170,9 @@ async fn inner_exec(
 ) -> MgitResult<()> {
     let full_path = input_path.as_ref().join(on_repo_update.rel_path());
     let remote_url = on_repo_update.repo_config.remote.as_ref()
-        .ok_or_else(|| crate::error::MgitError::OpsError {
-            message: format!("Repository {} has no remote configured", on_repo_update.rel_path())
-        })?;
+        .ok_or_else(|| NoRemoteConfiguredSnafu {
+            path: full_path.clone()
+        }.build())?;
 
     git::update_remote_url(&full_path, remote_url).await?;
     exec_fetch(input_path, on_repo_update, depth, progress).await
@@ -213,9 +213,9 @@ pub async fn exec_fetch(
                     .repo_config
                     .branch
                     .as_ref()
-                    .ok_or_else(|| crate::error::MgitError::OpsError {
+                    .ok_or_else(|| BranchReferenceRequiredSnafu {
                         message: "Branch reference required for branch remote ref".to_string()
-                    })?;
+                    }.build())?;
                 args.push(branch.clone());
             }
         };
