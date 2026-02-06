@@ -27,10 +27,7 @@ impl DialogBase for Dialog {
     }
 
     fn is_ok(&self) -> bool {
-        match self.is_ok {
-            Some(r) => r,
-            _ => false,
-        }
+        self.is_ok.unwrap_or_default()
     }
 }
 

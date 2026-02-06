@@ -30,6 +30,7 @@ pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
 }
 
 /// Spawn an async task on the global runtime.
+#[allow(dead_code)]
 pub fn spawn<F>(future: F) -> tokio::task::JoinHandle<F::Output>
 where
     F: std::future::Future + Send + 'static,
@@ -39,6 +40,7 @@ where
 }
 
 /// Spawn a blocking sync task on the global runtime's blocking thread pool.
+#[allow(dead_code)]
 pub fn spawn_blocking<F, T>(f: F) -> tokio::task::JoinHandle<T>
 where
     F: FnOnce() -> T + Send + 'static,

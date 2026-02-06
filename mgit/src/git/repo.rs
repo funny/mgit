@@ -57,12 +57,7 @@ pub async fn get_head_tags(path: impl AsRef<Path>) -> MgitResult<Vec<String>> {
         return Err(crate::error::MgitError::OpsError { message: output });
     }
 
-    let mut tags = Vec::new();
-    for line in output.trim().lines() {
-        tags.push(line.to_string());
-    }
-
-    Ok(tags)
+    Ok(output.trim().lines().map(|s| s.to_string()).collect())
 }
 
 pub async fn get_current_branch(path: impl AsRef<Path>) -> MgitResult<String> {

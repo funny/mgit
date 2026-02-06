@@ -1,4 +1,3 @@
-use std::env;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -9,10 +8,10 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::config::MgitConfig;
-use crate::error::MgitResult;
+use crate::error::{MgitError, MgitResult};
 use crate::git::log_current;
+use crate::utils::{current_dir, label, StyleMessage};
 use crate::utils::path::PathExtension;
-use crate::utils::{label, StyleMessage};
 
 pub struct LogReposOptions {
     pub path: PathBuf,
@@ -28,7 +27,10 @@ impl LogReposOptions {
         thread_count: Option<usize>,
         labels: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -61,7 +63,7 @@ impl LogReposOptions {
         // load config file(like .gitrepos)
         let Some(mgit_config) = MgitConfig::load(&config_path) else {
             return Err(crate::error::MgitError::LoadConfigFailed {
-                source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+                source: std::io::Error::other("Failed to load config"),
             });
         };
 
@@ -106,13 +108,23 @@ pub async fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<Re
     let base_path = path.clone();
 
     for repo_config in repo_configs {
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let permit = Arc::clone(&semaphore).acquire_owned().await
+            .map_err(|_| MgitError::OpsError {
+                message: "Failed to acquire semaphore permit for log operation".to_string()
+            })?;
         let base_path = base_path.clone();
+
+        let local = repo_config.local.as_ref()
+            .ok_or_else(|| MgitError::OpsError {
+                message: "Repository config missing 'local' field".to_string()
+            })?.to_string();
+        let remote = repo_config.remote.as_ref()
+            .ok_or_else(|| MgitError::OpsError {
+                message: format!("Repository '{}' missing 'remote' field", local)
+            })?.to_string();
 
         join_set.spawn(async move {
             let _permit = permit;
-            let local = repo_config.local.as_ref().unwrap().to_string();
-            let remote = repo_config.remote.as_ref().unwrap().to_string();
             let rel_path = base_path.join(&local);
             let log = log_current(rel_path).await?;
             let mut logs = log.trim_matches('"').split('\n');

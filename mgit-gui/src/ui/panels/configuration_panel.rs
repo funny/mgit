@@ -70,7 +70,7 @@ impl ConfigurationPanel {
                 },
             );
 
-            if ui.button(format!("{}", hex_code::FOLDER)).clicked() {
+            if ui.button(hex_code::FOLDER.to_string()).clicked() {
                 out.pick_project_dir = true;
             }
 
@@ -134,7 +134,7 @@ impl ConfigurationPanel {
                 },
             );
 
-            if ui.button(format!("{}", hex_code::FILE)).clicked() {
+            if ui.button(hex_code::FILE.to_string()).clicked() {
                 out.pick_config_file = true;
             }
 

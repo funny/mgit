@@ -67,7 +67,7 @@ impl OpsMessageCollector {
             }));
     }
 
-    pub(crate) fn update(&mut self, repo_configs: &Vec<RepoConfig>) {
+    pub(crate) fn update(&mut self, repo_configs: &[RepoConfig]) {
         let repo_state_buffers = (0..repo_configs.len())
             .map(|_| Arc::new(Mutex::new(StyleMessage::default())))
             .collect();
@@ -88,7 +88,7 @@ impl OpsMessageCollector {
                     File::create(file_path).unwrap()
                 } else {
                     OpenOptions::new()
-                        .write(true)
+                        
                         .append(true)
                         .open(file_path)
                         .unwrap()

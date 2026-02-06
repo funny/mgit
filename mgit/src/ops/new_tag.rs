@@ -1,9 +1,9 @@
-use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::config::MgitConfig;
 use crate::error::MgitResult;
 use crate::git;
+use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
 use crate::utils::StyleMessage;
 
@@ -24,7 +24,10 @@ impl NewTagOptions {
         push: bool,
         ignore: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -59,7 +62,7 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
     // load config file(like .gitrepos)
     let Some(mut mgit_config) = MgitConfig::load(config_path) else {
         return Err(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         });
     };
 
@@ -83,7 +86,8 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
             continue;
         }
 
-        let rel_path = repo_config.local.as_ref().unwrap();
+        // Safe to unwrap now as we checked above
+        let rel_path = local;
         let full_path = Path::new(path).join(rel_path);
 
         // NOTE: current head ref

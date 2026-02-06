@@ -77,8 +77,7 @@ pub fn repos_to_map_with_ignore(
 
     let mut ignore_paths = match ignore {
         Some(ignore_paths) => ignore_paths
-            .iter()
-            .map(|p| p.clone())
+            .iter().cloned()
             .collect::<HashSet<_>>(),
         None => HashSet::new(),
     };
@@ -88,11 +87,11 @@ pub fn repos_to_map_with_ignore(
     }
 
     for (idx, repo) in repos.into_iter().enumerate() {
-        if repo.local.is_none() {
+        let Some(local) = repo.local.as_ref() else {
             continue;
-        }
+        };
 
-        if ignore_paths.contains(repo.local.as_ref().unwrap()) {
+        if ignore_paths.contains(local) {
             continue;
         }
 
@@ -112,7 +111,10 @@ pub async fn cmp_local_remote(
     default_branch: &Option<String>,
     use_tracking_remote: bool,
 ) -> MgitResult<StyleMessage> {
-    let rel_path = toml_repo.local.as_ref().unwrap();
+    let rel_path = toml_repo.local.as_ref()
+        .ok_or_else(|| crate::error::MgitError::OpsError {
+            message: "Repository config missing 'local' field".to_string()
+        })?;
     let full_path = input_path.as_ref().join(rel_path);
 
     let mut toml_repo = toml_repo.to_owned();

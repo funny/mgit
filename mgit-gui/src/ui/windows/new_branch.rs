@@ -10,6 +10,7 @@ use mgit::utils::path::PathExtension;
 
 use super::repo_selection::RepoSelection;
 
+#[derive(Default)]
 pub struct NewBranchWindow {
     pub root_path: String,
     pub new_branch: String,
@@ -19,18 +20,6 @@ pub struct NewBranchWindow {
     pub confirm_create: bool,
 }
 
-impl Default for NewBranchWindow {
-    fn default() -> Self {
-        Self {
-            root_path: String::new(),
-            new_branch: String::new(),
-            config_path: String::new(),
-            new_config_path: String::new(),
-            repos: Vec::new(),
-            confirm_create: false,
-        }
-    }
-}
 
 impl NewBranchWindow {
     pub fn update_settings(

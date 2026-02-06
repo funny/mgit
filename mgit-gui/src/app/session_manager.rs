@@ -149,10 +149,7 @@ impl SessionManager {
     }
 
     pub fn get_new_tag_push(&self) -> bool {
-        match self.project_settings.new_tag_push {
-            Some(flag) => flag,
-            None => true,
-        }
+        self.project_settings.new_tag_push.unwrap_or(true)
     }
 
     pub fn save_new_branch_option_from_window(&mut self, window: &NewBranchWindow) {
@@ -193,7 +190,7 @@ impl SessionManager {
             let new_tag = window.new_tag.clone();
             self.project_settings.save_new_tag_name(new_tag);
 
-            let new_tag_push = window.push.clone();
+            let new_tag_push = window.push;
             self.project_settings.save_new_tag_push(new_tag_push);
 
             self.save_project_settings();

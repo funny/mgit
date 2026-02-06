@@ -1,12 +1,12 @@
 use globset::GlobBuilder;
 
-use std::env;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::config::MgitConfig;
+use crate::error::MgitError;
 use crate::error::MgitResult;
-use crate::utils::label;
+use crate::utils::{current_dir, label};
 use crate::utils::style_message::StyleMessage;
 
 pub struct CleanOptions {
@@ -21,7 +21,10 @@ impl CleanOptions {
         config_path: Option<impl AsRef<Path>>,
         labels: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -50,7 +53,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
     // load config file(like .gitrepos)
     let mgit_config =
         MgitConfig::load(config_path).ok_or(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         })?;
 
     let mut repo_configs = if let Some(repos) = mgit_config.repos {
@@ -65,7 +68,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
 
     let config_repo_paths: Vec<PathBuf> = repo_configs
         .iter()
-        .map(|item| item.local.as_ref().unwrap())
+        .filter_map(|item| item.local.as_ref())
         .map(PathBuf::from)
         .collect();
 
@@ -73,7 +76,9 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
     let glob = GlobBuilder::new("**/.git")
         .literal_separator(true)
         .build()
-        .unwrap()
+        .map_err(|e| MgitError::OpsError {
+            message: format!("Failed to build glob pattern: {}", e)
+        })?
         .compile_matcher();
 
     let input_path = path.to_owned();
@@ -89,7 +94,10 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
         loop {
             let entry = match it.next() {
                 None => break,
-                Some(Err(err)) => panic!("ERROR: {}", err),
+                Some(Err(err)) => {
+                    tracing::error!("WalkDir error: {}", err);
+                    continue;
+                }
                 Some(Ok(entry)) => entry,
             };
             let path = entry.path();
@@ -98,7 +106,13 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
                 // get relative path
                 let mut pb = path.to_path_buf();
                 pb.pop();
-                let rel_path = pb.strip_prefix(&input_path_clone).unwrap().to_path_buf();
+                let rel_path = match pb.strip_prefix(&input_path_clone) {
+                    Ok(p) => p.to_path_buf(),
+                    Err(e) => {
+                        tracing::error!("Failed to strip path prefix: {}", e);
+                        continue;
+                    }
+                };
 
                 if !config_repo_paths_clone.contains(&rel_path) {
                     unused.push(rel_path);
@@ -116,7 +130,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
         message: format!("Failed to walk directory: {}", e),
     })?;
 
-    unused_paths.sort_by(|a, b| b.components().count().cmp(&a.components().count()));
+    unused_paths.sort_by_key(|b| std::cmp::Reverse(b.components().count()));
 
     // remvoe unused repositories
     let mut count: u32 = 0;
@@ -149,7 +163,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
     Ok(StyleMessage::remove_repo_succ(count))
 }
 
-fn find_contained_paths(unused_path: &Path, config_repo_paths: &Vec<PathBuf>) -> Vec<PathBuf> {
+fn find_contained_paths(unused_path: &Path, config_repo_paths: &[PathBuf]) -> Vec<PathBuf> {
     let mut contained_paths: Vec<PathBuf> = Vec::new();
 
     for config_repo_path in config_repo_paths {
@@ -165,11 +179,11 @@ fn find_contained_paths(unused_path: &Path, config_repo_paths: &Vec<PathBuf>) ->
 async fn remove_unused_files(
     base_path: impl AsRef<Path>,
     unused_path: impl AsRef<Path>,
-    contained_paths: &Vec<PathBuf>,
+    contained_paths: &[PathBuf],
 ) -> MgitResult<()> {
     let full_path = base_path.as_ref().join(&unused_path);
     let base_path_buf = base_path.as_ref().to_path_buf();
-    let contained_paths = contained_paths.clone();
+    let contained_paths = contained_paths.to_owned();
 
     // WalkDir is blocking
     tokio::task::spawn_blocking(move || {
@@ -178,16 +192,22 @@ async fn remove_unused_files(
         loop {
             let entry = match it.next() {
                 None => break,
-                Some(Err(err)) => panic!("ERROR: {}", err),
+                Some(Err(err)) => {
+                    tracing::error!("WalkDir error: {}", err);
+                    continue;
+                }
                 Some(Ok(entry)) => entry,
             };
 
             // get file/folder path
             let file_path = entry.path();
-            let rel_path = file_path
-                .strip_prefix(&base_path_buf)
-                .unwrap()
-                .to_path_buf();
+            let rel_path = match file_path.strip_prefix(&base_path_buf) {
+                Ok(p) => p.to_path_buf(),
+                Err(e) => {
+                    tracing::error!("Failed to strip path prefix: {}", e);
+                    continue;
+                }
+            };
 
             // if the path is contained path, skip the path
             if contained_paths.contains(&rel_path) {
@@ -197,12 +217,16 @@ async fn remove_unused_files(
             else if file_path.is_dir()
                 && find_contained_paths(&rel_path, &contained_paths).is_empty()
             {
-                std::fs::remove_dir_all(file_path).unwrap();
+                if let Err(e) = std::fs::remove_dir_all(file_path) {
+                    tracing::error!("Failed to remove directory: {}", e);
+                }
                 it.skip_current_dir();
             }
             // otherwise, delete the file/folder
             else if file_path.is_file() {
-                std::fs::remove_file(file_path).unwrap();
+                if let Err(e) = std::fs::remove_file(file_path) {
+                    tracing::error!("Failed to remove file: {}", e);
+                }
             }
         }
     })

@@ -1,4 +1,3 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +10,7 @@ use crate::config::{cmp_local_remote, repos_to_map_with_ignore, MgitConfig};
 use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu};
 use crate::git;
 use crate::git::RemoteRef;
-use crate::utils::cmd;
+use crate::utils::{cmd, current_dir};
 use crate::utils::cmd::{retry, DEFAULT_RETRY_COUNT, DEFAULT_RETRY_DELAY_MS};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
@@ -37,7 +36,10 @@ impl FetchOptions {
         ignore: Option<Vec<String>>,
         labels: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -53,7 +55,7 @@ impl FetchOptions {
 
 pub async fn fetch_repos(
     options: FetchOptions,
-    progress: impl Progress + 'static + Clone + Send + Sync,
+    progress: impl Progress + 'static,
 ) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
@@ -72,7 +74,7 @@ pub async fn fetch_repos(
 
     let mgit_config =
         MgitConfig::load(config_path).ok_or(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         })?;
 
     let repo_configs = if let Some(repos) = mgit_config.repos {

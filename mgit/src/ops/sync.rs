@@ -1,4 +1,3 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -14,7 +13,7 @@ use crate::error::{
     NoRemoteConfiguredSnafu, StashHardConflictSnafu,
 };
 use snafu::ResultExt;
-use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch, CleanOptions};
+use crate::ops::{clean_repo, current_dir, exec_fetch, set_tracking_remote_branch, CleanOptions};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
@@ -187,7 +186,7 @@ impl SyncOptionsBuilder {
     pub fn build(self) -> SyncOptions {
         let path = self
             .path
-            .unwrap_or_else(|| env::current_dir().expect("Failed to get current directory"));
+            .unwrap_or_else(|| current_dir());
         let config_path = self.config_path.unwrap_or_else(|| path.join(".gitrepos"));
         SyncOptions {
             path,
@@ -220,7 +219,7 @@ impl SyncOptionsBuilder {
 /// Returns a `StyleMessage` containing the result of the synchronization operation.
 pub async fn sync_repo(
     options: SyncOptions,
-    progress: impl Progress + 'static + Clone + Send + Sync,
+    progress: impl Progress + 'static,
 ) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
@@ -254,7 +253,7 @@ pub async fn sync_repo(
     // load config file(like .gitrepos)
     let mgit_config =
         MgitConfig::load(config_path).ok_or(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         })?;
 
     // remove unused repositories when use '--config' option
