@@ -11,16 +11,16 @@ static TOKIO_RUNTIME: OnceLock<Runtime> = OnceLock::new();
 pub fn init_runtime() {
     // Create the runtime if not already initialized
     // This uses OnceLock which handles thread safety
-    let _ = TOKIO_RUNTIME.get_or_init(|| {
-        Runtime::new().expect("Failed to create Tokio runtime")
-    });
+    let _ = TOKIO_RUNTIME.get_or_init(|| Runtime::new().expect("Failed to create Tokio runtime"));
 }
 
 /// Get a reference to the global Tokio runtime.
 /// Panics if the runtime hasn't been initialized.
 #[track_caller]
 pub fn runtime() -> &'static Runtime {
-    TOKIO_RUNTIME.get().expect("Tokio runtime not initialized. Call init_runtime() first.")
+    TOKIO_RUNTIME
+        .get()
+        .expect("Tokio runtime not initialized. Call init_runtime() first.")
 }
 
 /// Spawn an async task on the global runtime and block until completion.

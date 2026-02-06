@@ -1,4 +1,4 @@
-﻿use std::collections::HashMap;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -103,7 +103,10 @@ impl Progress for MultiProgress {
     }
 
     fn on_batch_finish(&self) {
-        let locked = self.main_progress_bar.lock().expect("Failed to lock main_progress_bar in on_batch_finish");
+        let locked = self
+            .main_progress_bar
+            .lock()
+            .expect("Failed to lock main_progress_bar in on_batch_finish");
         if !locked.as_ref().unwrap().is_finished() {
             locked.as_ref().unwrap().finish();
             tracing::info!("");
@@ -130,7 +133,10 @@ impl Progress for MultiProgress {
     }
 
     fn on_repo_success(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        let locked = self.spinner_progress_bars.lock().expect("Failed to lock spinner_progress_bars in on_repo_success");
+        let locked = self
+            .spinner_progress_bars
+            .lock()
+            .expect("Failed to lock spinner_progress_bars in on_repo_success");
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
             pb.finish_with_message(truncate_spinner_msg(
@@ -147,7 +153,10 @@ impl Progress for MultiProgress {
     }
 
     fn on_repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        let locked = self.spinner_progress_bars.lock().expect("Failed to lock spinner_progress_bars in on_repo_error");
+        let locked = self
+            .spinner_progress_bars
+            .lock()
+            .expect("Failed to lock spinner_progress_bars in on_repo_error");
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
             pb.finish_with_message(self.spinner_end(repo_info, message, false));

@@ -28,6 +28,7 @@ impl ListFilesOptions {
     }
 }
 
+#[must_use]
 pub async fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
     let path = &options.path;
     let config_path = &options.config_path;

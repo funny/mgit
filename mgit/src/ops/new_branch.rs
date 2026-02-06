@@ -41,6 +41,7 @@ impl NewBranchOptions {
     }
 }
 
+#[must_use]
 pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;

@@ -26,6 +26,7 @@ impl InitOptions {
     }
 }
 
+#[must_use]
 pub async fn init_repo(options: InitOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let force = options.force;

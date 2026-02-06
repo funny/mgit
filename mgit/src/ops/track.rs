@@ -42,6 +42,7 @@ impl TrackOptions {
     }
 }
 
+#[must_use]
 pub async fn track(
     options: TrackOptions,
     progress: impl Progress + 'static,
@@ -90,10 +91,13 @@ pub async fn track(
     let default_branch = Arc::new(default_branch);
 
     for (id, repo_config) in repos_map {
-        let permit = Arc::clone(&semaphore).acquire_owned().await
-            .map_err(|_| MgitError::OpsError {
-                message: "Failed to acquire semaphore permit for track operation".to_string()
-            })?;
+        let permit =
+            Arc::clone(&semaphore)
+                .acquire_owned()
+                .await
+                .map_err(|_| MgitError::OpsError {
+                    message: "Failed to acquire semaphore permit for track operation".to_string(),
+                })?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -135,9 +139,11 @@ pub async fn set_tracking_remote_branch(
     repo_config: &RepoConfig,
     default_branch: &Option<String>,
 ) -> MgitResult<StyleMessage> {
-    let rel_path = repo_config.local.as_ref()
+    let rel_path = repo_config
+        .local
+        .as_ref()
         .ok_or_else(|| MgitError::OpsError {
-            message: "Repository config missing 'local' field".to_string()
+            message: "Repository config missing 'local' field".to_string(),
         })?;
     let full_path = input_path.as_ref().join(rel_path);
 

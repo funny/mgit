@@ -35,6 +35,7 @@ impl DelBranchOptions {
     }
 }
 
+#[must_use]
 pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;

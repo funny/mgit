@@ -10,8 +10,8 @@ use tokio::task::JoinSet;
 use crate::config::MgitConfig;
 use crate::error::{MgitError, MgitResult};
 use crate::git::log_current;
-use crate::utils::{current_dir, label, StyleMessage};
 use crate::utils::path::PathExtension;
+use crate::utils::{current_dir, label, StyleMessage};
 
 pub struct LogReposOptions {
     pub path: PathBuf,
@@ -92,6 +92,7 @@ impl Display for RepoLog {
     }
 }
 
+#[must_use]
 pub async fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<RepoLog>>> {
     let (path, mgit_config, thread_count, labels) = options.validate()?;
 
@@ -108,20 +109,29 @@ pub async fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<Re
     let base_path = path.clone();
 
     for repo_config in repo_configs {
-        let permit = Arc::clone(&semaphore).acquire_owned().await
-            .map_err(|_| MgitError::OpsError {
-                message: "Failed to acquire semaphore permit for log operation".to_string()
-            })?;
+        let permit =
+            Arc::clone(&semaphore)
+                .acquire_owned()
+                .await
+                .map_err(|_| MgitError::OpsError {
+                    message: "Failed to acquire semaphore permit for log operation".to_string(),
+                })?;
         let base_path = base_path.clone();
 
-        let local = repo_config.local.as_ref()
+        let local = repo_config
+            .local
+            .as_ref()
             .ok_or_else(|| MgitError::OpsError {
-                message: "Repository config missing 'local' field".to_string()
-            })?.to_string();
-        let remote = repo_config.remote.as_ref()
+                message: "Repository config missing 'local' field".to_string(),
+            })?
+            .to_string();
+        let remote = repo_config
+            .remote
+            .as_ref()
             .ok_or_else(|| MgitError::OpsError {
-                message: format!("Repository '{}' missing 'remote' field", local)
-            })?.to_string();
+                message: format!("Repository '{}' missing 'remote' field", local),
+            })?
+            .to_string();
 
         join_set.spawn(async move {
             let _permit = permit;

@@ -7,14 +7,16 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::config::{cmp_local_remote, repos_to_map_with_ignore, MgitConfig};
-use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu};
+use crate::error::{
+    AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu,
+};
 use crate::git;
 use crate::git::RemoteRef;
-use crate::utils::{cmd, current_dir};
 use crate::utils::cmd::{retry, DEFAULT_RETRY_COUNT, DEFAULT_RETRY_DELAY_MS};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
+use crate::utils::{cmd, current_dir};
 
 pub struct FetchOptions {
     pub path: PathBuf,
@@ -53,6 +55,7 @@ impl FetchOptions {
     }
 }
 
+#[must_use]
 pub async fn fetch_repos(
     options: FetchOptions,
     progress: impl Progress + 'static,
@@ -98,10 +101,12 @@ pub async fn fetch_repos(
     let default_branch = Arc::new(default_branch);
 
     for (id, repo_config) in repos_map {
-        let permit = Arc::clone(&semaphore).acquire_owned().await
-            .map_err(|_| AcquirePermitFailedSnafu {
-                message: "Failed to acquire semaphore permit for parallel execution".to_string()
-            }.build())?;
+        let permit = Arc::clone(&semaphore).acquire_owned().await.map_err(|_| {
+            AcquirePermitFailedSnafu {
+                message: "Failed to acquire semaphore permit for parallel execution".to_string(),
+            }
+            .build()
+        })?;
         let counter = Arc::clone(&counter);
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -133,7 +138,9 @@ pub async fn fetch_repos(
                 Err(e) => {
                     progress.on_repo_error(&on_repo_update, StyleMessage::new());
                     Err(StyleMessage::git_error(
-                        repo_config.local.as_ref()
+                        repo_config
+                            .local
+                            .as_ref()
                             .map(|p| p.display_path())
                             .unwrap_or_else(|| id.to_string()),
                         &e,
@@ -169,10 +176,12 @@ async fn inner_exec(
     progress: &impl Progress,
 ) -> MgitResult<()> {
     let full_path = input_path.as_ref().join(on_repo_update.rel_path());
-    let remote_url = on_repo_update.repo_config.remote.as_ref()
-        .ok_or_else(|| NoRemoteConfiguredSnafu {
-            path: full_path.clone()
-        }.build())?;
+    let remote_url = on_repo_update.repo_config.remote.as_ref().ok_or_else(|| {
+        NoRemoteConfiguredSnafu {
+            path: full_path.clone(),
+        }
+        .build()
+    })?;
 
     git::update_remote_url(&full_path, remote_url).await?;
     exec_fetch(input_path, on_repo_update, depth, progress).await
@@ -209,13 +218,12 @@ pub async fn exec_fetch(
                 args.push("--no-tags".to_string());
             }
             RemoteRef::Branch(_) => {
-                let branch = on_repo_update
-                    .repo_config
-                    .branch
-                    .as_ref()
-                    .ok_or_else(|| BranchReferenceRequiredSnafu {
-                        message: "Branch reference required for branch remote ref".to_string()
-                    }.build())?;
+                let branch = on_repo_update.repo_config.branch.as_ref().ok_or_else(|| {
+                    BranchReferenceRequiredSnafu {
+                        message: "Branch reference required for branch remote ref".to_string(),
+                    }
+                    .build()
+                })?;
                 args.push(branch.clone());
             }
         };
@@ -228,10 +236,14 @@ pub async fn exec_fetch(
     args.push("--recurse-submodules=on-demand".to_string());
     args.push("--progress".to_string());
 
-    retry(DEFAULT_RETRY_COUNT, Duration::from_millis(DEFAULT_RETRY_DELAY_MS), || async {
-        let mut command = Command::new("git");
-        command.args(&args).current_dir(&full_path);
-        cmd::exec_cmd_with_progress(on_repo_update, &mut command, progress).await
-    })
+    retry(
+        DEFAULT_RETRY_COUNT,
+        Duration::from_millis(DEFAULT_RETRY_DELAY_MS),
+        || async {
+            let mut command = Command::new("git");
+            command.args(&args).current_dir(&full_path);
+            cmd::exec_cmd_with_progress(on_repo_update, &mut command, progress).await
+        },
+    )
     .await
 }
