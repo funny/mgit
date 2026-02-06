@@ -12,7 +12,7 @@ use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitR
 use crate::git;
 use crate::git::RemoteRef;
 use crate::utils::cmd;
-use crate::utils::cmd::retry;
+use crate::utils::cmd::{retry, DEFAULT_RETRY_COUNT, DEFAULT_RETRY_DELAY_MS};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
@@ -226,7 +226,7 @@ pub async fn exec_fetch(
     args.push("--recurse-submodules=on-demand".to_string());
     args.push("--progress".to_string());
 
-    retry(10, Duration::from_millis(400), || async {
+    retry(DEFAULT_RETRY_COUNT, Duration::from_millis(DEFAULT_RETRY_DELAY_MS), || async {
         let mut command = Command::new("git");
         command.args(&args).current_dir(&full_path);
         cmd::exec_cmd_with_progress(on_repo_update, &mut command, progress).await
