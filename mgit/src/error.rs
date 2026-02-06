@@ -41,7 +41,6 @@ pub enum MgitError {
     ProcessWaitFailed { source: std::io::Error },
 
     // === Specific Operation Errors (replacing generic OpsError) ===
-
     #[snafu(display("Semaphore acquisition failed: {}", message))]
     AcquirePermitFailed { message: String },
 

@@ -508,7 +508,10 @@ impl RepoManager {
                 let progress = self.progress(run_id, command_type, &session.project_path);
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let result = crate::utils::runtime::block_on(ops::fetch_repos(options, progress.clone()));
+                    let result = crate::utils::runtime::block_on(ops::fetch_repos(
+                        options,
+                        progress.clone(),
+                    ));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_fetch_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_fetch_failed"),
@@ -586,7 +589,8 @@ impl RepoManager {
 
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let result = crate::utils::runtime::block_on(ops::sync_repo(options, progress.clone()));
+                    let result =
+                        crate::utils::runtime::block_on(ops::sync_repo(options, progress.clone()));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_sync_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_sync_failed"),
@@ -612,7 +616,8 @@ impl RepoManager {
 
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let result = crate::utils::runtime::block_on(ops::track(options, progress.clone()));
+                    let result =
+                        crate::utils::runtime::block_on(ops::track(options, progress.clone()));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_track_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_track_failed"),

@@ -50,6 +50,7 @@ impl SnapshotOptions {
     }
 }
 
+#[must_use]
 pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
@@ -81,7 +82,7 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
         .literal_separator(true)
         .build()
         .map_err(|e| MgitError::OpsError {
-            message: format!("Failed to build glob pattern: {}", e)
+            message: format!("Failed to build glob pattern: {}", e),
         })?
         .compile_matcher();
 
@@ -131,10 +132,9 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
     let mut final_repos: Vec<RepoConfig> = Vec::new();
 
     for pb in repos {
-        let rel_path = pb.strip_prefix(path)
-            .map_err(|e| MgitError::OpsError {
-                message: format!("Failed to strip path prefix: {}", e)
-            })?;
+        let rel_path = pb.strip_prefix(path).map_err(|e| MgitError::OpsError {
+            message: format!("Failed to strip path prefix: {}", e),
+        })?;
         let norm_path = rel_path.norm_path();
         let norm_str = norm_path.display_path();
 

@@ -6,13 +6,15 @@ pub mod progress;
 pub mod shell;
 pub mod style_message;
 
+#[cfg(test)]
+mod tests;
+
 pub use style_message::StyleMessage;
 
 /// Safe wrapper for getting current working directory.
 /// Returns the current directory or the provided fallback path if getting cwd fails.
 pub fn current_dir_or(fallback: impl AsRef<std::path::Path>) -> std::path::PathBuf {
-    env::current_dir()
-        .unwrap_or_else(|_| fallback.as_ref().to_path_buf())
+    env::current_dir().unwrap_or_else(|_| fallback.as_ref().to_path_buf())
 }
 
 /// Get current working directory with a descriptive error message.

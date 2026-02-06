@@ -39,6 +39,7 @@ impl NewTagOptions {
     }
 }
 
+#[must_use]
 pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;

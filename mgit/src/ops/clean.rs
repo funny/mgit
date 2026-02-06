@@ -6,8 +6,8 @@ use walkdir::WalkDir;
 use crate::config::MgitConfig;
 use crate::error::MgitError;
 use crate::error::MgitResult;
-use crate::utils::{current_dir, label};
 use crate::utils::style_message::StyleMessage;
+use crate::utils::{current_dir, label};
 
 pub struct CleanOptions {
     pub path: PathBuf,
@@ -34,6 +34,7 @@ impl CleanOptions {
     }
 }
 
+#[must_use]
 pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
@@ -77,7 +78,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
         .literal_separator(true)
         .build()
         .map_err(|e| MgitError::OpsError {
-            message: format!("Failed to build glob pattern: {}", e)
+            message: format!("Failed to build glob pattern: {}", e),
         })?
         .compile_matcher();
 

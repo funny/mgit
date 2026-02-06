@@ -87,11 +87,7 @@ impl OpsMessageCollector {
                 let file = if !file_path.exists() {
                     File::create(file_path).unwrap()
                 } else {
-                    OpenOptions::new()
-                        
-                        .append(true)
-                        .open(file_path)
-                        .unwrap()
+                    OpenOptions::new().append(true).open(file_path).unwrap()
                 };
                 Arc::new(Mutex::new(file))
             })

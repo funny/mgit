@@ -4,6 +4,7 @@ use crate::error::MgitResult;
 use crate::utils::cmd::exec_cmd;
 use crate::utils::style_message::StyleMessage;
 
+#[must_use]
 pub async fn is_repository(path: impl AsRef<Path>) -> MgitResult<()> {
     if path.as_ref().join(".git").is_dir() {
         let args = ["rev-parse", "--show-cdup"];
@@ -19,6 +20,7 @@ pub async fn is_repository(path: impl AsRef<Path>) -> MgitResult<()> {
     })
 }
 
+#[must_use]
 pub async fn get_current_commit(path: impl AsRef<Path>) -> MgitResult<String> {
     is_repository(&path).await?;
     let args = ["rev-parse", "HEAD"];

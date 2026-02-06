@@ -12,11 +12,11 @@ use crate::error::{
     AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, CreateDirFailedSnafu, MgitResult,
     NoRemoteConfiguredSnafu, StashHardConflictSnafu,
 };
-use snafu::ResultExt;
 use crate::ops::{clean_repo, current_dir, exec_fetch, set_tracking_remote_branch, CleanOptions};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
+use snafu::ResultExt;
 
 /// Internal execution response for sync operations
 #[derive(Debug, Default)]
@@ -184,9 +184,7 @@ impl SyncOptionsBuilder {
 
     /// Build the SyncOptions
     pub fn build(self) -> SyncOptions {
-        let path = self
-            .path
-            .unwrap_or_else(|| current_dir());
+        let path = self.path.unwrap_or_else(current_dir);
         let config_path = self.config_path.unwrap_or_else(|| path.join(".gitrepos"));
         SyncOptions {
             path,
@@ -217,6 +215,7 @@ impl SyncOptionsBuilder {
 /// # Returns
 ///
 /// Returns a `StyleMessage` containing the result of the synchronization operation.
+#[must_use]
 pub async fn sync_repo(
     options: SyncOptions,
     progress: impl Progress + 'static,
@@ -297,10 +296,12 @@ pub async fn sync_repo(
     }
 
     for (id, repo_config) in repos_map {
-        let permit = Arc::clone(&semaphore).acquire_owned().await
-            .map_err(|_| AcquirePermitFailedSnafu {
-                message: "Failed to acquire semaphore permit for parallel execution".to_string()
-            }.build())?;
+        let permit = Arc::clone(&semaphore).acquire_owned().await.map_err(|_| {
+            AcquirePermitFailedSnafu {
+                message: "Failed to acquire semaphore permit for parallel execution".to_string(),
+            }
+            .build()
+        })?;
         let counter = Arc::clone(&counter);
         let progress = progress.clone();
         let base_path = path.clone();
@@ -360,7 +361,9 @@ pub async fn sync_repo(
                     // stash status: stash on some commit
                     let mut stash_status = StyleMessage::new();
                     if let Some(StashResponse::Stash(msg)) = response.stash {
-                        let repo_rel_path = repo_config.local.as_ref()
+                        let repo_rel_path = repo_config
+                            .local
+                            .as_ref()
                             .map(|p| p.display_path())
                             .unwrap_or_else(|| id.to_string());
                         stash_status =
@@ -386,7 +389,9 @@ pub async fn sync_repo(
                     // show message in progress bar
                     progress.on_repo_error(&repo_info, StyleMessage::new());
 
-                    let repo_rel_path = repo_config.local.as_ref()
+                    let repo_rel_path = repo_config
+                        .local
+                        .as_ref()
                         .map(|p| p.display_path())
                         .unwrap_or_else(|| id.to_string());
                     Err(StyleMessage::git_error(repo_rel_path, &e))
@@ -458,7 +463,9 @@ async fn inner_exec(
     // make repo directory and skip clone the repository
     tokio::fs::create_dir_all(full_path)
         .await
-        .with_context(|_| CreateDirFailedSnafu { path: full_path.clone() })?;
+        .with_context(|_| CreateDirFailedSnafu {
+            path: full_path.clone(),
+        })?;
 
     // Logic for branch update:
     // We modify repo_config copy directly.
@@ -483,10 +490,16 @@ async fn inner_exec(
         // git remote add url
         exec_add_remote(input_path, current_repo_info, progress).await?;
     } else {
-        let remote_url = current_repo_info.repo_config.remote.as_ref()
-            .ok_or_else(|| NoRemoteConfiguredSnafu {
-                path: full_path.clone()
-            }.build())?;
+        let remote_url = current_repo_info
+            .repo_config
+            .remote
+            .as_ref()
+            .ok_or_else(|| {
+                NoRemoteConfiguredSnafu {
+                    path: full_path.clone(),
+                }
+                .build()
+            })?;
         git::update_remote_url(full_path, remote_url).await?;
     }
 
@@ -638,10 +651,12 @@ async fn exec_add_remote(
     progress.on_repo_update(repo_info, "add remote...".into());
 
     let full_path = input_path.join(repo_info.rel_path());
-    let url = repo_info.repo_config.remote.as_ref()
-        .ok_or_else(|| NoRemoteConfiguredSnafu {
-            path: full_path.clone()
-        }.build())?;
+    let url = repo_info.repo_config.remote.as_ref().ok_or_else(|| {
+        NoRemoteConfiguredSnafu {
+            path: full_path.clone(),
+        }
+        .build()
+    })?;
     git::add_remote_url(full_path, url).await
 }
 
@@ -731,13 +746,12 @@ async fn exec_checkout(
     let branch = match remote_ref {
         RemoteRef::Commit(commit) => format!("commits/{}", &commit[..7]),
         RemoteRef::Tag(tag) => format!("tags/{}", tag),
-        RemoteRef::Branch(_) => repo_info
-            .repo_config
-            .branch
-            .clone()
-            .ok_or_else(|| BranchReferenceRequiredSnafu {
-                message: "Remote ref is branch but no branch configured".to_string()
-            }.build())?,
+        RemoteRef::Branch(_) => repo_info.repo_config.branch.clone().ok_or_else(|| {
+            BranchReferenceRequiredSnafu {
+                message: "Remote ref is branch but no branch configured".to_string(),
+            }
+            .build()
+        })?,
     };
 
     // don't need to checkout if current branch is the branch

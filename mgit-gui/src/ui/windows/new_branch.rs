@@ -20,7 +20,6 @@ pub struct NewBranchWindow {
     pub confirm_create: bool,
 }
 
-
 impl NewBranchWindow {
     pub fn update_settings(
         &mut self,
