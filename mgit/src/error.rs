@@ -40,6 +40,29 @@ pub enum MgitError {
     #[snafu(display("Failed to wait for process: {}", source))]
     ProcessWaitFailed { source: std::io::Error },
 
+    // === Specific Operation Errors (replacing generic OpsError) ===
+
+    #[snafu(display("Semaphore acquisition failed: {}", message))]
+    AcquirePermitFailed { message: String },
+
+    #[snafu(display("Invalid repository configuration: {}", message))]
+    InvalidRepoConfig { message: String },
+
+    #[snafu(display("Repository has no remote configured: {}", path.display()))]
+    NoRemoteConfigured { path: PathBuf },
+
+    #[snafu(display("Branch reference required but not found: {}", message))]
+    BranchReferenceRequired { message: String },
+
+    #[snafu(display("Failed to create directory {}: {}", path.display(), source))]
+    CreateDirFailed {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+
+    #[snafu(display("Stash and hard reset cannot be used together"))]
+    StashHardConflict,
+
     #[snafu(display("Operation failed: {}", message))]
     OpsError { message: String },
 

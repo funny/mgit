@@ -9,7 +9,11 @@ use crate::config::{cmp_local_remote, repos_to_map_with_ignore, MgitConfig};
 use crate::git;
 use crate::git::{RemoteRef, ResetType, StashMode};
 
-use crate::error::MgitResult;
+use crate::error::{
+    AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, CreateDirFailedSnafu, MgitResult,
+    NoRemoteConfiguredSnafu, StashHardConflictSnafu,
+};
+use snafu::ResultExt;
 use crate::ops::{clean_repo, exec_fetch, set_tracking_remote_branch, CleanOptions};
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
@@ -236,9 +240,7 @@ pub async fn sync_repo(
         (true, false) => StashMode::Stash,
         (false, true) => StashMode::Hard,
         (true, true) => {
-            return Err(crate::error::MgitError::OpsError {
-                message: "'--stash' and '--hard' can't be used together.".to_string()
-            });
+            return Err(StashHardConflictSnafu.build());
         }
     };
 
@@ -298,9 +300,9 @@ pub async fn sync_repo(
 
     for (id, repo_config) in repos_map {
         let permit = semaphore.clone().acquire_owned().await
-            .map_err(|_| crate::error::MgitError::OpsError {
+            .map_err(|_| AcquirePermitFailedSnafu {
                 message: "Failed to acquire semaphore permit for parallel execution".to_string()
-            })?;
+            }.build())?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -459,9 +461,7 @@ async fn inner_exec(
     // make repo directory and skip clone the repository
     tokio::fs::create_dir_all(full_path)
         .await
-        .map_err(|e| crate::error::MgitError::OpsError {
-            message: format!("create dir {} failed: {}", full_path.to_string_lossy(), e),
-        })?;
+        .with_context(|_| CreateDirFailedSnafu { path: full_path.clone() })?;
 
     // Logic for branch update:
     // We modify repo_config copy directly.
@@ -487,9 +487,9 @@ async fn inner_exec(
         exec_add_remote(input_path, current_repo_info, progress).await?;
     } else {
         let remote_url = current_repo_info.repo_config.remote.as_ref()
-            .ok_or_else(|| crate::error::MgitError::OpsError {
-                message: format!("Repository {} has no remote configured", current_repo_info.rel_path())
-            })?;
+            .ok_or_else(|| NoRemoteConfiguredSnafu {
+                path: full_path.clone()
+            }.build())?;
         git::update_remote_url(full_path, remote_url).await?;
     }
 
@@ -642,9 +642,9 @@ async fn exec_add_remote(
 
     let full_path = input_path.join(repo_info.rel_path());
     let url = repo_info.repo_config.remote.as_ref()
-        .ok_or_else(|| crate::error::MgitError::OpsError {
-            message: format!("Repository {} has no remote configured", repo_info.rel_path())
-        })?;
+        .ok_or_else(|| NoRemoteConfiguredSnafu {
+            path: full_path.clone()
+        }.build())?;
     git::add_remote_url(full_path, url).await
 }
 
@@ -738,9 +738,9 @@ async fn exec_checkout(
             .repo_config
             .branch
             .clone()
-            .ok_or_else(|| crate::error::MgitError::OpsError {
+            .ok_or_else(|| BranchReferenceRequiredSnafu {
                 message: "Remote ref is branch but no branch configured".to_string()
-            })?,
+            }.build())?,
     };
 
     // don't need to checkout if current branch is the branch
