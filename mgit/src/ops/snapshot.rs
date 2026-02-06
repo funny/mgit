@@ -195,7 +195,8 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
         file_count
     );
 
-    let toml_string = mgit_config.serialize();
+    use crate::config::serialize_config;
+    let toml_string = serialize_config(&mgit_config);
     tokio::fs::write(config_path, toml_string)
         .await
         .map_err(|e| crate::error::MgitError::OpsError {
