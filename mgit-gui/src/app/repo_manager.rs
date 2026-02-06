@@ -341,17 +341,7 @@ impl RepoManager {
         std::thread::spawn(move || {
             let started_at = Instant::now();
             info!(run_id, "ops_new_branch_started");
-            let rt = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(rt) => rt,
-                Err(e) => {
-                    error!(run_id, error = %e, "tokio_runtime_create_failed");
-                    return;
-                }
-            };
-            let result = rt.block_on(ops::new_remote_branch(options));
+            let result = crate::utils::runtime::block_on(ops::new_remote_branch(options));
             match result {
                 Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_new_branch_ok"),
                 Err(e) => error!(run_id, error = %e, "ops_new_branch_failed"),
@@ -377,17 +367,7 @@ impl RepoManager {
         std::thread::spawn(move || {
             let started_at = Instant::now();
             info!(run_id, "ops_new_tag_started");
-            let rt = match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(rt) => rt,
-                Err(e) => {
-                    error!(run_id, error = %e, "tokio_runtime_create_failed");
-                    return;
-                }
-            };
-            let result = rt.block_on(ops::new_tag(options));
+            let result = crate::utils::runtime::block_on(ops::new_tag(options));
             match result {
                 Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_new_tag_ok"),
                 Err(e) => error!(run_id, error = %e, "ops_new_tag_failed"),
@@ -431,17 +411,7 @@ impl RepoManager {
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_init_started");
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::init_repo(options));
+                    let result = crate::utils::runtime::block_on(ops::init_repo(options));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_init_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_init_failed"),
@@ -486,17 +456,7 @@ impl RepoManager {
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_snapshot_started");
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::snapshot_repo(options));
+                    let result = crate::utils::runtime::block_on(ops::snapshot_repo(options));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_snapshot_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_snapshot_failed"),
@@ -548,18 +508,7 @@ impl RepoManager {
                 let progress = self.progress(run_id, command_type, &session.project_path);
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            progress.send_command_finished_once();
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::fetch_repos(options, progress.clone()));
+                    let result = crate::utils::runtime::block_on(ops::fetch_repos(options, progress.clone()));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_fetch_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_fetch_failed"),
@@ -637,18 +586,7 @@ impl RepoManager {
 
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            progress.send_command_finished_once();
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::sync_repo(options, progress.clone()));
+                    let result = crate::utils::runtime::block_on(ops::sync_repo(options, progress.clone()));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_sync_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_sync_failed"),
@@ -674,18 +612,7 @@ impl RepoManager {
 
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            progress.send_command_finished_once();
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::track(options, progress.clone()));
+                    let result = crate::utils::runtime::block_on(ops::track(options, progress.clone()));
                     match result {
                         Ok(msg) => debug!(run_id, message = msg.to_plain_text(), "ops_track_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_track_failed"),
@@ -713,17 +640,7 @@ impl RepoManager {
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_clean_started");
-                    let rt = match tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        Ok(rt) => rt,
-                        Err(e) => {
-                            error!(run_id, error = %e, "tokio_runtime_create_failed");
-                            return;
-                        }
-                    };
-                    let result = rt.block_on(ops::clean_repo(options));
+                    let result = crate::utils::runtime::block_on(ops::clean_repo(options));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_clean_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_clean_failed"),
@@ -853,15 +770,7 @@ fn get_repo_states_parallel(
             let default_branch = default_branch.clone();
             let repo_configs = repo_configs.clone();
             handles.push(std::thread::spawn(move || {
-                let rt = match tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                {
-                    Ok(rt) => rt,
-                    Err(_) => {
-                        return;
-                    }
-                };
+                let rt = crate::utils::runtime::runtime();
                 let mut id = worker_id;
                 while id < repo_configs.len() {
                     let repo = &repo_configs[id];
@@ -869,7 +778,7 @@ fn get_repo_states_parallel(
                         repo,
                         project_path.as_ref(),
                         default_branch.as_ref(),
-                        &rt,
+                        rt,
                     );
                     let _ = sender.send(Event::Backend(BackendEvent::RepoStateUpdated {
                         run_id,
@@ -895,20 +804,8 @@ pub(crate) fn get_repo_state(
     project_path: &String,
     default_branch: &Option<String>,
 ) -> RepoState {
-    let rt = match tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(rt) => rt,
-        Err(_) => {
-            let mut repo_state = RepoState::default();
-            repo_state.err_msg = "tokio runtime create failed".to_string();
-            repo_state.track_state = StateType::Error;
-            repo_state.cmp_state = StateType::Error;
-            return repo_state;
-        }
-    };
-    get_repo_state_with_runtime(repo, project_path, default_branch, &rt)
+    let rt = crate::utils::runtime::runtime();
+    get_repo_state_with_runtime(repo, project_path, default_branch, rt)
 }
 
 fn get_repo_state_with_runtime(
