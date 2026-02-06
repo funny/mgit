@@ -8,10 +8,9 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::config::{cmp_local_remote, repos_to_map_with_ignore, MgitConfig};
+use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu};
 use crate::git;
 use crate::git::RemoteRef;
-
-use crate::error::{AcquirePermitFailedSnafu, BranchReferenceRequiredSnafu, MgitResult, NoRemoteConfiguredSnafu};
 use crate::utils::cmd;
 use crate::utils::cmd::retry;
 use crate::utils::path::PathExtension;

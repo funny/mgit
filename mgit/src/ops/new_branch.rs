@@ -135,7 +135,8 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
     }
 
     if let Some(new_config_path) = new_config_path {
-        let toml_string = mgit_config.serialize();
+        use crate::config::serialize_config;
+        let toml_string = serialize_config(&mgit_config);
         tokio::fs::write(new_config_path, toml_string)
             .await
             .map_err(|_| crate::error::MgitError::OpsError {
