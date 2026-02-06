@@ -22,7 +22,7 @@ impl MultiProgress {
         let main_progress_bar = self
             .multi_progress
             .lock()
-            .unwrap()
+            .expect("Failed to lock multi_progress for main bar")
             .add(ProgressBar::new(total as u64));
         main_progress_bar.set_style(
             ProgressStyle::default_bar()
@@ -34,7 +34,7 @@ impl MultiProgress {
         let _ = self
             .main_progress_bar
             .lock()
-            .unwrap()
+            .expect("Failed to lock main_progress_bar for insert")
             .insert(main_progress_bar);
     }
 
@@ -42,7 +42,7 @@ impl MultiProgress {
         let progress_bar = self
             .multi_progress
             .lock()
-            .unwrap()
+            .expect("Failed to lock multi_progress for spinner bar")
             .insert(id, ProgressBar::new_spinner());
         progress_bar.set_style(
             ProgressStyle::with_template("{spinner:.green.dim.bold} {msg} ")
@@ -52,7 +52,7 @@ impl MultiProgress {
         progress_bar.enable_steady_tick(std::time::Duration::from_millis(500));
         self.spinner_progress_bars
             .lock()
-            .unwrap()
+            .expect("Failed to lock spinner_progress_bars for insert")
             .insert(id, progress_bar);
     }
 
@@ -103,7 +103,7 @@ impl Progress for MultiProgress {
     }
 
     fn on_batch_finish(&self) {
-        let locked = self.main_progress_bar.lock().unwrap();
+        let locked = self.main_progress_bar.lock().expect("Failed to lock main_progress_bar in on_batch_finish");
         if !locked.as_ref().unwrap().is_finished() {
             locked.as_ref().unwrap().finish();
             tracing::info!("");
@@ -114,7 +114,7 @@ impl Progress for MultiProgress {
         self.create_progress_bar(repo_info.index);
         self.spinner_progress_bars
             .lock()
-            .unwrap()
+            .expect("Failed to lock spinner_progress_bars in on_repo_start")
             .get(&repo_info.index)
             .unwrap()
             .set_message(truncate_spinner_msg(self.spinner_start(repo_info, message)));
@@ -123,14 +123,14 @@ impl Progress for MultiProgress {
     fn on_repo_update(&self, repo_info: &RepoInfo, message: StyleMessage) {
         self.spinner_progress_bars
             .lock()
-            .unwrap()
+            .expect("Failed to lock spinner_progress_bars in on_repo_update")
             .get(&repo_info.index)
             .unwrap()
             .set_message(truncate_spinner_msg(self.spinner_info(repo_info, message)));
     }
 
     fn on_repo_success(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        let locked = self.spinner_progress_bars.lock().unwrap();
+        let locked = self.spinner_progress_bars.lock().expect("Failed to lock spinner_progress_bars in on_repo_success");
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
             pb.finish_with_message(truncate_spinner_msg(
@@ -140,14 +140,14 @@ impl Progress for MultiProgress {
 
         self.main_progress_bar
             .lock()
-            .unwrap()
+            .expect("Failed to lock main_progress_bar in on_repo_success")
             .as_ref()
-            .unwrap()
+            .expect("main_progress_bar is None in on_repo_success")
             .inc(1);
     }
 
     fn on_repo_error(&self, repo_info: &RepoInfo, message: StyleMessage) {
-        let locked = self.spinner_progress_bars.lock().unwrap();
+        let locked = self.spinner_progress_bars.lock().expect("Failed to lock spinner_progress_bars in on_repo_error");
         let pb = locked.get(&repo_info.index).unwrap();
         if !pb.is_finished() {
             pb.finish_with_message(self.spinner_end(repo_info, message, false));
@@ -155,9 +155,9 @@ impl Progress for MultiProgress {
 
         self.main_progress_bar
             .lock()
-            .unwrap()
+            .expect("Failed to lock main_progress_bar in on_repo_error")
             .as_ref()
-            .unwrap()
+            .expect("main_progress_bar is None in on_repo_error")
             .inc(1);
     }
 }

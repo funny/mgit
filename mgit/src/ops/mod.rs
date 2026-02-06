@@ -10,6 +10,8 @@ pub use snapshot::{snapshot_repo, SnapshotOptions, SnapshotType};
 pub use sync::{sync_repo, SyncOptions};
 pub use track::{set_tracking_remote_branch, track, TrackOptions};
 
+pub use crate::utils::current_dir;
+
 mod clean;
 mod del_branch;
 mod fetch;

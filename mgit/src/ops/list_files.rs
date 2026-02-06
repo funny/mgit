@@ -47,7 +47,7 @@ pub async fn list_files(options: ListFilesOptions) -> MgitResult<Vec<String>> {
     // load config file(like .gitrepos)
     let Some(mgit_config) = MgitConfig::load(config_path) else {
         return Err(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         });
     };
 

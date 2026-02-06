@@ -1,14 +1,15 @@
 use globset::GlobBuilder;
 
-use std::env;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use crate::config::MgitConfig;
 use crate::config::RepoConfig;
+use crate::error::MgitError;
 use crate::error::MgitResult;
 use crate::git;
 
+use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
 use crate::utils::style_message::StyleMessage;
 
@@ -34,7 +35,10 @@ impl SnapshotOptions {
         snapshot_type: Option<SnapshotType>,
         ignore: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -76,7 +80,9 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
     let glob = GlobBuilder::new("**/.git")
         .literal_separator(true)
         .build()
-        .unwrap()
+        .map_err(|e| MgitError::OpsError {
+            message: format!("Failed to build glob pattern: {}", e)
+        })?
         .compile_matcher();
 
     tracing::info!("search and add git repos:");
@@ -98,7 +104,10 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
         loop {
             let entry = match it.next() {
                 None => break,
-                Some(Err(err)) => panic!("ERROR: {}", err),
+                Some(Err(err)) => {
+                    tracing::error!("WalkDir error: {}", err);
+                    continue;
+                }
                 Some(Ok(entry)) => entry,
             };
             let path = entry.path();
@@ -122,7 +131,10 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
     let mut final_repos: Vec<RepoConfig> = Vec::new();
 
     for pb in repos {
-        let rel_path = pb.strip_prefix(path).unwrap();
+        let rel_path = pb.strip_prefix(path)
+            .map_err(|e| MgitError::OpsError {
+                message: format!("Failed to strip path prefix: {}", e)
+            })?;
         let norm_path = rel_path.norm_path();
         let norm_str = norm_path.display_path();
 

@@ -1,4 +1,3 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -6,12 +5,17 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::config::{repos_to_map_with_ignore, MgitConfig, RepoConfig};
+use crate::error::MgitError;
 use crate::error::MgitResult;
 use crate::git;
 use crate::git::RemoteRef;
 
+use crate::utils::current_dir;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::StyleMessage;
+
+/// Default number of concurrent operations
+const DEFAULT_THREAD_COUNT: usize = 4;
 
 pub struct TrackOptions {
     pub path: PathBuf,
@@ -25,7 +29,10 @@ impl TrackOptions {
         config_path: Option<impl AsRef<Path>>,
         ignore: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -37,7 +44,7 @@ impl TrackOptions {
 
 pub async fn track(
     options: TrackOptions,
-    progress: impl Progress + 'static + Clone + Send + Sync,
+    progress: impl Progress + 'static,
 ) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
@@ -57,7 +64,7 @@ pub async fn track(
     // load config file(like .gitrepos)
     let mgit_config =
         MgitConfig::load(config_path).ok_or(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         })?;
 
     // handle track
@@ -74,7 +81,7 @@ pub async fn track(
 
     progress.on_batch_start(repos_map.len());
 
-    let semaphore = Arc::new(Semaphore::new(4)); // Limit concurrency to 4
+    let semaphore = Arc::new(Semaphore::new(DEFAULT_THREAD_COUNT));
     let mut join_set = JoinSet::new();
     let counter = std::sync::atomic::AtomicUsize::new(1);
     let counter = Arc::new(counter);
@@ -83,12 +90,14 @@ pub async fn track(
     let default_branch = Arc::new(default_branch);
 
     for (id, repo_config) in repos_map {
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let permit = Arc::clone(&semaphore).acquire_owned().await
+            .map_err(|_| MgitError::OpsError {
+                message: "Failed to acquire semaphore permit for track operation".to_string()
+            })?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
         let default_branch = default_branch.clone();
-        let id = id;
         let repo_config = repo_config.clone();
 
         join_set.spawn(async move {
@@ -126,7 +135,10 @@ pub async fn set_tracking_remote_branch(
     repo_config: &RepoConfig,
     default_branch: &Option<String>,
 ) -> MgitResult<StyleMessage> {
-    let rel_path = repo_config.local.as_ref().unwrap();
+    let rel_path = repo_config.local.as_ref()
+        .ok_or_else(|| MgitError::OpsError {
+            message: "Repository config missing 'local' field".to_string()
+        })?;
     let full_path = input_path.as_ref().join(rel_path);
 
     // get local current branch

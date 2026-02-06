@@ -47,7 +47,7 @@ pub(crate) struct WindowManager {
 impl Default for WindowManager {
     fn default() -> Self {
         Self {
-            about: AboutWindow::default(),
+            about: AboutWindow,
             about_open: false,
             error: ErrorWindow::default(),
             error_open: false,

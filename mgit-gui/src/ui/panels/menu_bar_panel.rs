@@ -85,17 +85,17 @@ impl MenuBarPanel {
                         .app_context
                         .session_manager
                         .get_new_branch_ignores()
-                        .unwrap_or(Vec::new());
+                        .unwrap_or_default();
                     let new_branch = app
                         .app_context
                         .session_manager
                         .get_new_branch_name()
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
                     let new_config_path = app
                         .app_context
                         .session_manager
                         .get_new_branch_config_path()
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
 
                     app.windows.new_branch.update_settings(
                         &app.app_context.session_manager.project_path,
@@ -118,12 +118,12 @@ impl MenuBarPanel {
                         .app_context
                         .session_manager
                         .get_new_tag_ignores()
-                        .unwrap_or(Vec::new());
+                        .unwrap_or_default();
                     let new_tag = app
                         .app_context
                         .session_manager
                         .get_new_tag_name()
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
                     let new_tag_push = app.app_context.session_manager.get_new_tag_push();
 
                     app.windows.new_tag.update_settings(

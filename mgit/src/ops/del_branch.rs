@@ -1,9 +1,9 @@
-use std::env;
 use std::path::{Path, PathBuf};
 
 use crate::config::MgitConfig;
 use crate::error::MgitResult;
 use crate::git;
+use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
 use crate::utils::StyleMessage;
 
@@ -21,7 +21,10 @@ impl DelBranchOptions {
         branch: String,
         ignore: Option<Vec<String>>,
     ) -> Self {
-        let path = path.map_or(env::current_dir().unwrap(), |p| p.as_ref().to_path_buf());
+        let path = match path {
+            Some(p) => p.as_ref().to_path_buf(),
+            None => current_dir(),
+        };
         let config_path = config_path.map_or(path.join(".gitrepos"), |p| p.as_ref().to_path_buf());
         Self {
             path,
@@ -54,7 +57,7 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
     // load config file(like .gitrepos)
     let Some(mut mgit_config) = MgitConfig::load(config_path) else {
         return Err(crate::error::MgitError::LoadConfigFailed {
-            source: std::io::Error::new(std::io::ErrorKind::Other, "Failed to load config"),
+            source: std::io::Error::other("Failed to load config"),
         });
     };
 
@@ -83,7 +86,8 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
             continue;
         }
 
-        let rel_path = repo_config.local.as_ref().unwrap();
+        // Safe to unwrap now as we checked above
+        let rel_path = local;
         let full_path = Path::new(path).join(rel_path);
 
         match git::check_remote_branch_exist(&full_path, &branch).await {
@@ -107,7 +111,7 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
         }
 
         let rel_path_display = Path::new(rel_path).display_path();
-        let msg = StyleMessage::git_del_branch(rel_path_display, &format!("origin/{}", branch));
+        let msg = StyleMessage::git_del_branch(rel_path_display, format!("origin/{}", branch));
         tracing::info!(message = %msg);
     }
 

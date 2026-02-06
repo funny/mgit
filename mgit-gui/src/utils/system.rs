@@ -2,6 +2,7 @@ use home::home_dir;
 
 pub const GIT_VERSION: &str = ">= 2.22.0";
 
+#[allow(clippy::zombie_processes)]
 pub fn open_in_file_explorer(path: &str) {
     if cfg!(target_os = "windows") {
         let path = path.replace('/', "\\");
@@ -17,6 +18,7 @@ pub fn open_in_file_explorer(path: &str) {
     }
 }
 
+#[allow(clippy::zombie_processes)]
 pub fn open_in_file_explorer_select(path: &str) {
     if cfg!(target_os = "windows") {
         let path = path.replace('/', "\\");
@@ -34,6 +36,7 @@ pub fn open_in_file_explorer_select(path: &str) {
     }
 }
 
+#[allow(clippy::zombie_processes)]
 pub fn open_repo_in_fork(repo_path: &str) {
     if cfg!(target_os = "windows") {
         let fork = format!(

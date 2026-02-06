@@ -53,7 +53,7 @@ pub(crate) fn create_truncate_layout_job(
         sections: vec![egui::text::LayoutSection {
             leading_space: 0.0,
             byte_range: 0..text.len(),
-            format: format,
+            format,
         }],
         wrap: egui::epaint::text::TextWrapping {
             max_rows: 1,

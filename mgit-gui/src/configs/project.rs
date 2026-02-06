@@ -78,7 +78,7 @@ impl TomlProjectSettings {
     }
 
     pub fn save_ignore(&mut self, path: String, is_ignore: bool) {
-        let mut ignore = self.ignore.clone().unwrap_or(String::new());
+        let mut ignore = self.ignore.clone().unwrap_or_default();
         let new_ignore = format!("{}\n", &path);
 
         match (is_ignore, ignore.contains(&new_ignore)) {

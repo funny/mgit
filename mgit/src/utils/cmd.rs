@@ -36,10 +36,10 @@ pub async fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> MgitR
         Ok(stdout)
     } else {
         let command_str = format!("{} {}", cmd, args.join(" "));
-        return Err(crate::error::MgitError::GitCommandError {
+        Err(crate::error::MgitError::GitCommandError {
             code: output.status.code().unwrap_or(-1),
             output: format!("Command '{}' failed: {}", command_str, stderr),
-        });
+        })
     }
 }
 
@@ -76,10 +76,10 @@ pub async fn exec_cmd_with_progress(
     if !output.status.success() {
         let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
         let command_str = format!("{:?}", command);
-        return Err(crate::error::MgitError::GitCommandError {
+        Err(crate::error::MgitError::GitCommandError {
             code: output.status.code().unwrap_or(-1),
             output: format!("Command '{}' failed: {}", command_str, stderr_str),
-        });
+        })
     } else {
         Ok(())
     }
