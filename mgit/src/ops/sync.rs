@@ -289,7 +289,6 @@ pub async fn sync_repo(
     let counter = std::sync::atomic::AtomicUsize::new(1);
     let counter = Arc::new(counter);
 
-    let base_path = path.clone();
     let default_branch = Arc::new(default_branch);
     let stash_mode = Arc::new(stash_mode);
 
@@ -299,16 +298,15 @@ pub async fn sync_repo(
     }
 
     for (id, repo_config) in repos_map {
-        let permit = semaphore.clone().acquire_owned().await
+        let permit = Arc::clone(&semaphore).acquire_owned().await
             .map_err(|_| AcquirePermitFailedSnafu {
                 message: "Failed to acquire semaphore permit for parallel execution".to_string()
             }.build())?;
-        let counter = counter.clone();
+        let counter = Arc::clone(&counter);
         let progress = progress.clone();
-        let base_path = base_path.clone();
-        let default_branch = default_branch.clone();
-        let stash_mode = stash_mode.clone();
-        let id = id;
+        let base_path = path.clone();
+        let default_branch = Arc::clone(&default_branch);
+        let stash_mode = Arc::clone(&stash_mode);
         let repo_config = repo_config.clone();
 
         join_set.spawn(async move {
