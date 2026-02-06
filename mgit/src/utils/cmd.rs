@@ -7,6 +7,12 @@ use crate::error::{GitCommandFailedSnafu, MgitResult, ProcessWaitFailedSnafu};
 use crate::utils::process_guard::ProcessGuard;
 use crate::utils::progress::{Progress, RepoInfo};
 
+/// Default number of retry attempts for transient operations
+pub const DEFAULT_RETRY_COUNT: usize = 10;
+
+/// Default delay between retry attempts
+pub const DEFAULT_RETRY_DELAY_MS: u64 = 400;
+
 pub async fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> MgitResult<String> {
     let mut command = Command::new(cmd);
     command.current_dir(&path).args(args);
