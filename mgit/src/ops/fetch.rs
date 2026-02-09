@@ -97,7 +97,10 @@ pub async fn fetch_repos(
     let default_branch = Arc::new(default_branch);
 
     for (id, repo_config) in repos_map {
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let permit = semaphore.clone().acquire_owned().await
+            .map_err(|_| crate::error::MgitError::OpsError {
+                message: "Failed to acquire semaphore permit for parallel execution".to_string()
+            })?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -122,7 +125,7 @@ pub async fn fetch_repos(
                     } else {
                         cmp_local_remote(&base_path, &repo_config, &default_branch, false)
                             .await
-                            .unwrap_or(StyleMessage::new())
+                            .unwrap_or_else(|_| StyleMessage::new())
                     };
                     progress.on_repo_success(&on_repo_update, msg);
                     Ok(())
@@ -130,7 +133,9 @@ pub async fn fetch_repos(
                 Err(e) => {
                     progress.on_repo_error(&on_repo_update, StyleMessage::new());
                     Err(StyleMessage::git_error(
-                        repo_config.local.as_ref().unwrap().display_path(),
+                        repo_config.local.as_ref()
+                            .map(|p| p.display_path())
+                            .unwrap_or_else(|| id.to_string()),
                         &e,
                     ))
                 }
@@ -164,8 +169,10 @@ async fn inner_exec(
     progress: &impl Progress,
 ) -> MgitResult<()> {
     let full_path = input_path.as_ref().join(on_repo_update.rel_path());
-    // Safe unwrap because we validated repo structure before
-    let remote_url = on_repo_update.repo_config.remote.as_ref().unwrap();
+    let remote_url = on_repo_update.repo_config.remote.as_ref()
+        .ok_or_else(|| crate::error::MgitError::OpsError {
+            message: format!("Repository {} has no remote configured", on_repo_update.rel_path())
+        })?;
 
     git::update_remote_url(&full_path, remote_url).await?;
     exec_fetch(input_path, on_repo_update, depth, progress).await
@@ -184,10 +191,8 @@ pub async fn exec_fetch(
         .get_remote_name(full_path.as_path())
         .await?;
 
-    // We need to own the strings for args if we are building them dynamically
-    // But since Command args takes &[OsStr] or &[str], we need to be careful with lifetimes.
-    // Let's build a Vec<String> first.
-    let mut args_strings = vec!["fetch".to_string(), remote_name];
+    // Build args without using String -> &str conversions where possible
+    let mut args: Vec<String> = vec!["fetch".to_string(), remote_name];
 
     if let Some(depth) = depth {
         let remote_ref = on_repo_update
@@ -196,37 +201,36 @@ pub async fn exec_fetch(
             .await?;
         match remote_ref {
             RemoteRef::Commit(commit) => {
-                args_strings.push(commit);
+                args.push(commit);
             }
             RemoteRef::Tag(tag) => {
-                args_strings.push("tag".to_string());
-                args_strings.push(tag);
-                args_strings.push("--no-tags".to_string());
+                args.push("tag".to_string());
+                args.push(tag);
+                args.push("--no-tags".to_string());
             }
             RemoteRef::Branch(_) => {
                 let branch = on_repo_update
                     .repo_config
                     .branch
                     .as_ref()
-                    .expect("invalid-branch");
-                args_strings.push(branch.clone());
+                    .ok_or_else(|| crate::error::MgitError::OpsError {
+                        message: "Branch reference required for branch remote ref".to_string()
+                    })?;
+                args.push(branch.clone());
             }
         };
 
-        args_strings.push("--depth".to_string());
-        args_strings.push(depth.to_string());
+        args.push("--depth".to_string());
+        args.push(depth.to_string());
     }
 
-    args_strings.push("--prune".to_string());
-    args_strings.push("--recurse-submodules=on-demand".to_string());
-    args_strings.push("--progress".to_string());
-
-    // Convert to Vec<&str> for Command
-    let args_str: Vec<&str> = args_strings.iter().map(|s: &String| s.as_str()).collect();
+    args.push("--prune".to_string());
+    args.push("--recurse-submodules=on-demand".to_string());
+    args.push("--progress".to_string());
 
     retry(10, Duration::from_millis(400), || async {
         let mut command = Command::new("git");
-        command.args(&args_str).current_dir(&full_path);
+        command.args(&args).current_dir(&full_path);
         cmd::exec_cmd_with_progress(on_repo_update, &mut command, progress).await
     })
     .await

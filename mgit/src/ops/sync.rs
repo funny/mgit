@@ -235,7 +235,11 @@ pub async fn sync_repo(
         (false, false) => StashMode::Normal,
         (true, false) => StashMode::Stash,
         (false, true) => StashMode::Hard,
-        _ => panic!("'--stash' and '--hard' can't be used together."),
+        (true, true) => {
+            return Err(crate::error::MgitError::OpsError {
+                message: "'--stash' and '--hard' can't be used together.".to_string()
+            });
+        }
     };
 
     // check if .gitrepos exists
@@ -293,7 +297,10 @@ pub async fn sync_repo(
     }
 
     for (id, repo_config) in repos_map {
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let permit = semaphore.clone().acquire_owned().await
+            .map_err(|_| crate::error::MgitError::OpsError {
+                message: "Failed to acquire semaphore permit for parallel execution".to_string()
+            })?;
         let counter = counter.clone();
         let progress = progress.clone();
         let base_path = base_path.clone();
@@ -354,7 +361,9 @@ pub async fn sync_repo(
                     // stash status: stash on some commit
                     let mut stash_status = StyleMessage::new();
                     if let Some(StashResponse::Stash(msg)) = response.stash {
-                        let repo_rel_path = repo_config.local.as_ref().unwrap().display_path();
+                        let repo_rel_path = repo_config.local.as_ref()
+                            .map(|p| p.display_path())
+                            .unwrap_or_else(|| id.to_string());
                         stash_status =
                             stash_status.join(StyleMessage::git_stash(repo_rel_path, msg));
                     }
@@ -378,7 +387,9 @@ pub async fn sync_repo(
                     // show message in progress bar
                     progress.on_repo_error(&repo_info, StyleMessage::new());
 
-                    let repo_rel_path = repo_config.local.as_ref().unwrap().display_path();
+                    let repo_rel_path = repo_config.local.as_ref()
+                        .map(|p| p.display_path())
+                        .unwrap_or_else(|| id.to_string());
                     Err(StyleMessage::git_error(repo_rel_path, &e))
                 }
             }
@@ -449,7 +460,7 @@ async fn inner_exec(
     tokio::fs::create_dir_all(full_path)
         .await
         .map_err(|e| crate::error::MgitError::OpsError {
-            message: format!("create dir {} failed: {}", full_path.to_str().unwrap(), e),
+            message: format!("create dir {} failed: {}", full_path.to_string_lossy(), e),
         })?;
 
     // Logic for branch update:
@@ -475,7 +486,10 @@ async fn inner_exec(
         // git remote add url
         exec_add_remote(input_path, current_repo_info, progress).await?;
     } else {
-        let remote_url = current_repo_info.repo_config.remote.as_ref().unwrap();
+        let remote_url = current_repo_info.repo_config.remote.as_ref()
+            .ok_or_else(|| crate::error::MgitError::OpsError {
+                message: format!("Repository {} has no remote configured", current_repo_info.rel_path())
+            })?;
         git::update_remote_url(full_path, remote_url).await?;
     }
 
@@ -627,7 +641,10 @@ async fn exec_add_remote(
     progress.on_repo_update(repo_info, "add remote...".into());
 
     let full_path = input_path.join(repo_info.rel_path());
-    let url = repo_info.repo_config.remote.as_ref().unwrap();
+    let url = repo_info.repo_config.remote.as_ref()
+        .ok_or_else(|| crate::error::MgitError::OpsError {
+            message: format!("Repository {} has no remote configured", repo_info.rel_path())
+        })?;
     git::add_remote_url(full_path, url).await
 }
 
@@ -721,7 +738,9 @@ async fn exec_checkout(
             .repo_config
             .branch
             .clone()
-            .unwrap_or("invalid-branch".to_string()),
+            .ok_or_else(|| crate::error::MgitError::OpsError {
+                message: "Remote ref is branch but no branch configured".to_string()
+            })?,
     };
 
     // don't need to checkout if current branch is the branch
