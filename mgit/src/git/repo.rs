@@ -84,7 +84,7 @@ pub async fn get_current_branch(path: impl AsRef<Path>) -> MgitResult<String> {
 
 pub async fn get_branch_log(path: impl AsRef<Path>, branch: String) -> String {
     let args = ["show-branch", "--sha1-name", &branch];
-    let output = exec_cmd(path, "git", &args).await.unwrap_or(String::new());
+    let output = exec_cmd(path, "git", &args).await.unwrap_or_default();
     output.trim().to_string()
 }
 
