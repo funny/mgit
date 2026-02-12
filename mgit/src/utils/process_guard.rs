@@ -94,10 +94,15 @@ impl ProcessGuard {
         #[cfg(windows)]
         {
             if let Some(raw_handle) = child.raw_handle() {
-                // AsRawHandle returns RawHandle which is compatible with HANDLE (void*)
-                // windows-sys HANDLE is isize/usize depending on arch, usually *mut c_void
                 let handle = raw_handle as windows_sys::Win32::Foundation::HANDLE;
-                windows::assign_process_to_job(handle);
+                if !windows::assign_process_to_job(handle) {
+                    tracing::warn!(
+                        "Failed to attach child process to job object: {}",
+                        std::io::Error::last_os_error()
+                    );
+                }
+            } else {
+                tracing::warn!("Failed to get raw handle for job object attachment");
             }
         }
         #[cfg(not(windows))]
