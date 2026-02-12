@@ -23,11 +23,22 @@ pub async fn exec_cmd(path: impl AsRef<Path>, cmd: &str, args: &[&str]) -> MgitR
         command.creation_flags(CREATE_NO_WINDOW);
     }
 
-    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-    let output = command.output().await.context(GitCommandFailedSnafu {
+    let child = command.spawn().context(GitCommandFailedSnafu {
         command: format!("{:?}", command),
     })?;
+
+    // Attach to Job Object for proper process tree management
+    ProcessGuard::attach(&child);
+
+    let output = child
+        .wait_with_output()
+        .await
+        .context(ProcessWaitFailedSnafu)?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
