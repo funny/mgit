@@ -101,7 +101,7 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
         }
 
         if push {
-            if let Err(e) = git::push_tag(path, &new_tag).await {
+            if let Err(e) = git::push_tag(&full_path, &new_tag).await {
                 let error = StyleMessage::git_error(rel_path, &e);
                 errors.push(error);
                 continue;
