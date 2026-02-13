@@ -702,7 +702,7 @@ impl RepoManager {
         self.ops_message_collector.command_type = command_type;
         self.ops_message_collector.run_id = run_id;
         self.ops_message_collector.project_path = project_path.to_string();
-        self.ops_message_collector.default_branch = self.mgit_config.default_remote.clone();
+        self.ops_message_collector.default_branch = self.mgit_config.default_branch.clone();
         self.ops_message_collector.clone()
     }
 
