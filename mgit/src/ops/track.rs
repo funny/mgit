@@ -115,23 +115,42 @@ pub async fn track(
                 Ok(msg) => {
                     progress.on_repo_update(&on_repo_update, "tracking".into());
                     progress.on_repo_success(&on_repo_update, msg);
+                    Ok(())
                 }
                 Err(e) => {
                     progress.on_repo_error(&on_repo_update, format!("failed: {}", e).into());
+                    let repo_rel_path = repo_config
+                        .local
+                        .clone()
+                        .unwrap_or_else(|| id.to_string());
+                    Err(StyleMessage::git_error(repo_rel_path, &e))
                 }
             }
         });
     }
 
+    let mut errors = Vec::new();
     while let Some(res) = join_set.join_next().await {
-        if let Err(e) = res {
-            tracing::error!("Task panicked or cancelled: {}", e);
+        match res {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => errors.push(e),
+            Err(e) => {
+                tracing::error!("Task panicked or cancelled: {}", e);
+                errors.push(StyleMessage::new().plain_text(format!("Task failed: {}", e)));
+            }
         }
     }
 
     progress.on_batch_finish();
 
-    Ok(StyleMessage::new())
+    if errors.is_empty() {
+        Ok(StyleMessage::ops_success("track"))
+    } else {
+        let msg = StyleMessage::ops_failed("track", errors.len());
+        Err(MgitError::OpsError {
+            message: format!("{}\nErrors:\n{:?}", msg, errors),
+        })
+    }
 }
 
 pub async fn set_tracking_remote_branch(
