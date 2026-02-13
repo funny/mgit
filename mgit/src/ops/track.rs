@@ -119,10 +119,7 @@ pub async fn track(
                 }
                 Err(e) => {
                     progress.on_repo_error(&on_repo_update, format!("failed: {}", e).into());
-                    let repo_rel_path = repo_config
-                        .local
-                        .clone()
-                        .unwrap_or_else(|| id.to_string());
+                    let repo_rel_path = repo_config.local.clone().unwrap_or_else(|| id.to_string());
                     Err(StyleMessage::git_error(repo_rel_path, &e))
                 }
             }
