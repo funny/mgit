@@ -11,7 +11,7 @@
 - **仓库**：github.com/funny/mgit
 - **当前版本**：2.0.0-beta.6（beta 阶段）
 - **MSRV**：Rust 1.92.0（硬性约束）
-- **主分支**：master，开发分支：develop
+- **主分支**：master
 
 ## Workspace 结构
 

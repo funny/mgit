@@ -8,11 +8,11 @@
 
 | 分支 | 用途 | 规则 |
 |------|------|------|
-| `develop` | 主开发分支，包含所有功能 | 功能分支合并目标，日常工作基准 |
-| `feat/*` | 新功能开发 | 从 `develop` 切出，合并回 `develop` |
-| `fix/*` | Bug 修复 | 从 `develop` 切出，合并回 `develop` |
-| `refactor/*` | 重构 | 从 `develop` 切出，合并回 `develop` |
-| `docs/*` | 文档更新 | 从 `develop` 切出，合并回 `develop` |
+| `master` | 主开发分支，包含所有功能 | 功能分支合并目标，日常工作基准 |
+| `feat/*` | 新功能开发 | 从 `master` 切出，合并回 `master` |
+| `fix/*` | Bug 修复 | 从 `master` 切出，合并回 `master` |
+| `refactor/*` | 重构 | 从 `master` 切出，合并回 `master` |
+| `docs/*` | 文档更新 | 从 `master` 切出，合并回 `master` |
 
 ---
 
@@ -100,7 +100,7 @@ git tag gui-2.0.0 && git push origin gui-2.0.0
 - PR 标题与 commit 类型一致
 - 描述中说明：**改了什么**、**为什么改**、**如何测试**
 - 必须至少一名 Reviewer 批准后才能合并
-- 合并方式：`Squash and Merge`（保持 develop 历史清洁）
+- 合并方式：`Squash and Merge`（保持 master 历史清洁）
 
 ---
 

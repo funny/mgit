@@ -13,7 +13,7 @@
 |------|----|
 | 仓库 | github.com/funny/mgit |
 | 当前版本 | 2.0.0-beta.6 |
-| 主分支 | `develop` |
+| 主分支 | `master` |
 | 语言 | Rust 2021 edition |
 | MSRV | **1.92.0**（硬性约束，不得降低） |
 
@@ -194,7 +194,7 @@ Backend Thread (std::thread::spawn)
 
 ### 5.2 安全红线
 
-- **不得**在未经确认的情况下强制覆盖 `develop` 分支历史。
+- **不得**在未经确认的情况下强制覆盖 `master` 分支历史。
 - **不得**提交含密钥、Token、密码的文件。
 - **不得**执行 `cargo clean`。
 - **不得**使用 `--no-verify` 跳过 pre-commit hook。
