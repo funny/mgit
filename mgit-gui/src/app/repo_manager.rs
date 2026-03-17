@@ -766,7 +766,8 @@ fn get_repo_states_parallel(
 
         let worker_count = std::thread::available_parallelism()
             .map(|n| n.get())
-            .unwrap_or(4);
+            .unwrap_or(4)
+            .min(8);
 
         let mut handles = Vec::with_capacity(worker_count);
         for worker_id in 0..worker_count {

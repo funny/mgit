@@ -59,12 +59,12 @@ release-setup 产出物：
 | ID | 描述 | 修复方案 | Commit |
 |----|------|----------|--------|
 | TD-001 | `GuiApp::new()` 同步阻塞 UI 线程导致 Windows"未响应" | 将 `load_setting()` + `exec_ops(Refresh)` 移至首帧 `update()` 的 `first_frame` 块中执行 | a4cb8d0 |
+| TD-002 | `get_repo_states_parallel` 线程数不加限制，HDD 环境 I/O 争用 | `available_parallelism().min(8)` 限制 worker 上限 | b611a5c |
 
 ## 已知 Bug / 技术债（待处理）
 
 | ID | 描述 | 位置 |
 |----|------|------|
-| TD-002 | `get_repo_states_parallel` 使用 `available_parallelism()` 不加限制（i7-13700KF = 24 线程），HDD 环境 I/O 争用 | `repo_manager.rs:767` |
 | TD-003 | `AGENTS.md` 记录的依赖版本和 crate 名称已过时 | `AGENTS.md` |
 
 ## v2 重构摘要（000aa68 → HEAD，2026-03-17）
