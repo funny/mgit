@@ -80,10 +80,6 @@ pub(crate) enum BackendEvent {
         run_id: u64,
         error: String,
     },
-    GitCheckResult {
-        valid: bool,
-        msg: String,
-    },
 }
 
 pub(crate) enum OpsCommand {

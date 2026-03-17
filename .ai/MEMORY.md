@@ -60,7 +60,7 @@ release-setup 产出物：
 |----|------|----------|--------|
 | TD-001 | `GuiApp::new()` 同步阻塞 UI 线程导致 Windows"未响应" | 将 `load_setting()` + `exec_ops(Refresh)` 移至首帧 `update()` 的 `first_frame` 块中执行 | a4cb8d0 |
 | TD-002 | `get_repo_states_parallel` 线程数不加限制，HDD 环境 I/O 争用 | `available_parallelism().min(8)` 限制 worker 上限 | b611a5c |
-| TD-004 | `check_git_valid()` 仍在 `new()` 中同步执行（`cmd /C git --version`），HDD 慢时阻塞 UI 导致白屏未响应 | 新增 `BackendEvent::GitCheckResult`，将 git 检测移至首帧 `std::thread::spawn` 后台线程，`new()` 不再执行任何 I/O | 待提交 |
+| TD-004 | WGL `SwapBuffers()` 首帧冻结（Windows HDD + 独显，几十秒白屏未响应）| `check_git_valid` 回归 `new()` 同步执行（40–360ms），给 GPU 驱动预热；`new()` 在事件循环启动前运行，Windows 不会判定未响应 | 当前会话 |
 | CLI 错误输出乱码 | fetch/sync/track/clean 错误消息用 `{:?}` 格式化 `StyleMessage`，打印内部结构体 | 改为 `.iter().map(\|e\| e.to_string()).join("\n")`；main.rs `eprintln!` 改为 `{}` | 7206390 |
 
 ## 已知 Bug / 技术债（待处理）

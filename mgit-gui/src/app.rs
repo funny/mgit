@@ -77,11 +77,44 @@ impl GuiApp {
         configure_text_styles(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::dark());
 
-        let app = GuiApp {
+        // Run git check synchronously here — new() is called before eframe's event loop starts,
+        // so Windows cannot trigger "Not Responding" during this period.
+        // The 40–360 ms this takes also gives the GPU driver time to warm up before the first
+        // SwapBuffers() call, preventing the multi-second white-screen freeze on HDD systems.
+        let t_git = Instant::now();
+        info!("git_check_start");
+        let git_check_result = check_git_valid();
+        info!(
+            duration_ms = t_git.elapsed().as_millis(),
+            ok = git_check_result.is_ok(),
+            "git_check_done"
+        );
+
+        let mut app = GuiApp {
             context: cc.egui_ctx.clone(),
             first_frame: true,
             ..GuiApp::default()
         };
+
+        match git_check_result {
+            Ok(info) => {
+                tracing::info!(
+                    current_version = info.version_desc.as_str(),
+                    required_version = GIT_VERSION,
+                    "git_version_check_passed"
+                );
+            }
+            Err(msg) => {
+                tracing::error!(
+                    error = msg.as_str(),
+                    required_version = GIT_VERSION,
+                    "git_version_check_failed"
+                );
+                app.windows.error_open = true;
+                app.windows.error_exit_app = true;
+                app.windows.error = crate::ui::windows::ErrorWindow::new(msg);
+            }
+        }
 
         info!(duration_ms = t.elapsed().as_millis(), "gui_app_new_finished");
         app
@@ -117,39 +150,6 @@ impl eframe::App for GuiApp {
             ctx.set_visuals(Visuals::dark());
             self.first_frame = false;
 
-            // Spawn git check in background — avoids blocking UI thread on slow HDD
-            let tx = self.app_context.event_tx.clone();
-            std::thread::spawn(move || {
-                let t = Instant::now();
-                info!("git_check_start");
-                let result = check_git_valid();
-                let duration_ms = t.elapsed().as_millis();
-                let event = match result {
-                    Ok(info) => {
-                        tracing::info!(
-                            current_version = info.version_desc.as_str(),
-                            required_version = GIT_VERSION,
-                            duration_ms,
-                            "git_version_check_passed"
-                        );
-                        BackendEvent::GitCheckResult {
-                            valid: true,
-                            msg: String::new(),
-                        }
-                    }
-                    Err(msg) => {
-                        tracing::error!(
-                            error = msg.as_str(),
-                            required_version = GIT_VERSION,
-                            duration_ms,
-                            "git_version_check_failed"
-                        );
-                        BackendEvent::GitCheckResult { valid: false, msg }
-                    }
-                };
-                let _ = tx.send(Event::Backend(event));
-            });
-
             let t = Instant::now();
             info!("load_setting_start");
             self.app_context.session_manager.load_setting();
@@ -176,9 +176,6 @@ impl eframe::App for GuiApp {
                 duration_ms = t_frame.elapsed().as_millis(),
                 "first_frame_finished"
             );
-
-            // 首帧完成后立即显示窗口，此时内容已渲染好，用户不会看到白屏
-            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
         }
 
         self.top_view(ctx);
@@ -478,13 +475,6 @@ impl GuiApp {
                 self.windows.error_exit_app = false;
                 self.windows.error_open = true;
                 self.windows.error = ErrorWindow::new(format!("Failed to load config:\n{}", error));
-            }
-            BackendEvent::GitCheckResult { valid, msg } => {
-                if !valid {
-                    self.windows.error_open = true;
-                    self.windows.error_exit_app = true;
-                    self.windows.error = ErrorWindow::new(msg);
-                }
             }
         }
         self.context.request_repaint();

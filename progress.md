@@ -38,8 +38,8 @@
 | 2026-03-17 | 修复 CLI 错误输出 Debug 格式，fetch/sync/track/clean 改为可读文本 |
 | 2026-03-17 | 修复 GUI 白屏未响应：check_git_valid 移至后台线程，不再阻塞 new() |
 | 2026-03-17 | 增加启动链路结构化日志：new/first_frame/git_check/load_setting/refresh/worker 全链路计时 |
-| 2026-03-17 | 修复 GUI 白屏：with_visible(false) 隐藏启动，首帧渲染完毕后发送 ViewportCommand::Visible(true) |
 | 2026-03-17 | 增强调试日志：runtime_init/eframe_run_native_start 时间戳、update() 帧间隔+耗时阻塞检测、每条 git 命令计时 |
+| 2026-03-17 | 修复 TD-004：WGL SwapBuffers 首帧冻结 — check_git_valid 回归 new() 同步执行，为 GPU 驱动预热 |
 
 ---
 
@@ -50,3 +50,4 @@
 | TD-001 | `GuiApp::new()` 同步阻塞 UI 线程 | 高 | **已修复** a4cb8d0 |
 | TD-002 | 并发 worker 数未限制，HDD 环境 I/O 争用 | 中 | **已修复** b611a5c |
 | TD-003 | `AGENTS.md` 内容过时 | 低 | **已修复** b8c13c6 |
+| TD-004 | WGL `SwapBuffers()` 首帧冻结白屏（Windows HDD + 独显）| 高 | **已修复** — `check_git_valid` 回归 `new()` 同步执行预热 GPU |

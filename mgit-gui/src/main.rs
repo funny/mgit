@@ -41,8 +41,7 @@ fn main() -> eframe::Result {
             .with_transparent(false)
             .with_resizable(true)
             .with_icon(load_icon())
-            .with_drag_and_drop(true)
-            .with_visible(false), // 隐藏启动，首帧渲染完毕后再显示，避免白屏闪烁
+            .with_drag_and_drop(true),
         ..NativeOptions::default()
     };
 
