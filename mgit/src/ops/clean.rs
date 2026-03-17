@@ -150,7 +150,7 @@ pub async fn clean_repo(options: CleanOptions) -> MgitResult<StyleMessage> {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => {
                     return Err(crate::error::MgitError::OpsError {
-                        message: format!("Failed to remove dir {:?}: {}", unused_path, e),
+                        message: format!("Failed to remove dir {}: {}", unused_path.display(), e),
                     });
                 }
             }

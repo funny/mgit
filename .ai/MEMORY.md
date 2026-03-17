@@ -60,6 +60,7 @@ release-setup 产出物：
 |----|------|----------|--------|
 | TD-001 | `GuiApp::new()` 同步阻塞 UI 线程导致 Windows"未响应" | 将 `load_setting()` + `exec_ops(Refresh)` 移至首帧 `update()` 的 `first_frame` 块中执行 | a4cb8d0 |
 | TD-002 | `get_repo_states_parallel` 线程数不加限制，HDD 环境 I/O 争用 | `available_parallelism().min(8)` 限制 worker 上限 | b611a5c |
+| CLI 错误输出乱码 | fetch/sync/track/clean 错误消息用 `{:?}` 格式化 `StyleMessage`，打印内部结构体 | 改为 `.iter().map(\|e\| e.to_string()).join("\n")`；main.rs `eprintln!` 改为 `{}` | 待提交 |
 
 ## 已知 Bug / 技术债（待处理）
 
