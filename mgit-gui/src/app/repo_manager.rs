@@ -666,12 +666,22 @@ impl RepoManager {
             CommandType::Refresh => {
                 self.progress.store(0, Ordering::Relaxed);
                 self.clear_status();
+
+                let t = Instant::now();
                 self.load_config(Path::new(&session.config_file));
+                tracing::debug!(
+                    duration_ms = t.elapsed().as_millis(),
+                    config_file = session.config_file.as_str(),
+                    repo_count = self.mgit_config.repos.as_ref().map_or(0, |r| r.len()),
+                    "refresh_load_config_done"
+                );
+
                 self.recompute_repo_filters(
                     session.get_ignores().as_ref(),
                     session.get_labels().as_ref(),
                 );
                 self.reset_repo_state(StateType::Updating);
+
                 let _ = self
                     .event_tx
                     .send(Event::Backend(BackendEvent::CommandFinished {
@@ -760,14 +770,23 @@ fn get_repo_states_parallel(
     ctx: eframe::egui::Context,
 ) {
     std::thread::spawn(move || {
+        let t_total = Instant::now();
         let project_path = Arc::new(project_path);
         let default_branch = Arc::new(default_branch);
+        let repo_count = repo_configs.len();
         let repo_configs = Arc::new(repo_configs);
 
         let worker_count = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(4)
             .min(8);
+
+        tracing::info!(
+            run_id,
+            repo_count,
+            worker_count,
+            "get_repo_states_parallel_start"
+        );
 
         let mut handles = Vec::with_capacity(worker_count);
         for worker_id in 0..worker_count {
@@ -780,11 +799,21 @@ fn get_repo_states_parallel(
                 let mut id = worker_id;
                 while id < repo_configs.len() {
                     let repo = &repo_configs[id];
+                    let t_repo = Instant::now();
+                    let local = repo.local.as_deref().unwrap_or("?");
                     let repo_state = get_repo_state_with_runtime(
                         repo,
                         project_path.as_ref(),
                         default_branch.as_ref(),
                         rt,
+                    );
+                    tracing::debug!(
+                        run_id,
+                        worker_id,
+                        repo_id = id,
+                        repo = local,
+                        duration_ms = t_repo.elapsed().as_millis(),
+                        "repo_state_fetched"
                     );
                     let _ = sender.send(Event::Backend(BackendEvent::RepoStateUpdated {
                         run_id,
@@ -799,6 +828,14 @@ fn get_repo_states_parallel(
         for handle in handles {
             let _ = handle.join();
         }
+
+        tracing::info!(
+            run_id,
+            repo_count,
+            worker_count,
+            duration_ms = t_total.elapsed().as_millis(),
+            "get_repo_states_parallel_finished"
+        );
 
         // NOTE: 保证所有仓库忽略后正常渲染
         ctx.request_repaint();

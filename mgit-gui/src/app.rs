@@ -62,44 +62,21 @@ impl Default for GuiApp {
 
 impl GuiApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let t = Instant::now();
+        info!("gui_app_new_start");
+
         egui_extras::install_image_loaders(&cc.egui_ctx);
         setup_custom_fonts(&cc.egui_ctx);
         configure_text_styles(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(Visuals::dark());
 
-        let mut app = GuiApp {
+        let app = GuiApp {
             context: cc.egui_ctx.clone(),
             first_frame: true,
             ..GuiApp::default()
         };
 
-        let (is_dependencies_valid, err_msg) = match check_git_valid() {
-            Ok(git_info) => {
-                // Log git version info
-                tracing::info!(
-                    current_version = git_info.version_desc.as_str(),
-                    required_version = GIT_VERSION,
-                    parsed_version = git_info.version.as_deref(),
-                    "git_version_check_passed"
-                );
-                (true, String::new())
-            }
-            Err(msg) => {
-                tracing::error!(
-                    error = msg.as_str(),
-                    required_version = GIT_VERSION,
-                    "git_version_check_failed"
-                );
-                (false, msg)
-            }
-        };
-
-        if !is_dependencies_valid {
-            app.windows.error_open = true;
-            app.windows.error_exit_app = true;
-            app.windows.error = ErrorWindow::new(err_msg);
-        }
-
+        info!(duration_ms = t.elapsed().as_millis(), "gui_app_new_finished");
         app
     }
 }
@@ -107,16 +84,71 @@ impl GuiApp {
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
         if self.first_frame {
+            let t_frame = Instant::now();
+            info!("first_frame_start");
+
             ctx.set_visuals(Visuals::dark());
             self.first_frame = false;
-            if !self.windows.error_exit_app {
-                self.app_context.session_manager.load_setting();
-                self.app_context.repo_manager.exec_ops(
-                    self.app_context.next_run_id(),
-                    CommandType::Refresh,
-                    &mut self.app_context.session_manager,
-                );
-            }
+
+            // Spawn git check in background — avoids blocking UI thread on slow HDD
+            let tx = self.app_context.event_tx.clone();
+            std::thread::spawn(move || {
+                let t = Instant::now();
+                info!("git_check_start");
+                let result = check_git_valid();
+                let duration_ms = t.elapsed().as_millis();
+                let event = match result {
+                    Ok(info) => {
+                        tracing::info!(
+                            current_version = info.version_desc.as_str(),
+                            required_version = GIT_VERSION,
+                            duration_ms,
+                            "git_version_check_passed"
+                        );
+                        BackendEvent::GitCheckResult {
+                            valid: true,
+                            msg: String::new(),
+                        }
+                    }
+                    Err(msg) => {
+                        tracing::error!(
+                            error = msg.as_str(),
+                            required_version = GIT_VERSION,
+                            duration_ms,
+                            "git_version_check_failed"
+                        );
+                        BackendEvent::GitCheckResult { valid: false, msg }
+                    }
+                };
+                let _ = tx.send(Event::Backend(event));
+            });
+
+            let t = Instant::now();
+            info!("load_setting_start");
+            self.app_context.session_manager.load_setting();
+            info!(
+                duration_ms = t.elapsed().as_millis(),
+                project_path = self.app_context.session_manager.project_path.as_str(),
+                config_file = self.app_context.session_manager.config_file.as_str(),
+                "load_setting_finished"
+            );
+
+            let t = Instant::now();
+            info!("exec_ops_refresh_start");
+            self.app_context.repo_manager.exec_ops(
+                self.app_context.next_run_id(),
+                CommandType::Refresh,
+                &mut self.app_context.session_manager,
+            );
+            info!(
+                duration_ms = t.elapsed().as_millis(),
+                "exec_ops_refresh_finished"
+            );
+
+            info!(
+                duration_ms = t_frame.elapsed().as_millis(),
+                "first_frame_finished"
+            );
         }
 
         self.top_view(ctx);
@@ -401,6 +433,13 @@ impl GuiApp {
                 self.windows.error_exit_app = false;
                 self.windows.error_open = true;
                 self.windows.error = ErrorWindow::new(format!("Failed to load config:\n{}", error));
+            }
+            BackendEvent::GitCheckResult { valid, msg } => {
+                if !valid {
+                    self.windows.error_open = true;
+                    self.windows.error_exit_app = true;
+                    self.windows.error = ErrorWindow::new(msg);
+                }
             }
         }
         self.context.request_repaint();

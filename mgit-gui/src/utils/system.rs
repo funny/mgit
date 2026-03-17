@@ -66,19 +66,29 @@ pub fn check_git_valid() -> Result<GitVersionInfo, String> {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-        std::process::Command::new("cmd")
+        let t = std::time::Instant::now();
+        tracing::debug!("git_version_cmd_start");
+        let out = std::process::Command::new("cmd")
             .creation_flags(CREATE_NO_WINDOW)
             .arg("/C")
             .arg("git --version")
             .output()
-            .expect("command failed to start")
+            .expect("command failed to start");
+        tracing::debug!(duration_ms = t.elapsed().as_millis(), "git_version_cmd_done");
+        out
     };
 
     #[cfg(not(target_os = "windows"))]
-    let output = std::process::Command::new("git")
-        .arg("--version")
-        .output()
-        .expect("command failed to start");
+    let output = {
+        let t = std::time::Instant::now();
+        tracing::debug!("git_version_cmd_start");
+        let out = std::process::Command::new("git")
+            .arg("--version")
+            .output()
+            .expect("command failed to start");
+        tracing::debug!(duration_ms = t.elapsed().as_millis(), "git_version_cmd_done");
+        out
+    };
 
     if !output.status.success() {
         return Err(String::from("git is not found!\n"));

@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.0-beta.7 · 分支：master
+## 当前版本：2.0.0-beta.8 · 分支：master
 
 ---
 
@@ -36,6 +36,8 @@
 | 2026-03-17 | 修复 TD-001：GUI 启动未响应（a4cb8d0） |
 | 2026-03-17 | 修复 TD-002：worker 数量上限为 8（b611a5c） |
 | 2026-03-17 | 修复 CLI 错误输出 Debug 格式，fetch/sync/track/clean 改为可读文本 |
+| 2026-03-17 | 修复 GUI 白屏未响应：check_git_valid 移至后台线程，不再阻塞 new() |
+| 2026-03-17 | 增加启动链路结构化日志：new/first_frame/git_check/load_setting/refresh/worker 全链路计时 |
 
 ---
 

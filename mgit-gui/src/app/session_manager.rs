@@ -27,8 +27,17 @@ impl SessionManager {
     }
 
     pub fn load_setting(&mut self) {
+        let t = std::time::Instant::now();
         self.user_settings = TomlUserSettings::load();
+        tracing::debug!(duration_ms = t.elapsed().as_millis(), "user_settings_loaded");
+
+        let t = std::time::Instant::now();
         self.load_recent_projects();
+        tracing::debug!(
+            duration_ms = t.elapsed().as_millis(),
+            recent_count = self.recent_projects.len(),
+            "recent_projects_loaded"
+        );
 
         // if app startup with args including project path, use the path
         if let Some(startup_project) = get_path_from_env_args() {
