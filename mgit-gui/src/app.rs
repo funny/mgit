@@ -98,15 +98,7 @@ impl GuiApp {
             app.windows.error_open = true;
             app.windows.error_exit_app = true;
             app.windows.error = ErrorWindow::new(err_msg);
-            return app;
         }
-
-        app.app_context.session_manager.load_setting();
-        app.app_context.repo_manager.exec_ops(
-            app.app_context.next_run_id(),
-            CommandType::Refresh,
-            &mut app.app_context.session_manager,
-        );
 
         app
     }
@@ -117,6 +109,14 @@ impl eframe::App for GuiApp {
         if self.first_frame {
             ctx.set_visuals(Visuals::dark());
             self.first_frame = false;
+            if !self.windows.error_exit_app {
+                self.app_context.session_manager.load_setting();
+                self.app_context.repo_manager.exec_ops(
+                    self.app_context.next_run_id(),
+                    CommandType::Refresh,
+                    &mut self.app_context.session_manager,
+                );
+            }
         }
 
         self.top_view(ctx);
