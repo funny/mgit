@@ -17,8 +17,13 @@ pub(crate) mod utils;
 fn main() -> eframe::Result {
     let _guard = init_log();
 
+    let t_start = std::time::Instant::now();
+
     // Initialize global Tokio runtime for background async operations
+    let t = std::time::Instant::now();
+    tracing::info!("runtime_init_start");
     crate::utils::runtime::init_runtime();
+    tracing::info!(duration_ms = t.elapsed().as_millis(), "runtime_init_done");
 
     // Log mgit-gui version at startup
     let version = std::env!("CARGO_PKG_VERSION");
@@ -36,10 +41,15 @@ fn main() -> eframe::Result {
             .with_transparent(false)
             .with_resizable(true)
             .with_icon(load_icon())
-            .with_drag_and_drop(true),
+            .with_drag_and_drop(true)
+            .with_visible(false), // 隐藏启动，首帧渲染完毕后再显示，避免白屏闪烁
         ..NativeOptions::default()
     };
 
+    tracing::info!(
+        duration_ms = t_start.elapsed().as_millis(),
+        "eframe_run_native_start"
+    );
     eframe::run_native(
         &format!(
             "{} {}",

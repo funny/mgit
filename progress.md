@@ -38,6 +38,8 @@
 | 2026-03-17 | 修复 CLI 错误输出 Debug 格式，fetch/sync/track/clean 改为可读文本 |
 | 2026-03-17 | 修复 GUI 白屏未响应：check_git_valid 移至后台线程，不再阻塞 new() |
 | 2026-03-17 | 增加启动链路结构化日志：new/first_frame/git_check/load_setting/refresh/worker 全链路计时 |
+| 2026-03-17 | 修复 GUI 白屏：with_visible(false) 隐藏启动，首帧渲染完毕后发送 ViewportCommand::Visible(true) |
+| 2026-03-17 | 增强调试日志：runtime_init/eframe_run_native_start 时间戳、update() 帧间隔+耗时阻塞检测、每条 git 命令计时 |
 
 ---
 

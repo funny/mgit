@@ -868,32 +868,36 @@ fn get_repo_state_with_runtime(
     let full_path = input_path.join(local);
 
     let mut is_ok = true;
+
+    let t = Instant::now();
     if let Err(e) = rt.block_on(git::is_repository(&full_path)) {
         repo_state.err_msg = e.to_string();
         is_ok = false;
     }
+    tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_is_repository");
 
-    if let Some(remote_url) = repo.remote.as_ref() {
-        if let Err(e) = rt.block_on(git::find_remote_name_by_url(&full_path, remote_url)) {
-            repo_state.err_msg = e.to_string();
-            is_ok = false;
+    if is_ok {
+        if let Some(remote_url) = repo.remote.as_ref() {
+            let t = Instant::now();
+            if let Err(e) = rt.block_on(git::find_remote_name_by_url(&full_path, remote_url)) {
+                repo_state.err_msg = e.to_string();
+                is_ok = false;
+            }
+            tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_find_remote");
         }
     }
 
     if is_ok {
-        // get tags
+        let t = Instant::now();
         match rt.block_on(git::get_head_tags(&full_path)) {
-            Ok(res) => {
-                repo_state.tags = res;
-            }
-            Err(_) => {
-                repo_state.tags.clear();
-            }
+            Ok(res) => { repo_state.tags = res; }
+            Err(_) => { repo_state.tags.clear(); }
         }
+        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), "git_get_tags");
     }
 
     if is_ok {
-        // get current branch
+        let t = Instant::now();
         match rt.block_on(git::get_current_branch(&full_path)) {
             Ok(res) => {
                 repo_state.track_state = StateType::Normal;
@@ -904,10 +908,11 @@ fn get_repo_state_with_runtime(
                 is_ok = false;
             }
         }
+        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_get_branch");
     }
 
     if is_ok {
-        // get tracking branch
+        let t = Instant::now();
         match rt.block_on(git::get_tracking_branch(&full_path)) {
             Ok(res) => {
                 repo_state.tracking_branch = res;
@@ -918,10 +923,11 @@ fn get_repo_state_with_runtime(
                 is_ok = false;
             }
         }
+        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_get_tracking");
     }
 
     if is_ok {
-        // get compare message
+        let t = Instant::now();
         match rt.block_on(cmp_local_remote(input_path, repo, default_branch, true)) {
             Ok(cmp_msg) => {
                 let cmp_msg = cmp_msg.to_plain_text();
@@ -956,6 +962,8 @@ fn get_repo_state_with_runtime(
                 repo_state.err_msg = e.to_string();
             }
         }
+        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), "git_cmp_remote");
     }
+
     repo_state
 }

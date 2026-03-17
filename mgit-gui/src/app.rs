@@ -29,12 +29,17 @@ use mgit::utils::path::PathExtension;
 
 pub struct GuiApp {
     pub(crate) context: egui::Context,
-    pub(crate) app_context: AppContext, // Renamed to app_context to avoid confusion with egui::Context
+    pub(crate) app_context: AppContext,
 
     pub(crate) event_rx: Receiver<Event>,
     pub(crate) windows: WindowManager,
     pub(crate) queued_events: VecDeque<Event>,
     pub(crate) first_frame: bool,
+
+    /// 帧循环诊断：上一帧结束时间
+    pub(crate) last_update_end: Option<Instant>,
+    /// 帧循环诊断：累计帧数
+    pub(crate) update_count: u64,
 }
 
 impl Default for GuiApp {
@@ -56,6 +61,8 @@ impl Default for GuiApp {
             windows: WindowManager::default(),
             queued_events: VecDeque::new(),
             first_frame: false,
+            last_update_end: None,
+            update_count: 0,
         }
     }
 }
@@ -83,6 +90,26 @@ impl GuiApp {
 
 impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
+        let t_update = Instant::now();
+        self.update_count += 1;
+
+        // 检测帧间隔：上次 update() 结束到本次开始的时间，过长说明 UI 线程曾被阻塞
+        if let Some(last_end) = self.last_update_end {
+            let gap_ms = last_end.elapsed().as_millis();
+            if gap_ms > 2000 {
+                warn!(
+                    frame = self.update_count,
+                    gap_ms,
+                    "update_gap_very_long — UI thread may have been blocked"
+                );
+            } else if gap_ms > 500 {
+                warn!(frame = self.update_count, gap_ms, "update_gap_long");
+            } else if self.update_count <= 5 {
+                debug!(frame = self.update_count, gap_ms, "update_gap");
+            }
+        } else {
+            info!(frame = self.update_count, "update_first_call");
+        }
         if self.first_frame {
             let t_frame = Instant::now();
             info!("first_frame_start");
@@ -149,6 +176,9 @@ impl eframe::App for GuiApp {
                 duration_ms = t_frame.elapsed().as_millis(),
                 "first_frame_finished"
             );
+
+            // 首帧完成后立即显示窗口，此时内容已渲染好，用户不会看到白屏
+            ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
         }
 
         self.top_view(ctx);
@@ -158,6 +188,21 @@ impl eframe::App for GuiApp {
         self.drain_event_channel();
         self.app_context.repo_manager.flush_config_save_if_due();
         self.process_events(ctx);
+
+        // 帧耗时：超过阈值说明 update() 本身有阻塞
+        let duration_ms = t_update.elapsed().as_millis();
+        if duration_ms > 500 {
+            warn!(
+                frame = self.update_count,
+                duration_ms,
+                "update_slow — UI thread blocked inside update()"
+            );
+        } else if duration_ms > 50 {
+            warn!(frame = self.update_count, duration_ms, "update_took_long");
+        } else if self.update_count <= 5 {
+            debug!(frame = self.update_count, duration_ms, "update_done");
+        }
+        self.last_update_end = Some(Instant::now());
     }
 }
 
