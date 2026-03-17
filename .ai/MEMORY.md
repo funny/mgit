@@ -9,7 +9,7 @@
 
 - **项目名**：mgit — Rust 编写的 Git 多仓库管理工具
 - **仓库**：github.com/funny/mgit
-- **当前版本**：2.0.0-beta.6（beta 阶段）
+- **当前版本**：2.0.0-beta.7（beta 阶段）
 - **MSRV**：Rust 1.92.0（硬性约束）
 - **主分支**：master
 

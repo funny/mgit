@@ -18,7 +18,7 @@
 
 **工程现状快照（基于代码审查）**：
 
-- 版本：`2.0.0-beta.6`，分支：`master`
+- 版本：`2.0.0-beta.7`，分支：`master`
 - v2 重构已完成（commit `7015e15` 起），共 24 commits，169 文件变动
 - 核心变化：tokio 异步、snafu 错误、tracing 日志、MVVM GUI 架构
 - 新增统一发布流程：`release-setup.yml`（Tag `[0-9]*`）
