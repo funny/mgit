@@ -54,11 +54,16 @@ release-setup 产出物：
 - **事件系统**：`std::thread::spawn` 后台线程 → `event_tx`（mpsc Sender）→ `drain_event_channel()` → `process_events()`
 - **禁止**：在 `update()` 或 `GuiApp::new()` 中执行任何 I/O 或 git 操作
 
-## 已知 Bug / 技术债
+## 已修复 Bug
+
+| ID | 描述 | 修复方案 | Commit |
+|----|------|----------|--------|
+| TD-001 | `GuiApp::new()` 同步阻塞 UI 线程导致 Windows"未响应" | 将 `load_setting()` + `exec_ops(Refresh)` 移至首帧 `update()` 的 `first_frame` 块中执行 | a4cb8d0 |
+
+## 已知 Bug / 技术债（待处理）
 
 | ID | 描述 | 位置 |
 |----|------|------|
-| TD-001 | `GuiApp::new()` 调用 `exec_ops(Refresh)` 同步执行 `load_config()`，阻塞 UI 线程，Windows 显示"未响应" | `app.rs:104-109` |
 | TD-002 | `get_repo_states_parallel` 使用 `available_parallelism()` 不加限制（i7-13700KF = 24 线程），HDD 环境 I/O 争用 | `repo_manager.rs:767` |
 | TD-003 | `AGENTS.md` 记录的依赖版本和 crate 名称已过时 | `AGENTS.md` |
 
