@@ -120,7 +120,11 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
         let msg = StyleMessage::ops_failed("del-remote-branch", errors.len());
         // OpsErrors struct is gone, construct string or specific error
         return Err(crate::error::MgitError::OpsError {
-            message: format!("{}\nErrors:\n{:?}", msg, errors),
+            message: format!(
+                "{}\nErrors:\n{}",
+                msg,
+                errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
+            ),
         });
     }
 
