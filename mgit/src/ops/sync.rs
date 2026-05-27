@@ -16,6 +16,7 @@ use crate::ops::{clean_repo, current_dir, exec_fetch, set_tracking_remote_branch
 use crate::utils::path::PathExtension;
 use crate::utils::progress::{Progress, RepoInfo};
 use crate::utils::style_message::StyleMessage;
+use crate::utils::cmd::exec_cmd;
 use snafu::ResultExt;
 
 /// Internal execution response for sync operations
@@ -511,12 +512,27 @@ async fn inner_exec(
         .repo_config
         .get_remote_ref(full_path.as_path())
         .await?;
+    let is_branch = matches!(remote_ref, RemoteRef::Branch(_));
     let remote_ref_str = match remote_ref {
         RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
 
-    // check remote-ref valid
-    git::is_remote_ref_valid(full_path, remote_ref_str).await?;
+    // If target remote branch doesn't exist, delete local branch so it will
+    // be recreated from a fallback (develop → main → master) in exec_checkout
+    if is_branch {
+        if !git::remote_branch_already_exist(full_path, &remote_ref_str).await? {
+            // detach HEAD so the current branch can be deleted
+            let _ = exec_cmd(full_path, "git", &["checkout", "--detach"]).await;
+            // delete local branch
+            let local_branch = remote_ref_str
+                .split_once('/')
+                .map(|(_, b)| b)
+                .unwrap_or(&remote_ref_str);
+            let _ = exec_cmd(full_path, "git", &["branch", "-D", local_branch]).await;
+        }
+    } else {
+        git::is_remote_ref_valid(full_path, &remote_ref_str).await?;
+    }
 
     let mut exec_response = SyncExecResponse::default();
 
@@ -743,7 +759,8 @@ async fn exec_checkout(
     let remote_ref_str = match remote_ref.clone() {
         RemoteRef::Commit(r) | RemoteRef::Tag(r) | RemoteRef::Branch(r) => r,
     };
-    let branch = match remote_ref {
+    let is_branch = matches!(&remote_ref, RemoteRef::Branch(_));
+    let branch = match &remote_ref {
         RemoteRef::Commit(commit) => format!("commits/{}", &commit[..7]),
         RemoteRef::Tag(tag) => format!("tags/{}", tag),
         RemoteRef::Branch(_) => repo_info.repo_config.branch.clone().ok_or_else(|| {
@@ -767,20 +784,64 @@ async fn exec_checkout(
     // check if local branch already exists
     let branch_exist = git::local_branch_already_exist(&full_path, &branch).await?;
 
+    // When creating a new branch from a remote branch, try to resolve the start
+    // point: use the target remote ref if it exists, otherwise fall back to
+    // develop → main → master.
+    let target_remote_ref = remote_ref_str.clone();
+    let start_ref = if is_branch {
+        resolve_start_ref(&full_path, &remote_ref_str).await?
+    } else {
+        remote_ref_str
+    };
+
     // create/checkout/reset branch
     let args = match (branch_exist, force) {
-        (false, false) => vec!["checkout", "-B", &branch, &remote_ref_str, "--no-track"],
-        (false, true) => vec![
-            "checkout",
-            "-B",
-            &branch,
-            &remote_ref_str,
-            "--no-track",
-            "-f",
-        ],
+        (false, false) => vec!["checkout", "-B", &branch, &start_ref, "--no-track"],
+        (false, true) => vec!["checkout", "-B", &branch, &start_ref, "--no-track", "-f"],
         (true, false) => vec!["checkout", &branch],
         (true, true) => vec!["checkout", "-B", &branch, "-f"],
     };
 
-    git::checkout(full_path, &args).await
+    git::checkout(&full_path, &args).await?;
+
+    // If created from a fallback ref (e.g. origin/develop), push to remote
+    if is_branch && start_ref != target_remote_ref {
+        crate::utils::cmd::exec_cmd(&full_path, "git", &["push", "-u", "origin", &branch])
+            .await?;
+        tracing::info!(branch = %branch, base = %start_ref, "pushed new branch to remote");
+    }
+
+    Ok(())
+}
+
+/// Try to resolve a start ref for creating a new branch.
+///
+/// First checks if `target_ref` (e.g. `origin/feature-x`) exists.
+/// If not, tries fallback remote branches in priority order:
+/// develop → main → master. Returns the first one that exists.
+async fn resolve_start_ref(full_path: &Path, target_ref: &str) -> MgitResult<String> {
+    // check if the target remote ref already exists
+    if git::remote_branch_already_exist(full_path, target_ref).await? {
+        return Ok(target_ref.to_string());
+    }
+
+    // try fallback: develop → main → master
+    for fallback in &["develop", "main", "master"] {
+        let fallback_ref = format!("origin/{}", fallback);
+        if git::remote_branch_already_exist(full_path, &fallback_ref).await? {
+            tracing::info!(
+                target = %target_ref,
+                fallback = %fallback_ref,
+                "remote branch not found, using fallback"
+            );
+            return Ok(fallback_ref);
+        }
+    }
+
+    Err(crate::error::MgitError::OpsError {
+        message: format!(
+            "remote ref '{}' not found, and no fallback branch (develop/main/master) exists",
+            target_ref
+        ),
+    })
 }

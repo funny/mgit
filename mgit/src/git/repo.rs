@@ -101,6 +101,17 @@ pub async fn local_branch_already_exist(
     Ok(exist)
 }
 
+pub async fn remote_branch_already_exist(
+    path: impl AsRef<Path>,
+    branch: impl AsRef<str>,
+) -> MgitResult<bool> {
+    let ref_path = format!("refs/remotes/{}", branch.as_ref());
+    let args = ["show-ref", "--verify", "--quiet", &ref_path];
+    let exist = exec_cmd(path, "git", &args).await.is_ok();
+
+    Ok(exist)
+}
+
 pub async fn checkout(path: impl AsRef<Path>, args: &[&str]) -> MgitResult<()> {
     exec_cmd(path, "git", args).await.map(|_| ())
 }
