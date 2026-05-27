@@ -8,3 +8,4 @@ Cargo.lock
 .idea
 env.sh
 log
+mgit-gui/.DS_Store
