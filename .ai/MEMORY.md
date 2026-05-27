@@ -62,7 +62,7 @@ release-setup 产出物：
 | TD-002 | `get_repo_states_parallel` 线程数不加限制，HDD 环境 I/O 争用 | `available_parallelism().min(8)` 限制 worker 上限 | b611a5c |
 | TD-004 | WGL `SwapBuffers()` 首帧冻结（Windows HDD + 独显，几十秒白屏未响应）| `check_git_valid` 回归 `new()` 同步执行（40–360ms），给 GPU 驱动预热；`new()` 在事件循环启动前运行，Windows 不会判定未响应 | 当前会话 |
 | CLI 错误输出乱码 | fetch/sync/track/clean 错误消息用 `{:?}` 格式化 `StyleMessage`，打印内部结构体 | 改为 `.iter().map(\|e\| e.to_string()).join("\n")`；main.rs `eprintln!` 改为 `{}` | 7206390 |
-| CLI 错误输出乱码（遗漏） | new_branch/del_branch/new_tag 同样漏改，仍用 `{:?}` | 同上修复模式，改为 `.iter().map(\|e\| e.to_string()).collect::<Vec<_>>().join("\n")` | 2026-05-27 |
+| CLI 错误输出乱码（遗漏） | new_branch/del_branch/new_tag 同样漏改，仍用 `{:?}` | 同上修复模式，改为 `.iter().map(\|e\| e.to_string()).collect::<Vec<_>>().join("\n")` | 6274b32 |
 
 ## 已知 Bug / 技术债（待处理）
 
