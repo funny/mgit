@@ -116,7 +116,11 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
     if !errors.is_empty() {
         let msg = StyleMessage::ops_failed("new-tag", errors.len());
         return Err(crate::error::MgitError::OpsError {
-            message: format!("{}\nErrors:\n{:?}", msg, errors),
+            message: format!(
+                "{}\nErrors:\n{}",
+                msg,
+                errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
+            ),
         });
     }
 
