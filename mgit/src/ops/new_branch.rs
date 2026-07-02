@@ -138,7 +138,11 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
             message: format!(
                 "{}\nErrors:\n{}",
                 msg,
-                errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
+                errors
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
             ),
         });
     }

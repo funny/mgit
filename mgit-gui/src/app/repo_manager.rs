@@ -874,7 +874,12 @@ fn get_repo_state_with_runtime(
         repo_state.err_msg = e.to_string();
         is_ok = false;
     }
-    tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_is_repository");
+    tracing::debug!(
+        repo = local.as_str(),
+        duration_ms = t.elapsed().as_millis(),
+        ok = is_ok,
+        "git_is_repository"
+    );
 
     if is_ok {
         if let Some(remote_url) = repo.remote.as_ref() {
@@ -883,17 +888,30 @@ fn get_repo_state_with_runtime(
                 repo_state.err_msg = e.to_string();
                 is_ok = false;
             }
-            tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_find_remote");
+            tracing::debug!(
+                repo = local.as_str(),
+                duration_ms = t.elapsed().as_millis(),
+                ok = is_ok,
+                "git_find_remote"
+            );
         }
     }
 
     if is_ok {
         let t = Instant::now();
         match rt.block_on(git::get_head_tags(&full_path)) {
-            Ok(res) => { repo_state.tags = res; }
-            Err(_) => { repo_state.tags.clear(); }
+            Ok(res) => {
+                repo_state.tags = res;
+            }
+            Err(_) => {
+                repo_state.tags.clear();
+            }
         }
-        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), "git_get_tags");
+        tracing::debug!(
+            repo = local.as_str(),
+            duration_ms = t.elapsed().as_millis(),
+            "git_get_tags"
+        );
     }
 
     if is_ok {
@@ -908,7 +926,12 @@ fn get_repo_state_with_runtime(
                 is_ok = false;
             }
         }
-        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_get_branch");
+        tracing::debug!(
+            repo = local.as_str(),
+            duration_ms = t.elapsed().as_millis(),
+            ok = is_ok,
+            "git_get_branch"
+        );
     }
 
     if is_ok {
@@ -923,7 +946,12 @@ fn get_repo_state_with_runtime(
                 is_ok = false;
             }
         }
-        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), ok = is_ok, "git_get_tracking");
+        tracing::debug!(
+            repo = local.as_str(),
+            duration_ms = t.elapsed().as_millis(),
+            ok = is_ok,
+            "git_get_tracking"
+        );
     }
 
     if is_ok {
@@ -962,7 +990,11 @@ fn get_repo_state_with_runtime(
                 repo_state.err_msg = e.to_string();
             }
         }
-        tracing::debug!(repo = local.as_str(), duration_ms = t.elapsed().as_millis(), "git_cmp_remote");
+        tracing::debug!(
+            repo = local.as_str(),
+            duration_ms = t.elapsed().as_millis(),
+            "git_cmp_remote"
+        );
     }
 
     repo_state

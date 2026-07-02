@@ -1,4 +1,4 @@
-﻿use crate::configs::project::{get_new_history, TomlProjectSettings};
+use crate::configs::project::{get_new_history, TomlProjectSettings};
 use crate::configs::user::TomlUserSettings;
 use crate::ui::windows::NewBranchWindow;
 use crate::ui::windows::NewTagWindow;
@@ -29,7 +29,10 @@ impl SessionManager {
     pub fn load_setting(&mut self) {
         let t = std::time::Instant::now();
         self.user_settings = TomlUserSettings::load();
-        tracing::debug!(duration_ms = t.elapsed().as_millis(), "user_settings_loaded");
+        tracing::debug!(
+            duration_ms = t.elapsed().as_millis(),
+            "user_settings_loaded"
+        );
 
         let t = std::time::Instant::now();
         self.load_recent_projects();

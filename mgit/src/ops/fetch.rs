@@ -165,10 +165,14 @@ pub async fn fetch_repos(
         let msg = StyleMessage::ops_failed("fetch", errors.len());
         Err(crate::error::MgitError::OpsError {
             message: format!(
-                    "{}\nErrors:\n{}",
-                    msg,
-                    errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
-                ),
+                "{}\nErrors:\n{}",
+                msg,
+                errors
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ),
         })
     }
 }

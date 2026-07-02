@@ -74,7 +74,10 @@ pub fn check_git_valid() -> Result<GitVersionInfo, String> {
             .arg("git --version")
             .output()
             .expect("command failed to start");
-        tracing::debug!(duration_ms = t.elapsed().as_millis(), "git_version_cmd_done");
+        tracing::debug!(
+            duration_ms = t.elapsed().as_millis(),
+            "git_version_cmd_done"
+        );
         out
     };
 
@@ -86,7 +89,10 @@ pub fn check_git_valid() -> Result<GitVersionInfo, String> {
             .arg("--version")
             .output()
             .expect("command failed to start");
-        tracing::debug!(duration_ms = t.elapsed().as_millis(), "git_version_cmd_done");
+        tracing::debug!(
+            duration_ms = t.elapsed().as_millis(),
+            "git_version_cmd_done"
+        );
         out
     };
 

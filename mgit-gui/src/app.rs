@@ -116,7 +116,10 @@ impl GuiApp {
             }
         }
 
-        info!(duration_ms = t.elapsed().as_millis(), "gui_app_new_finished");
+        info!(
+            duration_ms = t.elapsed().as_millis(),
+            "gui_app_new_finished"
+        );
         app
     }
 }
@@ -132,8 +135,7 @@ impl eframe::App for GuiApp {
             if gap_ms > 2000 {
                 warn!(
                     frame = self.update_count,
-                    gap_ms,
-                    "update_gap_very_long — UI thread may have been blocked"
+                    gap_ms, "update_gap_very_long — UI thread may have been blocked"
                 );
             } else if gap_ms > 500 {
                 warn!(frame = self.update_count, gap_ms, "update_gap_long");
@@ -191,8 +193,7 @@ impl eframe::App for GuiApp {
         if duration_ms > 500 {
             warn!(
                 frame = self.update_count,
-                duration_ms,
-                "update_slow — UI thread blocked inside update()"
+                duration_ms, "update_slow — UI thread blocked inside update()"
             );
         } else if duration_ms > 50 {
             warn!(frame = self.update_count, duration_ms, "update_took_long");

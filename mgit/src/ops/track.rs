@@ -146,10 +146,14 @@ pub async fn track(
         let msg = StyleMessage::ops_failed("track", errors.len());
         Err(MgitError::OpsError {
             message: format!(
-                    "{}\nErrors:\n{}",
-                    msg,
-                    errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
-                ),
+                "{}\nErrors:\n{}",
+                msg,
+                errors
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ),
         })
     }
 }

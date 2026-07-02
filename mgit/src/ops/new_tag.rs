@@ -119,7 +119,11 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
             message: format!(
                 "{}\nErrors:\n{}",
                 msg,
-                errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
+                errors
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
             ),
         });
     }

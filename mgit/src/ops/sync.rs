@@ -444,10 +444,14 @@ pub async fn sync_repo(
         let msg = StyleMessage::ops_failed("sync", error_repos.len());
         Err(crate::error::MgitError::OpsError {
             message: format!(
-                    "{}\nErrors:\n{}",
-                    msg,
-                    error_repos.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
-                ),
+                "{}\nErrors:\n{}",
+                msg,
+                error_repos
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ),
         })
     }
 }

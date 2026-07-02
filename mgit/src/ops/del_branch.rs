@@ -123,7 +123,11 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
             message: format!(
                 "{}\nErrors:\n{}",
                 msg,
-                errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n")
+                errors
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
             ),
         });
     }
