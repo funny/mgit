@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.0-beta.8 · 分支：master
+## 当前版本：2.0.0 · 分支：master
 
 ---
 
@@ -41,6 +41,8 @@
 | 2026-03-17 | 增加启动链路结构化日志：new/first_frame/git_check/load_setting/refresh/worker 全链路计时 |
 | 2026-03-17 | 增强调试日志：runtime_init/eframe_run_native_start 时间戳、update() 帧间隔+耗时阻塞检测、每条 git 命令计时 |
 | 2026-03-17 | 修复 TD-004：WGL SwapBuffers 首帧冻结 — check_git_valid 回归 new() 同步执行，为 GPU 驱动预热 |
+| 2026-07-02 | 执行 `cargo fmt` 格式化既有 Rust 源文件（c7576bb） |
+| 2026-07-02 | 发布 2.0.0：workspace 版本从 2.0.0-beta.8 提升到 2.0.0（最终发布提交） |
 
 ---
 

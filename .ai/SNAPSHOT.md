@@ -29,3 +29,17 @@
 - 次级：`cli-*` / `gui-*` → 独立构建
 
 ---
+
+## 2026-07-02 | 2.0.0 正式版本号发布
+
+**操作**：将 workspace package 版本从 `2.0.0-beta.8` 提升到 `2.0.0`
+
+**提交**：最终发布提交
+
+**验证**：
+- `cargo check`：通过；保留既有 `mgit-gui/src/utils/system.rs` dead_code warning
+- `cargo clippy`：通过；保留既有 clippy warning
+- `cargo fmt --check`：通过；已执行 `cargo fmt`
+- `cargo test`：未通过；`cli_fetch_simple` 访问 `https://gitee.com` 时无法读取用户名（`Device not configured`）
+
+---

@@ -9,7 +9,7 @@
 
 - **项目名**：mgit — Rust 编写的 Git 多仓库管理工具
 - **仓库**：github.com/funny/mgit
-- **当前版本**：2.0.0-beta.8（beta 阶段）
+- **当前版本**：2.0.0
 - **MSRV**：Rust 1.92.0（硬性约束）
 - **主分支**：master
 
@@ -80,6 +80,11 @@ release-setup 产出物：
 - 新增 scripts/ 打包脚本（NSIS/DMG/DEB）
 - 新增 release-setup.yml 统一发布流程
 - 新增 process_guard：Windows Job Object / Linux PR_SET_PDEATHSIG
+
+## 发布记录
+
+- 2026-07-02：执行 `cargo fmt` 格式化既有 Rust 源文件（c7576bb）。
+- 2026-07-02：发布 2.0.0，workspace 版本从 `2.0.0-beta.8` 提升到 `2.0.0`（最终发布提交）。
 
 ## 代码风格约定
 
