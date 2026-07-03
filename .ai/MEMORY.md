@@ -9,7 +9,7 @@
 
 - **项目名**：mgit — Rust 编写的 Git 多仓库管理工具
 - **仓库**：github.com/funny/mgit
-- **当前版本**：2.0.1
+- **当前版本**：2.0.2
 - **MSRV**：Rust 1.92.0（硬性约束）
 - **主分支**：master
 
@@ -88,6 +88,9 @@ release-setup 产出物：
 - 2026-07-02：发布 2.0.0，workspace 版本从 `2.0.0-beta.8` 提升到 `2.0.0`（最终发布提交）。
 - 2026-07-03：CLI 增加全局 `--no-color`，默认保留彩色输出；tracing 字段改为纯文本以避免 ANSI 转义串显示；新增全局 `--verbose` 控制 INFO/DEBUG 输出（7948a89）。
 - 2026-07-03：发布 2.0.1，workspace 版本从 `2.0.0` 提升到 `2.0.1`（f624c27）。
+- 2026-07-03：CLI 展示性输出路由重构。`Progress` trait 新增默认 `on_message(StyleMessage)`；ops 中的操作横幅（`ops_start`）、分节标题（`"Track status:"` / `"New tag:"` 等）、逐条结果（`git_new_branch` / `remove_file_succ` / `"  + {}"` 等）从 `tracing::info!` 改走 `progress.on_message(...)`。CLI 侧 `MultiProgress::on_message` 通过 `multi_progress.println(...)` 输出（避免与 spinner 抢行），默认可见且保留 `StyleMessage` 彩色；GUI 侧 `OpsMessageCollector::on_message` 走 `info!` 写日志保持原行为。所有 ops 函数（含原先无 progress 的 `init`/`snapshot`/`clean`/`log_repos`/`new_branch`/`del_branch`/`new_tag`）签名加 `progress: impl Progress`。`MultiProgress::on_batch_finish` 残留的 `tracing::info!("")` 一并删除。
+- 2026-07-03：new-remote-branch / del-remote-branch / new-tag 静默跳过补提示。`branch.is_none()` 跳过输出 `xxx: invalid branch in config file, skipped`；`ignore` 命中跳过输出 `xxx: ignored`。消除"0 error(s)"歧义（实际可能 0 个仓库被处理）。
+- 2026-07-03：发布 2.0.2，workspace 版本从 `2.0.1` 提升到 `2.0.2`。
 
 ## 代码风格约定
 

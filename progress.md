@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.1 · 分支：master
+## 当前版本：2.0.2 · 分支：master
 
 ---
 
@@ -46,6 +46,10 @@
 | 2026-07-03 | CLI 增加全局 `--no-color`，默认保留彩色输出，并避免 tracing 字段输出 ANSI 转义串；新增 `--verbose` 控制 INFO/DEBUG 输出（7948a89） |
 | 2026-07-03 | 发布 2.0.1：workspace 版本从 2.0.0 提升到 2.0.1（f624c27） |
 | 2026-07-03 | 强化 AGENTS 提交规范：提交前必须读取 `CONTRIBUTING.md`，并使用 `<type> 中文描述` 格式（5118b9a） |
+| 2026-07-03 | CLI 展示性输出路由重构：`Progress` trait 新增 `on_message`，ops 中的操作横幅/分节标题/逐条结果从 `tracing::info!` 改走 `MultiProgress::println`，默认可见且保留彩色；GUI 侧 `OpsMessageCollector` 写日志保持原行为 |
+| 2026-07-03 | 删除 `MultiProgress::on_batch_finish` 中残留的空 `tracing::info!("")` |
+| 2026-07-03 | new-remote-branch / del-remote-branch / new-tag 静默跳过补提示：`branch.is_none()` 输出 `xxx: invalid branch in config file, skipped`；`ignore` 命中输出 `xxx: ignored` |
+| 2026-07-03 | 发布 2.0.2：workspace 版本从 2.0.1 提升到 2.0.2 |
 
 ---
 

@@ -63,3 +63,28 @@
 - 默认无 `INFO`，`--verbose` 可打开 `INFO`
 
 ---
+
+## 2026-07-03 | 2.0.2 CLI 展示性输出路由重构
+
+**操作**：将 workspace package 版本从 `2.0.1` 提升到 `2.0.2`
+
+**变更**：
+- `Progress` trait 新增 `fn on_message(&self, _message: StyleMessage)`，默认 no-op 实现
+- CLI `MultiProgress::on_message` 通过 `multi_progress.println(...)` 输出，避免与 spinner 抢行
+- GUI `OpsMessageCollector::on_message` 走 `tracing::info!` 写日志，保持原行为
+- ops 中的操作横幅 / 分节标题 / 逐条结果（`ops_start`、`"Track status:"`、`"  + {}"`、`git_new_branch`、`remove_file_succ` 等）从 `tracing::info!` 改走 `progress.on_message(...)`
+- 所有 ops 函数签名加 `progress: impl Progress`（含原先无 progress 的 `init`/`snapshot`/`clean`/`log_repos`/`new_branch`/`del_branch`/`new_tag`）
+- `MultiProgress::on_batch_finish` 残留的 `tracing::info!("")` 删除
+- new-remote-branch / del-remote-branch / new-tag 静默跳过补提示：`branch.is_none()` → `xxx: invalid branch in config file, skipped`；`ignore` 命中 → `xxx: ignored`
+
+**动机**：原 `tracing::info!` 默认 WARN 级别下被过滤，用户看不到操作横幅与逐条结果；且走 stderr、剥离 `StyleMessage` 彩色。改走 `Progress` trait 后 CLI 默认可见、保留彩色、与进度条不冲突，GUI 行为不变。
+
+**验证**：
+- `cargo check` / `cargo check --tests`：通过
+- `cargo clippy`：无新增 warning（14 个 `double_must_use` + 1 个 `version` 字段 dead_code 均为既有）
+- `cargo fmt --check`：通过
+- `cargo test -p mgit --lib`：16/16 通过
+- 集成测试 `cli_init_simple` 因环境网络（gitee 鉴权）失败，与本次改动无关
+
+---
+
