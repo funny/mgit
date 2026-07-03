@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, SyncOptions};
 
 use crate::commands::CliCommand;
+use crate::term::print_style_message;
 use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
@@ -58,7 +59,7 @@ impl CliCommand for SyncCommand {
     async fn exec(self) -> MgitResult<()> {
         let progress = MultiProgress::default();
         let msg = ops::sync_repo(self.into(), progress).await?;
-        println!("{}", msg);
+        print_style_message(&msg);
         Ok(())
     }
 }

@@ -1,8 +1,39 @@
 ﻿pub mod progress;
 
 use std::io::{self, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use mgit::utils::shell::{Auth, ShellInteraction};
+use mgit::utils::style_message::StyleMessage;
+
+static COLOR_OUTPUT_ENABLED: AtomicBool = AtomicBool::new(true);
+
+pub(crate) fn configure_color(enabled: bool) {
+    console::set_colors_enabled(enabled);
+    console::set_colors_enabled_stderr(enabled);
+    COLOR_OUTPUT_ENABLED.store(enabled, Ordering::Relaxed);
+
+    #[cfg(windows)]
+    if enabled {
+        let _ = ansi_term::enable_ansi_support();
+    }
+}
+
+pub(crate) fn colors_enabled() -> bool {
+    COLOR_OUTPUT_ENABLED.load(Ordering::Relaxed)
+}
+
+pub(crate) fn render_style_message(message: &StyleMessage) -> String {
+    if colors_enabled() {
+        message.to_string()
+    } else {
+        message.to_plain_text()
+    }
+}
+
+pub(crate) fn print_style_message(message: &StyleMessage) {
+    println!("{}", render_style_message(message));
+}
 
 #[derive(Default)]
 pub struct TerminalShell;

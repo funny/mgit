@@ -113,7 +113,7 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
 
         let rel_path_display = Path::new(rel_path).display_path();
         let msg = StyleMessage::git_del_branch(rel_path_display, format!("origin/{}", branch));
-        tracing::info!(message = %msg);
+        tracing::info!(message = %msg.to_plain_text());
     }
 
     if !errors.is_empty() {

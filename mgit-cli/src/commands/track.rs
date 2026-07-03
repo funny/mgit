@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, TrackOptions};
 
 use crate::commands::CliCommand;
+use crate::term::print_style_message;
 use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
@@ -26,7 +27,7 @@ impl CliCommand for TrackCommand {
     async fn exec(self) -> MgitResult<()> {
         let progress = MultiProgress::default();
         let msg = ops::track(self.into(), progress).await?;
-        println!("{}", msg);
+        print_style_message(&msg);
         Ok(())
     }
 }

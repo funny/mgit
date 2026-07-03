@@ -67,7 +67,7 @@ pub async fn fetch_repos(
     let depth = options.depth;
     let ignore = options.ignore.as_ref();
 
-    tracing::info!(message = %StyleMessage::ops_start("fetch repos", path));
+    tracing::info!(message = %StyleMessage::ops_start("fetch repos", path).to_plain_text());
 
     if !config_path.is_file() {
         return Err(crate::error::MgitError::ConfigFileNotFound {

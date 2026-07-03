@@ -33,7 +33,7 @@ pub async fn init_repo(options: InitOptions) -> MgitResult<StyleMessage> {
     let snapshot_type = SnapshotType::Branch;
     let config_file = path.join(".gitrepos");
 
-    tracing::info!(message = %StyleMessage::ops_start("init", path));
+    tracing::info!(message = %StyleMessage::ops_start("init", path).to_plain_text());
 
     snapshot_repo(SnapshotOptions::new(
         Some(path.to_path_buf()),

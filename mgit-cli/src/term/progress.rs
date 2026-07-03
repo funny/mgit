@@ -9,6 +9,8 @@ use mgit::utils::path::PathExtension;
 use mgit::utils::progress::{Progress, RepoInfo};
 use mgit::utils::style_message::StyleMessage;
 
+use crate::term::{colors_enabled, render_style_message};
+
 #[derive(Clone, Default)]
 pub(crate) struct MultiProgress {
     multi_progress: Arc<Mutex<indicatif::MultiProgress>>,
@@ -61,14 +63,21 @@ impl MultiProgress {
         format!("[{:02}/{:02}]", idx, total)
     }
 
+    fn repo_path(repo_info: &RepoInfo, colour: Colour) -> String {
+        let path = repo_info.rel_path().display_path();
+        if colors_enabled() {
+            colour.bold().paint(path).to_string()
+        } else {
+            path
+        }
+    }
+
     fn spinner_start(&self, repo_info: &RepoInfo, desc: StyleMessage) -> String {
         format!(
             "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &Colour::Purple
-                .bold()
-                .paint(repo_info.rel_path().display_path()),
-            desc
+            Self::repo_path(repo_info, Colour::Purple),
+            render_style_message(&desc)
         )
     }
 
@@ -76,22 +85,19 @@ impl MultiProgress {
         format!(
             "{:>9} {}: {}",
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &Colour::Purple
-                .bold()
-                .paint(repo_info.rel_path().display_path()),
-            desc
+            Self::repo_path(repo_info, Colour::Purple),
+            render_style_message(&desc)
         )
     }
 
     fn spinner_end(&self, repo_info: &RepoInfo, status: StyleMessage, is_success: bool) -> String {
+        let repo_end = StyleMessage::repo_end(is_success);
         format!(
             "{:>9} {} {}: {}",
-            StyleMessage::repo_end(is_success),
+            render_style_message(&repo_end),
             Self::prefix(repo_info.index, self.total_repos.load(Ordering::Relaxed)),
-            &Colour::Green
-                .bold()
-                .paint(repo_info.rel_path().display_path()),
-            status,
+            Self::repo_path(repo_info, Colour::Green),
+            render_style_message(&status),
         )
     }
 }

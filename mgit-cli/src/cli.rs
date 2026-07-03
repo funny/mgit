@@ -1,4 +1,4 @@
-﻿use clap::{Parser, Subcommand};
+﻿use clap::{ArgAction, Parser, Subcommand};
 
 use crate::commands::*;
 
@@ -13,6 +13,14 @@ use crate::commands::*;
     arg_required_else_help(true)
 )]
 pub(crate) struct Cli {
+    /// Disable ANSI color output
+    #[arg(long, action = ArgAction::SetTrue, global = true)]
+    pub no_color: bool,
+
+    /// Increase log verbosity (--verbose for info, repeated for debug)
+    #[arg(long, action = ArgAction::Count, global = true)]
+    pub verbose: u8,
+
     #[command(subcommand)]
     pub command: Commands,
 }

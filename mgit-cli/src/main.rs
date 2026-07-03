@@ -4,6 +4,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 use crate::cli::{Cli, Commands};
 use crate::commands::CliCommand;
+use crate::term::{colors_enabled, configure_color};
 
 mod cli;
 mod commands;
@@ -11,9 +12,10 @@ mod term;
 
 #[tokio::main]
 async fn main() {
-    init_log();
-
     let cli = Cli::parse();
+    configure_color(!cli.no_color);
+    init_log(cli.verbose);
+
     let result: MgitResult = match cli.command {
         Commands::Init(cmd) => cmd.exec().await,
         Commands::Snapshot(cmd) => cmd.exec().await,
@@ -39,16 +41,21 @@ async fn main() {
     }
 }
 
-fn init_log() {
-    console::set_colors_enabled(true);
-    console::set_colors_enabled_stderr(true);
+fn init_log(verbose: u8) {
+    let env_filter = match verbose {
+        0 => EnvFilter::builder()
+            .with_default_directive(tracing::Level::WARN.into())
+            .from_env_lossy(),
+        1 => EnvFilter::builder().parse_lossy("info"),
+        _ => EnvFilter::builder().parse_lossy("debug"),
+    };
 
     tracing_subscriber::registry()
-        .with(fmt::layer().with_writer(std::io::stderr))
         .with(
-            EnvFilter::builder()
-                .with_default_directive(tracing::Level::INFO.into())
-                .from_env_lossy(),
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_ansi(colors_enabled()),
         )
+        .with(env_filter)
         .init();
 }

@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, InitOptions};
 
 use crate::commands::CliCommand;
+use crate::term::print_style_message;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Init git repos
@@ -24,7 +25,7 @@ pub(crate) struct InitCommand {
 impl CliCommand for InitCommand {
     async fn exec(self) -> MgitResult<()> {
         let msg = ops::init_repo(self.into()).await?;
-        println!("{}", msg);
+        print_style_message(&msg);
         Ok(())
     }
 }

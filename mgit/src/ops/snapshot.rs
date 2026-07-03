@@ -58,7 +58,7 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
     let snapshot_type = &options.snapshot_type;
     let ignore = options.ignore.clone(); // Clone for closure
 
-    tracing::info!(message = %StyleMessage::ops_start("take snapshot", path));
+    tracing::info!(message = %StyleMessage::ops_start("take snapshot", path).to_plain_text());
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {

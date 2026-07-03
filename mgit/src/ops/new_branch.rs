@@ -129,7 +129,7 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
         let rel_path_display = Path::new(rel_path).display_path();
 
         let msg = StyleMessage::git_new_branch(rel_path_display, &new_branch);
-        tracing::info!(message = %msg);
+        tracing::info!(message = %msg.to_plain_text());
     }
 
     if !errors.is_empty() {

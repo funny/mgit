@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, CleanOptions};
 
 use crate::commands::CliCommand;
+use crate::term::print_style_message;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Clean unused git repos
@@ -23,7 +24,7 @@ pub(crate) struct CleanCommand {
 impl CliCommand for CleanCommand {
     async fn exec(self) -> MgitResult<()> {
         let msg = ops::clean_repo(self.into()).await?;
-        println!("{}", msg);
+        print_style_message(&msg);
         Ok(())
     }
 }

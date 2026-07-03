@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, NewBranchOptions};
 
 use crate::commands::CliCommand;
+use crate::term::print_style_message;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// new branch base on current branch in config
@@ -36,7 +37,7 @@ pub(crate) struct NewRemoteBranchCommand {
 impl CliCommand for NewRemoteBranchCommand {
     async fn exec(self) -> MgitResult<()> {
         let msg = ops::new_remote_branch(self.into()).await?;
-        println!("{}", msg);
+        print_style_message(&msg);
         Ok(())
     }
 }
