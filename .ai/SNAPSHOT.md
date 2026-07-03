@@ -43,3 +43,23 @@
 - `cargo test`：未通过；`cli_fetch_simple` 访问 `https://gitee.com` 时无法读取用户名（`Device not configured`）
 
 ---
+
+## 2026-07-03 | 2.0.1 CLI 输出修正
+
+**操作**：将 workspace package 版本从 `2.0.0` 提升到 `2.0.1`
+
+**提交**：`f624c27`
+
+**变更**：
+- CLI 默认终端 tracing 级别改为 WARN，避免普通命令输出 INFO 日志前缀
+- 新增全局 `--verbose`：一次输出 INFO，重复输出 DEBUG
+- 保留无 `--verbose` 时的 `RUST_LOG` 高级覆盖能力
+
+**验证**：
+- `cargo check`：通过；保留既有 `mgit-gui/src/utils/system.rs` dead_code warning
+- `cargo clippy`：通过；保留既有 clippy warning
+- `cargo fmt --check`：通过
+- `mgit --version`：输出 `mgit 2.0.1`
+- 默认无 `INFO`，`--verbose` 可打开 `INFO`
+
+---

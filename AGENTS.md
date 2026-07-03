@@ -8,6 +8,7 @@
 ## ⚠️ 每次任务完成后，提交前必须执行
 
 > **不更新以下文件 = 不完整交付。无论任务大小，无需用户提醒。**
+> 提交信息规范以 `CONTRIBUTING.md` 为准；AI Agent 每次提交前必须重新读取该文件。
 
 ### `progress.md`
 - 完成的任务 → 移入"已完成"，附 commit hash
@@ -235,6 +236,36 @@ cargo test --features=use_gitea
 ### 5.4 记忆更新义务
 
 见文件顶部"每次任务完成后必须执行"章节，此为强制规则。
+
+### 5.5 Commit 规范（硬性规则）
+
+- **每次提交前必须先读取 `CONTRIBUTING.md`**，并以其中的 Commit 规范为准。
+- 提交信息必须使用 `CONTRIBUTING.md` 定义的格式：
+
+```text
+<type> 中文描述
+```
+
+- 允许的 `type` 仅限：
+  - `<feature>`
+  - `<fix>`
+  - `<refactor>`
+  - `<misc>`
+  - `<docs>`
+  - `<test>`
+- 禁止使用 Conventional Commit 格式，例如：
+  - `feat(cli): ...`
+  - `fix: ...`
+  - `docs: ...`
+- 提交描述必须使用中文，且应简洁说明本次提交实际内容。
+- 如果修改、重写、合并、拆分提交导致 commit hash 变化，必须同步更新：
+  - `progress.md`
+  - `.ai/MEMORY.md`
+  - `.ai/SNAPSHOT.md`（如涉及版本发布或重大里程碑）
+- AI Agent 在执行 `git commit` 前必须确认：
+  - `git status --short` 中只包含本次任务相关文件
+  - commit message 符合 `CONTRIBUTING.md`
+  - 不使用 `--no-verify`
 
 ---
 

@@ -9,7 +9,7 @@
 
 - **项目名**：mgit — Rust 编写的 Git 多仓库管理工具
 - **仓库**：github.com/funny/mgit
-- **当前版本**：2.0.0
+- **当前版本**：2.0.1
 - **MSRV**：Rust 1.92.0（硬性约束）
 - **主分支**：master
 
@@ -63,6 +63,7 @@ release-setup 产出物：
 | TD-004 | WGL `SwapBuffers()` 首帧冻结（Windows HDD + 独显，几十秒白屏未响应）| `check_git_valid` 回归 `new()` 同步执行（40–360ms），给 GPU 驱动预热；`new()` 在事件循环启动前运行，Windows 不会判定未响应 | 当前会话 |
 | CLI 错误输出乱码 | fetch/sync/track/clean 错误消息用 `{:?}` 格式化 `StyleMessage`，打印内部结构体 | 改为 `.iter().map(\|e\| e.to_string()).join("\n")`；main.rs `eprintln!` 改为 `{}` | 7206390 |
 | CLI 错误输出乱码（遗漏） | new_branch/del_branch/new_tag 同样漏改，仍用 `{:?}` | 同上修复模式，改为 `.iter().map(\|e\| e.to_string()).collect::<Vec<_>>().join("\n")` | 6274b32 |
+| CLI ANSI 转义串显示 | `StyleMessage` 的彩色 `Display` 被写入 tracing 字段后，终端中显示 `\x1b[...]` 文本 | 增加全局 `--no-color`；CLI 展示层统一按开关渲染彩色/纯文本；tracing 字段统一写入 `to_plain_text()` | 7948a89 |
 
 ## 已知 Bug / 技术债（待处理）
 
@@ -85,6 +86,8 @@ release-setup 产出物：
 
 - 2026-07-02：执行 `cargo fmt` 格式化既有 Rust 源文件（c7576bb）。
 - 2026-07-02：发布 2.0.0，workspace 版本从 `2.0.0-beta.8` 提升到 `2.0.0`（最终发布提交）。
+- 2026-07-03：CLI 增加全局 `--no-color`，默认保留彩色输出；tracing 字段改为纯文本以避免 ANSI 转义串显示；新增全局 `--verbose` 控制 INFO/DEBUG 输出（7948a89）。
+- 2026-07-03：发布 2.0.1，workspace 版本从 `2.0.0` 提升到 `2.0.1`（f624c27）。
 
 ## 代码风格约定
 
