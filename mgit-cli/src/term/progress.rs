@@ -115,7 +115,6 @@ impl Progress for MultiProgress {
             .expect("Failed to lock main_progress_bar in on_batch_finish");
         if !locked.as_ref().unwrap().is_finished() {
             locked.as_ref().unwrap().finish();
-            tracing::info!("");
         }
     }
 
@@ -174,6 +173,15 @@ impl Progress for MultiProgress {
             .as_ref()
             .expect("main_progress_bar is None in on_repo_error")
             .inc(1);
+    }
+
+    fn on_message(&self, message: StyleMessage) {
+        let line = render_style_message(&message);
+        let _ = self
+            .multi_progress
+            .lock()
+            .expect("Failed to lock multi_progress for on_message")
+            .println(line);
     }
 }
 

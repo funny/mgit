@@ -5,6 +5,7 @@ use crate::error::MgitResult;
 use crate::git;
 use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
+use crate::utils::progress::Progress;
 use crate::utils::StyleMessage;
 
 pub struct DelBranchOptions {
@@ -36,13 +37,16 @@ impl DelBranchOptions {
 }
 
 #[must_use]
-pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMessage> {
+pub async fn del_remote_branch(
+    options: DelBranchOptions,
+    progress: impl Progress,
+) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
     let branch = options.branch;
     let mut ignore = options.ignore.unwrap_or_default();
 
-    tracing::info!("Delete remote branch:");
+    progress.on_message(StyleMessage::new().plain_text("Delete remote branch:"));
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         return Err(crate::error::MgitError::DirNotFound { path: path.clone() });
@@ -80,10 +84,19 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
 
         // only support new branch from exsit branch
         if repo_config.branch.is_none() {
+            let rel_path_display = Path::new(local).display_path();
+            progress.on_message(StyleMessage::new().plain_text(format!(
+                "{}: invalid branch in config file, skipped",
+                rel_path_display
+            )));
             continue;
         }
 
         if ignore.contains(local) {
+            let rel_path_display = Path::new(local).display_path();
+            progress.on_message(
+                StyleMessage::new().plain_text(format!("{}: ignored", rel_path_display)),
+            );
             continue;
         }
 
@@ -113,7 +126,7 @@ pub async fn del_remote_branch(options: DelBranchOptions) -> MgitResult<StyleMes
 
         let rel_path_display = Path::new(rel_path).display_path();
         let msg = StyleMessage::git_del_branch(rel_path_display, format!("origin/{}", branch));
-        tracing::info!(message = %msg.to_plain_text());
+        progress.on_message(msg);
     }
 
     if !errors.is_empty() {

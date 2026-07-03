@@ -5,6 +5,7 @@ use crate::error::MgitResult;
 use crate::git;
 use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
+use crate::utils::progress::Progress;
 use crate::utils::StyleMessage;
 
 #[derive(Debug)]
@@ -40,14 +41,14 @@ impl NewTagOptions {
 }
 
 #[must_use]
-pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
+pub async fn new_tag(options: NewTagOptions, progress: impl Progress) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
     let new_tag = options.new_tag;
     let push = options.push;
     let mut ignore = options.ignore.unwrap_or_default();
 
-    tracing::info!("New tag:");
+    progress.on_message(StyleMessage::new().plain_text("New tag:"));
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         return Err(crate::error::MgitError::DirNotFound { path: path.clone() });
@@ -84,6 +85,10 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
         };
 
         if ignore.contains(local) {
+            let rel_path_display = Path::new(local).display_path();
+            progress.on_message(
+                StyleMessage::new().plain_text(format!("{}: ignored", rel_path_display)),
+            );
             continue;
         }
 
@@ -110,7 +115,7 @@ pub async fn new_tag(options: NewTagOptions) -> MgitResult<StyleMessage> {
 
         let rel_path_display = Path::new(rel_path).display_path();
         let msg = StyleMessage::git_new_tag(rel_path_display, &new_tag);
-        tracing::info!(message = %msg.to_plain_text());
+        progress.on_message(msg);
     }
 
     if !errors.is_empty() {

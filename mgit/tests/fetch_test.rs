@@ -43,7 +43,7 @@ async fn cli_fetch_simple() -> MgitResult<()> {
     }
 
     // init command
-    ops::init_repo(InitOptions::new(Some(path.clone()), None)).await?;
+    ops::init_repo(InitOptions::new(Some(path.clone()), None), TestProgress).await?;
     // fetch command
     ops::fetch_repos(
         FetchOptions::new(

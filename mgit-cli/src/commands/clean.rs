@@ -6,6 +6,7 @@ use mgit::ops::{self, CleanOptions};
 
 use crate::commands::CliCommand;
 use crate::term::print_style_message;
+use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Clean unused git repos
@@ -23,7 +24,8 @@ pub(crate) struct CleanCommand {
 
 impl CliCommand for CleanCommand {
     async fn exec(self) -> MgitResult<()> {
-        let msg = ops::clean_repo(self.into()).await?;
+        let progress = MultiProgress::default();
+        let msg = ops::clean_repo(self.into(), progress).await?;
         print_style_message(&msg);
         Ok(())
     }

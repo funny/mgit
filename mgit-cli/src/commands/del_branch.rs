@@ -6,6 +6,7 @@ use mgit::ops::{self, DelBranchOptions};
 
 use crate::commands::CliCommand;
 use crate::term::print_style_message;
+use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Delete remote branch
@@ -32,7 +33,8 @@ pub(crate) struct DelRemoteBranchCommand {
 
 impl CliCommand for DelRemoteBranchCommand {
     async fn exec(self) -> MgitResult<()> {
-        let msg = ops::del_remote_branch(self.into()).await?;
+        let progress = MultiProgress::default();
+        let msg = ops::del_remote_branch(self.into(), progress).await?;
         print_style_message(&msg);
         Ok(())
     }

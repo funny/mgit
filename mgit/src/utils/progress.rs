@@ -41,4 +41,9 @@ pub trait Progress: Send + Sync + Clone {
 
     /// repo error message
     fn on_repo_error(&self, repo_info: &RepoInfo, message: StyleMessage);
+
+    /// operation-level display message (banners, section headers, per-item results)
+    /// that is not tied to a specific repo's spinner state. Default no-op so
+    /// implementations that don't care (e.g. tests) can ignore it.
+    fn on_message(&self, _message: StyleMessage) {}
 }

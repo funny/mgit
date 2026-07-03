@@ -336,12 +336,13 @@ impl RepoManager {
         }
 
         let send = self.event_tx.clone();
+        let progress = self.progress(run_id, CommandType::NewBranch, &session.project_path);
         self.clear_status();
 
         std::thread::spawn(move || {
             let started_at = Instant::now();
             info!(run_id, "ops_new_branch_started");
-            let result = crate::utils::runtime::block_on(ops::new_remote_branch(options));
+            let result = crate::utils::runtime::block_on(ops::new_remote_branch(options, progress));
             match result {
                 Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_new_branch_ok"),
                 Err(e) => error!(run_id, error = %e, "ops_new_branch_failed"),
@@ -362,12 +363,13 @@ impl RepoManager {
 
     fn exec_new_tag(&mut self, run_id: u64, options: ops::NewTagOptions) {
         let send = self.event_tx.clone();
+        let progress = self.progress(run_id, CommandType::NewTag, "");
         self.clear_status();
 
         std::thread::spawn(move || {
             let started_at = Instant::now();
             info!(run_id, "ops_new_tag_started");
-            let result = crate::utils::runtime::block_on(ops::new_tag(options));
+            let result = crate::utils::runtime::block_on(ops::new_tag(options, progress));
             match result {
                 Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_new_tag_ok"),
                 Err(e) => error!(run_id, error = %e, "ops_new_tag_failed"),
@@ -407,11 +409,12 @@ impl RepoManager {
 
                 let options = InitOptions::new(path.as_deref(), force);
                 let send = self.event_tx.clone();
+                let progress = self.progress(run_id, command_type, &session.project_path);
                 self.clear_status();
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_init_started");
-                    let result = crate::utils::runtime::block_on(ops::init_repo(options));
+                    let result = crate::utils::runtime::block_on(ops::init_repo(options, progress));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_init_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_init_failed"),
@@ -449,6 +452,7 @@ impl RepoManager {
                     ignore,
                 );
                 let send = self.event_tx.clone();
+                let progress = self.progress(run_id, command_type, &session.project_path);
 
                 session.push_recent_config();
                 self.clear_status();
@@ -456,7 +460,8 @@ impl RepoManager {
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_snapshot_started");
-                    let result = crate::utils::runtime::block_on(ops::snapshot_repo(options));
+                    let result =
+                        crate::utils::runtime::block_on(ops::snapshot_repo(options, progress));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_snapshot_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_snapshot_failed"),
@@ -639,13 +644,15 @@ impl RepoManager {
 
                 let options = CleanOptions::new(path.as_deref(), config_path.as_deref(), labels);
                 let send = self.event_tx.clone();
+                let progress = self.progress(run_id, command_type, &session.project_path);
 
                 self.reset_repo_state(StateType::Updating);
 
                 std::thread::spawn(move || {
                     let started_at = Instant::now();
                     info!(run_id, "ops_clean_started");
-                    let result = crate::utils::runtime::block_on(ops::clean_repo(options));
+                    let result =
+                        crate::utils::runtime::block_on(ops::clean_repo(options, progress));
                     match result {
                         Ok(msg) => info!(run_id, message = msg.to_plain_text(), "ops_clean_ok"),
                         Err(e) => error!(run_id, error = %e, "ops_clean_failed"),

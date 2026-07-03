@@ -51,7 +51,7 @@ pub async fn track(
     let config_path = &options.config_path;
     let ignore = options.ignore.as_ref();
 
-    tracing::info!("Track status:");
+    progress.on_message(StyleMessage::new().plain_text("Track status:"));
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         return Err(crate::error::MgitError::DirNotFound { path: path.clone() });

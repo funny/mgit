@@ -6,6 +6,7 @@ use mgit::ops::{self, NewTagOptions};
 
 use crate::commands::CliCommand;
 use crate::term::print_style_message;
+use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// New tag
@@ -32,7 +33,8 @@ pub(crate) struct NewTagCommand {
 
 impl CliCommand for NewTagCommand {
     async fn exec(self) -> MgitResult<()> {
-        let msg = ops::new_tag(self.into()).await?;
+        let progress = MultiProgress::default();
+        let msg = ops::new_tag(self.into(), progress).await?;
         print_style_message(&msg);
         Ok(())
     }

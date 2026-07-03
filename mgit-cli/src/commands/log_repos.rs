@@ -5,6 +5,7 @@ use mgit::error::MgitResult;
 use mgit::ops::{self, LogReposOptions};
 
 use crate::commands::CliCommand;
+use crate::term::progress::MultiProgress;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
 /// Log git repos
@@ -27,7 +28,8 @@ pub(crate) struct LogReposCommand {
 
 impl CliCommand for LogReposCommand {
     async fn exec(self) -> MgitResult<()> {
-        let repo_logs = ops::log_repos(self.into()).await?;
+        let progress = MultiProgress::default();
+        let repo_logs = ops::log_repos(self.into(), progress).await?;
 
         for repo_log in repo_logs {
             match repo_log {

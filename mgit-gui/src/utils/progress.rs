@@ -225,4 +225,13 @@ impl Progress for OpsMessageCollector {
         );
         self.on_repo_success(repo_info, message)
     }
+
+    fn on_message(&self, message: StyleMessage) {
+        info!(
+            run_id = self.run_id,
+            command = ?self.command_type,
+            message = message.to_plain_text(),
+            "ops_message"
+        );
+    }
 }

@@ -6,6 +6,7 @@ use crate::error::MgitResult;
 use crate::ops::snapshot_repo;
 use crate::ops::SnapshotOptions;
 use crate::utils::current_dir;
+use crate::utils::progress::Progress;
 use crate::utils::style_message::StyleMessage;
 
 pub struct InitOptions {
@@ -27,20 +28,23 @@ impl InitOptions {
 }
 
 #[must_use]
-pub async fn init_repo(options: InitOptions) -> MgitResult<StyleMessage> {
+pub async fn init_repo(options: InitOptions, progress: impl Progress) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let force = options.force;
     let snapshot_type = SnapshotType::Branch;
     let config_file = path.join(".gitrepos");
 
-    tracing::info!(message = %StyleMessage::ops_start("init", path).to_plain_text());
+    progress.on_message(StyleMessage::ops_start("init", path));
 
-    snapshot_repo(SnapshotOptions::new(
-        Some(path.to_path_buf()),
-        Some(config_file),
-        Some(force),
-        Some(snapshot_type),
-        None,
-    ))
+    snapshot_repo(
+        SnapshotOptions::new(
+            Some(path.to_path_buf()),
+            Some(config_file),
+            Some(force),
+            Some(snapshot_type),
+            None,
+        ),
+        progress,
+    )
     .await
 }

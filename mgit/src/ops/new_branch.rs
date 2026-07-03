@@ -5,6 +5,7 @@ use crate::error::MgitResult;
 use crate::git;
 use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
+use crate::utils::progress::Progress;
 use crate::utils::StyleMessage;
 
 pub struct NewBranchOptions {
@@ -42,7 +43,10 @@ impl NewBranchOptions {
 }
 
 #[must_use]
-pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMessage> {
+pub async fn new_remote_branch(
+    options: NewBranchOptions,
+    progress: impl Progress,
+) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
     let new_branch = options.new_branch;
@@ -50,7 +54,7 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
     let force = options.force;
     let mut ignore = options.ignore.unwrap_or_default();
 
-    tracing::info!("New remote branch:");
+    progress.on_message(StyleMessage::new().plain_text("New remote branch:"));
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
         return Err(crate::error::MgitError::DirNotFound { path: path.clone() });
@@ -88,10 +92,19 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
 
         // only support new branch from exist branch
         if repo_config.branch.is_none() {
+            let rel_path_display = Path::new(local).display_path();
+            progress.on_message(StyleMessage::new().plain_text(format!(
+                "{}: invalid branch in config file, skipped",
+                rel_path_display
+            )));
             continue;
         }
 
         if ignore.contains(local) {
+            let rel_path_display = Path::new(local).display_path();
+            progress.on_message(
+                StyleMessage::new().plain_text(format!("{}: ignored", rel_path_display)),
+            );
             continue;
         }
 
@@ -129,7 +142,7 @@ pub async fn new_remote_branch(options: NewBranchOptions) -> MgitResult<StyleMes
         let rel_path_display = Path::new(rel_path).display_path();
 
         let msg = StyleMessage::git_new_branch(rel_path_display, &new_branch);
-        tracing::info!(message = %msg.to_plain_text());
+        progress.on_message(msg);
     }
 
     if !errors.is_empty() {

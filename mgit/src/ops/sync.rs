@@ -231,7 +231,7 @@ pub async fn sync_repo(
     let depth = options.depth;
     let ignore = options.ignore.as_ref();
 
-    tracing::info!(message = %StyleMessage::ops_start("sync repos", path).to_plain_text());
+    progress.on_message(StyleMessage::ops_start("sync repos", path));
 
     let stash_mode = match (stash, hard) {
         (false, false) => StashMode::Normal,
@@ -258,14 +258,17 @@ pub async fn sync_repo(
     // remove unused repositories when use '--config' option
     // also if input_path not exists, skip this process
     if stash_mode == StashMode::Hard && path.is_dir() {
-        let res = clean_repo(CleanOptions::new(
-            Some(path.clone()),
-            Some(config_path.clone()),
-            options.labels.clone(),
-        ))
+        let res = clean_repo(
+            CleanOptions::new(
+                Some(path.clone()),
+                Some(config_path.clone()),
+                options.labels.clone(),
+            ),
+            progress.clone(),
+        )
         .await?;
 
-        tracing::info!(message = %res.to_plain_text());
+        progress.on_message(res);
     }
 
     // load .gitrepos
@@ -279,7 +282,8 @@ pub async fn sync_repo(
 
     // retain repos exclude ignore repositories
     let repos_map = repos_to_map_with_ignore(repo_configs, ignore, options.labels.as_ref());
-    tracing::info!("Repos count: {}", repos_map.len());
+    progress
+        .on_message(StyleMessage::new().plain_text(format!("Repos count: {}", repos_map.len())));
     progress.on_batch_start(repos_map.len());
 
     let semaphore = Arc::new(Semaphore::new(thread_count));

@@ -3,7 +3,9 @@ use mgit::ops;
 use mgit::ops::CleanOptions;
 use std::path::PathBuf;
 
-use crate::common::{create_test_dir, exec_cmd, failed_message, TomlBuilder, IMGUI_REPO};
+use crate::common::{
+    create_test_dir, exec_cmd, failed_message, TestProgress, TomlBuilder, IMGUI_REPO,
+};
 
 mod common;
 
@@ -94,7 +96,11 @@ async fn cli_clean1() -> MgitResult<()> {
 
     std::fs::write(&config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>, None)).await?;
+    ops::clean_repo(
+        CleanOptions::new(Some(path.clone()), None::<PathBuf>, None),
+        TestProgress,
+    )
+    .await?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -170,7 +176,11 @@ async fn cli_clean2() -> MgitResult<()> {
 
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
-    ops::clean_repo(CleanOptions::new(Some(path.clone()), None::<PathBuf>, None)).await?;
+    ops::clean_repo(
+        CleanOptions::new(Some(path.clone()), None::<PathBuf>, None),
+        TestProgress,
+    )
+    .await?;
 
     for rel_path in rel_paths {
         let dir = path.join(rel_path);
@@ -246,11 +256,10 @@ async fn cli_clean3() -> MgitResult<()> {
     std::fs::write(config_file, toml_string.trim()).expect(failed_message::WRITE_FILE);
 
     let config_path = &path.join(".gitrepos");
-    ops::clean_repo(CleanOptions::new(
-        Some(path.clone()),
-        Some(config_path),
-        None,
-    ))
+    ops::clean_repo(
+        CleanOptions::new(Some(path.clone()), Some(config_path), None),
+        TestProgress,
+    )
     .await?;
 
     for rel_path in rel_paths {

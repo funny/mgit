@@ -6,6 +6,7 @@ use mgit::ops::{self, SnapshotOptions, SnapshotType};
 
 use crate::commands::CliCommand;
 use crate::term::print_style_message;
+use crate::term::progress::MultiProgress;
 
 /// Snapshot git repos
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Default, Args)]
@@ -32,7 +33,8 @@ pub(crate) struct SnapshotCommand {
 
 impl CliCommand for SnapshotCommand {
     async fn exec(self) -> MgitResult<()> {
-        let msg = ops::snapshot_repo(self.into()).await?;
+        let progress = MultiProgress::default();
+        let msg = ops::snapshot_repo(self.into(), progress).await?;
         print_style_message(&msg);
         Ok(())
     }

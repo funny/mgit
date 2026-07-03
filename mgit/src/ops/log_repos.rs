@@ -11,6 +11,7 @@ use crate::config::MgitConfig;
 use crate::error::{MgitError, MgitResult};
 use crate::git::log_current;
 use crate::utils::path::PathExtension;
+use crate::utils::progress::Progress;
 use crate::utils::{current_dir, label, StyleMessage};
 
 pub struct LogReposOptions {
@@ -93,10 +94,13 @@ impl Display for RepoLog {
 }
 
 #[must_use]
-pub async fn log_repos(options: LogReposOptions) -> MgitResult<Vec<MgitResult<RepoLog>>> {
+pub async fn log_repos(
+    options: LogReposOptions,
+    progress: impl Progress,
+) -> MgitResult<Vec<MgitResult<RepoLog>>> {
     let (path, mgit_config, thread_count, labels) = options.validate()?;
 
-    tracing::info!(message = %StyleMessage::ops_start("log repos", &path).to_plain_text());
+    progress.on_message(StyleMessage::ops_start("log repos", &path));
 
     let mut repo_configs = mgit_config.repos.unwrap_or_default();
 

@@ -1,11 +1,13 @@
-﻿use mgit::error::MgitResult;
+use mgit::error::MgitResult;
 use mgit::ops;
 use mgit::ops::{InitOptions, SnapshotOptions, SnapshotType};
 use mgit::utils::cmd::retry;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::common::{create_test_dir, exec_cmd, failed_message, TomlBuilder, CSBOOKS_REPO};
+use crate::common::{
+    create_test_dir, exec_cmd, failed_message, TestProgress, TomlBuilder, CSBOOKS_REPO,
+};
 
 mod common;
 
@@ -36,7 +38,7 @@ async fn cli_init_simple() -> MgitResult<()> {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), None)).await?;
+    ops::init_repo(InitOptions::new(Some(path.clone()), None), TestProgress).await?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -70,7 +72,11 @@ async fn cli_init_force1() -> MgitResult<()> {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), Some(true))).await?;
+    ops::init_repo(
+        InitOptions::new(Some(path.clone()), Some(true)),
+        TestProgress,
+    )
+    .await?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -112,7 +118,7 @@ async fn cli_init_force2() -> MgitResult<()> {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::init_repo(InitOptions::new(Some(path.clone()), None)).await?;
+    ops::init_repo(InitOptions::new(Some(path.clone()), None), TestProgress).await?;
 
     // get content from .gitrepos
     let real_result = std::fs::read_to_string(input_path + "/.gitrepos").unwrap();
@@ -171,13 +177,10 @@ async fn cli_snapshot_simple() -> MgitResult<()> {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::snapshot_repo(SnapshotOptions::new(
-        Some(path.clone()),
-        None::<PathBuf>,
-        None,
-        None,
-        None,
-    ))
+    ops::snapshot_repo(
+        SnapshotOptions::new(Some(path.clone()), None::<PathBuf>, None, None, None),
+        TestProgress,
+    )
     .await?;
 
     // get content from .gitrepos
@@ -220,13 +223,16 @@ async fn cli_snapshot_branch() -> MgitResult<()> {
 
     let input_path = path.clone().into_os_string().into_string().unwrap();
     // execute cli init function with path
-    ops::snapshot_repo(SnapshotOptions::new(
-        Some(path.clone()),
-        None::<PathBuf>,
-        None,
-        Some(SnapshotType::Branch),
-        None,
-    ))
+    ops::snapshot_repo(
+        SnapshotOptions::new(
+            Some(path.clone()),
+            None::<PathBuf>,
+            None,
+            Some(SnapshotType::Branch),
+            None,
+        ),
+        TestProgress,
+    )
     .await?;
 
     // get content from .gitrepos
@@ -259,13 +265,16 @@ async fn cli_snapshot_force() -> MgitResult<()> {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    ops::snapshot_repo(SnapshotOptions::new(
-        Some(path.clone()),
-        Some(config_file.clone()),
-        Some(true),
-        None,
-        None,
-    ))
+    ops::snapshot_repo(
+        SnapshotOptions::new(
+            Some(path.clone()),
+            Some(config_file.clone()),
+            Some(true),
+            None,
+            None,
+        ),
+        TestProgress,
+    )
     .await?;
 
     // get content from .gitrepos
@@ -345,18 +354,21 @@ async fn cli_snapshot_ignore() -> MgitResult<()> {
     let input_path = path.clone().into_os_string().into_string().unwrap();
     let config_file = input_path.clone() + "/.gitrepos";
     // execute cli init function with path
-    ops::snapshot_repo(SnapshotOptions::new(
-        Some(path.clone()),
-        Some(config_file.clone()),
-        Some(true),
-        None,
-        Some(vec![
-            ".".to_string(),
-            "foobar-1/foobar-1-2".to_string(),
-            "foobar-2".to_string(),
-            "foobar-2/foobar-2-2".to_string(),
-        ]),
-    ))
+    ops::snapshot_repo(
+        SnapshotOptions::new(
+            Some(path.clone()),
+            Some(config_file.clone()),
+            Some(true),
+            None,
+            Some(vec![
+                ".".to_string(),
+                "foobar-1/foobar-1-2".to_string(),
+                "foobar-2".to_string(),
+                "foobar-2/foobar-2-2".to_string(),
+            ]),
+        ),
+        TestProgress,
+    )
     .await?;
 
     // get content from .gitrepos

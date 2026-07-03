@@ -11,6 +11,7 @@ use crate::git;
 
 use crate::utils::current_dir;
 use crate::utils::path::PathExtension;
+use crate::utils::progress::Progress;
 use crate::utils::style_message::StyleMessage;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -51,14 +52,17 @@ impl SnapshotOptions {
 }
 
 #[must_use]
-pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage> {
+pub async fn snapshot_repo(
+    options: SnapshotOptions,
+    progress: impl Progress,
+) -> MgitResult<StyleMessage> {
     let path = &options.path;
     let config_path = &options.config_path;
     let force = options.force;
     let snapshot_type = &options.snapshot_type;
     let ignore = options.ignore.clone(); // Clone for closure
 
-    tracing::info!(message = %StyleMessage::ops_start("take snapshot", path).to_plain_text());
+    progress.on_message(StyleMessage::ops_start("take snapshot", path));
 
     // if directory doesn't exist, finsh clean
     if !path.is_dir() {
@@ -86,7 +90,7 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
         })?
         .compile_matcher();
 
-    tracing::info!("search and add git repos:");
+    progress.on_message(StyleMessage::new().plain_text("search and add git repos:"));
 
     let input_path = path.to_owned();
 
@@ -188,7 +192,7 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
             labels: None,
         };
         final_repos.push(repo_config);
-        tracing::info!("  + {}", norm_str);
+        progress.on_message(StyleMessage::new().plain_text(format!("  + {}", norm_str)));
     }
 
     final_repos.sort_by(|a, b| {
@@ -201,11 +205,10 @@ pub async fn snapshot_repo(options: SnapshotOptions) -> MgitResult<StyleMessage>
 
     let repo_count = final_repos.len();
     mgit_config.repos = Some(final_repos);
-    tracing::info!(
+    progress.on_message(StyleMessage::new().plain_text(format!(
         "{} repos are added, {} files are scanned.",
-        repo_count,
-        file_count
-    );
+        repo_count, file_count
+    )));
 
     use crate::config::serialize_config;
     let toml_string = serialize_config(&mgit_config);
