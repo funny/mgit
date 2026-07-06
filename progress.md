@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.2 · 分支：issues/116-self-update
+## 当前版本：2.0.3-beta.1 · 分支：issues/116-self-update
 
 ---
 
@@ -25,6 +25,8 @@
 
 | 完成时间 | 任务 |
 |----------|------|
+| 2026-07-06 | mgit upgrade 新增 --pre 支持预发布版本、--target-version 指定目标版本 |
+| 2026-07-06 | 提取 upgrade 公共逻辑到 mgit 库，GUI Help 菜单新增 Check for Updates |
 | 2026-07-06 | 实现 mgit upgrade 自升级命令（87aa764）：从 GitHub Releases 下载匹配本机 target 的资产并原地替换，支持 --force |
 | 2026-03-17 | v2 重构完成（7015e15）：workspace 重组、async tokio、egui 0.33 |
 | 2026-03-17 | 全局 Tokio Runtime 单例（fc18a0a） |
