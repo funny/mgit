@@ -293,31 +293,32 @@ impl GuiApp {
                 let tx = self.app_context.event_tx.clone();
                 std::thread::spawn(move || {
                     let result =
-                        crate::utils::runtime::block_on(upgrade_check::check_latest_release(
+                        crate::utils::runtime::block_on(upgrade_check::latest_tag(
                             "yhx0516/mgit",
-                            false,
                         ));
                     match result {
-                        Ok(latest) => {
+                        Ok(tag) => {
                             let current =
                                 Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-                            if latest.version > current {
-                                let asset = find_gui_installer(&latest.assets);
-                                tx.send(Event::Input(InputEvent::CheckUpdateResult {
-                                    latest_version: latest.version.to_string(),
-                                    asset_url: asset
-                                        .as_ref()
-                                        .map(|a| a.download_url.clone()),
-                                    asset_name: asset.map(|a| a.name.clone()),
-                                }))
-                                .ok();
-                            } else {
-                                tx.send(Event::Input(InputEvent::CheckUpdateResult {
-                                    latest_version: latest.version.to_string(),
-                                    asset_url: None,
-                                    asset_name: None,
-                                }))
-                                .ok();
+                            match Version::parse(&tag) {
+                                Ok(latest_ver) if latest_ver > current => {
+                                    let (asset_name, asset_url) =
+                                        gui_installer_url(&tag);
+                                    tx.send(Event::Input(InputEvent::CheckUpdateResult {
+                                        latest_version: tag,
+                                        asset_url: Some(asset_url),
+                                        asset_name: Some(asset_name),
+                                    }))
+                                    .ok();
+                                }
+                                _ => {
+                                    tx.send(Event::Input(InputEvent::CheckUpdateResult {
+                                        latest_version: tag,
+                                        asset_url: None,
+                                        asset_name: None,
+                                    }))
+                                    .ok();
+                                }
                             }
                         }
                         Err(e) => {
@@ -610,19 +611,19 @@ impl GuiApp {
 
 // --- Upgrade helpers ---
 
-/// Find the GUI installer asset matching the current platform.
-fn find_gui_installer(assets: &[upgrade_check::ReleaseAsset]) -> Option<&upgrade_check::ReleaseAsset> {
-    if cfg!(target_os = "macos") {
-        assets
-            .iter()
-            .find(|a| a.name.ends_with("-universal.dmg"))
+/// Construct the platform-appropriate GUI installer asset name and download URL from a tag.
+fn gui_installer_url(tag: &str) -> (String, String) {
+    let asset = if cfg!(target_os = "macos") {
+        format!("mgit-{tag}-universal.dmg")
     } else if cfg!(target_os = "windows") {
-        assets.iter().find(|a| a.name.ends_with("-setup.exe"))
+        format!("mgit-{tag}-setup.exe")
     } else if cfg!(target_os = "linux") {
-        assets.iter().find(|a| a.name.ends_with(".deb"))
+        format!("mgit_{tag}_amd64.deb")
     } else {
-        None
-    }
+        String::new()
+    };
+    let url = format!("https://github.com/yhx0516/mgit/releases/download/{tag}/{asset}");
+    (asset, url)
 }
 
 /// Open a file with the system default handler (installer / DMG / etc.).

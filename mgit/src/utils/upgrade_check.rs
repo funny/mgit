@@ -1,7 +1,7 @@
 //! Common version-check logic shared between CLI (`mgit upgrade`) and GUI (Check for Updates).
 //!
-//! Queries the GitHub Releases API for the latest bare `x.y.z` release, filtering out
-//! pre-release/beta tags by default.
+//! The default path (`latest_tag`) uses an HTTP redirect trick to avoid GitHub API rate limits.
+//! Only the `--pre` path hits the API (rare, acceptable trade-off).
 
 use std::time::Duration;
 
@@ -9,6 +9,8 @@ use semver::Version;
 use serde::Deserialize;
 
 use crate::error::{MgitError, MgitResult};
+
+// --- internal API types (used by the `--pre` and specific-tag paths) ---
 
 #[derive(Debug, Deserialize)]
 struct GhRelease {
@@ -37,10 +39,42 @@ pub struct LatestRelease {
     pub assets: Vec<ReleaseAsset>,
 }
 
+// --- public API ---
+
+/// Get the latest release tag without calling the REST API.
+///
+/// Follows the `releases/latest` web-page 302 redirect and extracts the
+/// tag from the final URL.  No rate-limit concerns.
+pub async fn latest_tag(repo: &str) -> MgitResult<String> {
+    let client = build_client()?;
+    let url = format!("https://github.com/{repo}/releases/latest");
+
+    let resp = client
+        .head(&url)
+        .send()
+        .await
+        .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })?;
+
+    let final_url = resp.url().to_string();
+    let tag = final_url
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
+        .to_string();
+
+    if tag.is_empty() || tag == "releases" {
+        return Err(MgitError::UpgradeNoRelease);
+    }
+    Ok(tag)
+}
+
 /// Query GitHub Releases for `repo` ("owner/repo") and return the latest semver release.
 ///
 /// * `allow_pre` — when `true`, pre-release tags (beta, rc, …) are included in the
 ///   candidate pool; when `false` only bare `x.y.z` releases are considered.
+///
+/// **Note:** this uses the GitHub REST API and is subject to rate limits.
+/// Prefer `latest_tag()` unless you specifically need pre-release filtering.
 pub async fn check_latest_release(repo: &str, allow_pre: bool) -> MgitResult<LatestRelease> {
     let client = build_client()?;
     let url = format!("https://api.github.com/repos/{repo}/releases?per_page=100");
@@ -102,6 +136,8 @@ pub async fn check_latest_release(repo: &str, allow_pre: bool) -> MgitResult<Lat
 
 /// Fetch a specific release by its tag name (e.g. "2.1.0" or "2.1.0-beta.1").
 /// Returns `UpgradeNoRelease` if the tag does not exist (GitHub 404).
+///
+/// Uses the GitHub REST API — one-off request, rate-limit risk is low.
 pub async fn fetch_release_by_tag(repo: &str, tag: &str) -> MgitResult<LatestRelease> {
     let client = build_client()?;
     let url = format!("https://api.github.com/repos/{repo}/releases/tags/{tag}");

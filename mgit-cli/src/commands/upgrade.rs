@@ -9,7 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use semver::Version;
 
 use mgit::error::{MgitError, MgitResult};
-use mgit::utils::upgrade_check::{self, ReleaseAsset};
+use mgit::utils::upgrade_check;
 
 use crate::commands::CliCommand;
 
@@ -44,32 +44,50 @@ impl CliCommand for UpgradeCommand {
     async fn exec(self) -> MgitResult<()> {
         let target = pick_target()?;
 
-        let latest = if let Some(ref requested) = self.target_version {
-            // Specific version requested — fetch exact tag.
-            println!("fetching release tag {requested} from github.com/{} ...", UPGRADE_REPO);
-            upgrade_check::fetch_release_by_tag(UPGRADE_REPO, requested).await?
-        } else {
-            // No version specified — find the latest.
+        let (version, tag) = if let Some(ref requested) = self.target_version {
+            // Specific version requested — fetch exact tag (API, one-off).
+            println!("fetching release tag {requested} from github.com/{UPGRADE_REPO} ...");
+            let latest = upgrade_check::fetch_release_by_tag(UPGRADE_REPO, requested).await?;
+            (latest.version, latest.tag_name)
+        } else if self.pre {
+            // --pre: latest including prereleases (API).
             let current_ver = Version::parse(CURRENT_VERSION)
                 .map_err(|e| MgitError::UpgradeInvalidTag { tag: format!("{CURRENT_VERSION} ({e})") })?;
             println!("current version: {current_ver}");
-
-            println!("fetching latest release from github.com/{} ...", UPGRADE_REPO);
-            let latest = upgrade_check::check_latest_release(UPGRADE_REPO, self.pre).await?;
+            println!("fetching latest release (including pre) from github.com/{UPGRADE_REPO} ...");
+            let latest = upgrade_check::check_latest_release(UPGRADE_REPO, true).await?;
             println!("latest version:  {}", latest.version);
-
             if !self.force && latest.version <= current_ver {
                 println!("already up to date.");
                 return Ok(());
             }
-            latest
+            (latest.version, latest.tag_name)
+        } else {
+            // Default: latest stable via 302 redirect (no API, no rate limit).
+            let current_ver = Version::parse(CURRENT_VERSION)
+                .map_err(|e| MgitError::UpgradeInvalidTag { tag: format!("{CURRENT_VERSION} ({e})") })?;
+            println!("current version: {current_ver}");
+            println!("fetching latest release from github.com/{UPGRADE_REPO} ...");
+            let tag = upgrade_check::latest_tag(UPGRADE_REPO).await?;
+            let latest_ver = Version::parse(&tag)
+                .map_err(|e| MgitError::UpgradeInvalidTag { tag: format!("{tag} ({e})") })?;
+            println!("latest version:  {latest_ver}");
+            if !self.force && latest_ver <= current_ver {
+                println!("already up to date.");
+                return Ok(());
+            }
+            (latest_ver, tag)
         };
 
-        let asset = pick_asset(&latest.assets, &latest.version, target)?;
-        println!("downloading {} ...", asset.name);
+        // Construct download URL directly from tag + target (deterministic naming).
+        let ext = if cfg!(target_os = "windows") { "zip" } else { "tar.gz" };
+        let asset_name = format!("mgit-cli-{tag}-{target}.{ext}");
+        let download_url =
+            format!("https://github.com/{UPGRADE_REPO}/releases/download/{tag}/{asset_name}");
 
+        println!("downloading {asset_name} ...");
         let client = build_client()?;
-        let bytes = download_with_progress(&client, &asset.download_url).await?;
+        let bytes = download_with_progress(&client, &download_url).await?;
         let binary = extract_binary(&bytes)?;
 
         let exe = std::env::current_exe()
@@ -77,7 +95,7 @@ impl CliCommand for UpgradeCommand {
         println!("replacing {} ...", exe.display());
         replace_self(&exe, &binary)?;
 
-        println!("upgraded to {}.", latest.version);
+        println!("upgraded to {version}.");
         Ok(())
     }
 }
@@ -103,15 +121,6 @@ fn build_client() -> MgitResult<reqwest::Client> {
         .timeout(Duration::from_secs(60))
         .build()
         .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })
-}
-
-fn pick_asset<'a>(assets: &'a [ReleaseAsset], version: &Version, target: &str) -> MgitResult<&'a ReleaseAsset> {
-    let ext = if cfg!(target_os = "windows") { "zip" } else { "tar.gz" };
-    let expected = format!("mgit-cli-{version}-{target}.{ext}");
-    assets
-        .iter()
-        .find(|a| a.name == expected)
-        .ok_or_else(|| MgitError::UpgradeAssetNotFound { target: target.to_string() })
 }
 
 async fn download_with_progress(client: &reqwest::Client, url: &str) -> MgitResult<Vec<u8>> {
