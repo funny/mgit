@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.3-beta.1 · 分支：issues/116-self-update
+## 当前版本：2.0.3-beta.2 · 分支：issues/116-self-update
 
 ---
 
