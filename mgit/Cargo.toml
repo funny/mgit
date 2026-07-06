@@ -24,6 +24,9 @@ console.workspace = true
 ansi_term.workspace = true
 regex.workspace = true
 home.workspace = true
+reqwest.workspace = true
+semver.workspace = true
+futures-util.workspace = true
 
 # Internal
 

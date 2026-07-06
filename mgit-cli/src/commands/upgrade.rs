@@ -7,9 +7,9 @@ use clap::Args;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use semver::Version;
-use serde::Deserialize;
 
 use mgit::error::{MgitError, MgitResult};
+use mgit::utils::upgrade_check::{self, ReleaseAsset};
 
 use crate::commands::CliCommand;
 
@@ -30,18 +30,6 @@ pub(crate) struct UpgradeCommand {
     pub pre: bool,
 }
 
-#[derive(Debug, Deserialize)]
-struct Release {
-    tag_name: String,
-    assets: Vec<Asset>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Asset {
-    name: String,
-    browser_download_url: String,
-}
-
 impl CliCommand for UpgradeCommand {
     async fn exec(self) -> MgitResult<()> {
         let current_ver = Version::parse(CURRENT_VERSION)
@@ -49,21 +37,21 @@ impl CliCommand for UpgradeCommand {
         println!("current version: {current_ver}");
 
         let target = pick_target()?;
-        let client = build_client()?;
 
         println!("fetching latest release from github.com/{} ...", UPGRADE_REPO);
-        let (latest_ver, release) = fetch_latest_release(&client, self.pre).await?;
-        println!("latest version:  {latest_ver}");
+        let latest = upgrade_check::check_latest_release(UPGRADE_REPO, self.pre).await?;
+        println!("latest version:  {}", latest.version);
 
-        if !self.force && latest_ver <= current_ver {
+        if !self.force && latest.version <= current_ver {
             println!("already up to date.");
             return Ok(());
         }
 
-        let asset = pick_asset(&release, &latest_ver, target)?;
+        let asset = pick_asset(&latest.assets, &latest.version, target)?;
         println!("downloading {} ...", asset.name);
 
-        let bytes = download_with_progress(&client, &asset.browser_download_url).await?;
+        let client = build_client()?;
+        let bytes = download_with_progress(&client, &asset.download_url).await?;
         let binary = extract_binary(&bytes)?;
 
         let exe = std::env::current_exe()
@@ -71,7 +59,7 @@ impl CliCommand for UpgradeCommand {
         println!("replacing {} ...", exe.display());
         replace_self(&exe, &binary)?;
 
-        println!("upgraded to {latest_ver}.");
+        println!("upgraded to {}.", latest.version);
         Ok(())
     }
 }
@@ -99,56 +87,10 @@ fn build_client() -> MgitResult<reqwest::Client> {
         .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })
 }
 
-async fn fetch_latest_release(client: &reqwest::Client, allow_pre: bool) -> MgitResult<(Version, Release)> {
-    let url = format!("https://api.github.com/repos/{}/releases?per_page=100", UPGRADE_REPO);
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })?;
-
-    if !resp.status().is_success() {
-        let status = resp.status().as_u16();
-        if status == 403 {
-            if let Some(remaining) = resp.headers().get("x-ratelimit-remaining") {
-                if remaining == "0" {
-                    return Err(MgitError::UpgradeRateLimited);
-                }
-            }
-        }
-        let body = resp.text().await.unwrap_or_default();
-        return Err(MgitError::UpgradeHttpStatus { status, body });
-    }
-
-    let releases: Vec<Release> = resp
-        .json()
-        .await
-        .map_err(|e| MgitError::UpgradeNetworkError { message: format!("decode: {e}") })?;
-
-    let mut candidates: Vec<(Version, Release)> = releases
-        .into_iter()
-        .filter_map(|r| {
-            let v = Version::parse(&r.tag_name).ok()?;
-            if !allow_pre && (!v.pre.is_empty() || !v.build.is_empty()) {
-                None
-            } else {
-                Some((v, r))
-            }
-        })
-        .collect();
-
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
-    candidates
-        .into_iter()
-        .next()
-        .ok_or(MgitError::UpgradeNoRelease)
-}
-
-fn pick_asset<'a>(release: &'a Release, version: &Version, target: &str) -> MgitResult<&'a Asset> {
+fn pick_asset<'a>(assets: &'a [ReleaseAsset], version: &Version, target: &str) -> MgitResult<&'a ReleaseAsset> {
     let ext = if cfg!(target_os = "windows") { "zip" } else { "tar.gz" };
     let expected = format!("mgit-cli-{version}-{target}.{ext}");
-    release
-        .assets
+    assets
         .iter()
         .find(|a| a.name == expected)
         .ok_or_else(|| MgitError::UpgradeAssetNotFound { target: target.to_string() })

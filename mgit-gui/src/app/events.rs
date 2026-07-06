@@ -1,4 +1,6 @@
-﻿use mgit::ops::{NewBranchOptions, NewTagOptions};
+﻿use std::path::PathBuf;
+
+use mgit::ops::{NewBranchOptions, NewTagOptions};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CommandType {
@@ -30,6 +32,34 @@ pub(crate) enum Event {
 pub(crate) enum InputEvent {
     ProjectPathChanged(String),
     ConfigFileChanged(String),
+    /// User clicked "Check for Updates" in the Help menu.
+    CheckForUpdates,
+    /// User dismissed the upgrade window (OK / Later / close).
+    DismissUpgrade,
+    /// Background thread finished checking for latest release.
+    CheckUpdateResult {
+        latest_version: String,
+        /// Present only if a platform-appropriate installer asset was found.
+        asset_url: Option<String>,
+        asset_name: Option<String>,
+    },
+    /// User clicked Download — start downloading the installer.
+    StartDownload {
+        url: String,
+        file_name: String,
+    },
+    /// Background thread finished downloading the installer.
+    DownloadComplete {
+        path: PathBuf,
+    },
+    /// User clicked Install — open the downloaded installer.
+    InstallDownload {
+        path: PathBuf,
+    },
+    /// Background error (network / rate-limit / etc.).
+    UpgradeError {
+        message: String,
+    },
 }
 
 #[derive(Debug)]

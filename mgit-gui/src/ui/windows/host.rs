@@ -1,8 +1,9 @@
 ﻿use eframe::egui;
 use tracing::info;
 
-use crate::app::events::{Action, Event};
+use crate::app::events::{Action, Event, InputEvent};
 use crate::app::GuiApp;
+use crate::ui::windows::{UpgradeAction, UpgradeState};
 
 impl GuiApp {
     pub(crate) fn handle_windows(&mut self, ctx: &egui::Context, eframe: &mut eframe::Frame) {
@@ -46,6 +47,39 @@ impl GuiApp {
         if out.exit_app {
             info!("ui_window_exit_app");
             self.enqueue_event(Event::Action(Action::ExitApp));
+        }
+
+        // Upgrade window: translate button clicks into events.
+        if let Some(action) = self.windows.upgrade_action.take() {
+            match action {
+                UpgradeAction::Close => {
+                    self.enqueue_event(Event::Input(InputEvent::DismissUpgrade));
+                }
+                UpgradeAction::Download => {
+                    if let UpgradeState::UpdateAvailable {
+                        asset_url,
+                        asset_name,
+                        ..
+                    } = &self.windows.upgrade.state
+                    {
+                        self.enqueue_event(Event::Input(InputEvent::StartDownload {
+                            url: asset_url.clone(),
+                            file_name: asset_name.clone(),
+                        }));
+                    }
+                }
+                UpgradeAction::Install => {
+                    if let UpgradeState::ReadyToInstall { path } = &self.windows.upgrade.state
+                    {
+                        self.enqueue_event(Event::Input(InputEvent::InstallDownload {
+                            path: path.clone(),
+                        }));
+                    }
+                }
+                UpgradeAction::Retry => {
+                    self.enqueue_event(Event::Input(InputEvent::CheckForUpdates));
+                }
+            }
         }
     }
 

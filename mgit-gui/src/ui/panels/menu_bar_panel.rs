@@ -184,6 +184,17 @@ impl MenuBarPanel {
                     ui.close();
                 }
 
+                if ui.button("  Check for Updates").clicked() {
+                    info!("ui_click_menu_check_updates");
+                    app.close_all_windows();
+                    app.windows.upgrade_open = true;
+                    app.queued_events
+                        .push_back(crate::app::events::Event::Input(
+                            crate::app::events::InputEvent::CheckForUpdates,
+                        ));
+                    ui.close();
+                }
+
                 if ui.button("  About").clicked() {
                     info!("ui_click_menu_about_open");
                     app.close_all_windows();

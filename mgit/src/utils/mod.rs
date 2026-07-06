@@ -5,6 +5,7 @@ pub mod process_guard;
 pub mod progress;
 pub mod shell;
 pub mod style_message;
+pub mod upgrade_check;
 
 #[cfg(test)]
 mod tests;

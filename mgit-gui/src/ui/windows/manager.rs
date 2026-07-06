@@ -5,7 +5,7 @@ use crate::app::events::OpsCommand;
 
 use super::{
     AboutWindow, Dialog, DialogBase, ErrorWindow, NewBranchWindow, NewTagWindow, OptionsWindow,
-    WindowBase,
+    UpgradeAction, UpgradeWindow, WindowBase,
 };
 
 #[derive(Default)]
@@ -42,6 +42,10 @@ pub(crate) struct WindowManager {
 
     pub(crate) sync_hard_dialog: Dialog,
     pub(crate) sync_hard_dialog_open: bool,
+
+    pub(crate) upgrade: UpgradeWindow,
+    pub(crate) upgrade_open: bool,
+    pub(crate) upgrade_action: Option<UpgradeAction>,
 }
 
 impl Default for WindowManager {
@@ -66,6 +70,9 @@ impl Default for WindowManager {
                     .to_string(),
             ),
             sync_hard_dialog_open: false,
+            upgrade: UpgradeWindow::default(),
+            upgrade_open: false,
+            upgrade_action: None,
         }
     }
 }
@@ -82,6 +89,7 @@ impl WindowManager {
         self.sync_hard_dialog_open = false;
         self.new_branch_open = false;
         self.new_tag_open = false;
+        self.upgrade_open = false;
     }
 
     pub(crate) fn show(
@@ -150,6 +158,10 @@ impl WindowManager {
             out.ops_commands
                 .push(OpsCommand::CreateTag(self.new_tag.get_options()));
         }
+
+        // Upgrade window: capture button clicks as actions.
+        self.upgrade.show(ctx, eframe, &mut self.upgrade_open);
+        self.upgrade_action = self.upgrade.action.take();
 
         out
     }
