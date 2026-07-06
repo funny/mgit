@@ -24,6 +24,10 @@ pub(crate) struct UpgradeCommand {
     /// Force re-installation even if already on the latest version
     #[arg(long)]
     pub force: bool,
+
+    /// Include pre-release versions (beta, rc, etc.)
+    #[arg(long)]
+    pub pre: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +52,7 @@ impl CliCommand for UpgradeCommand {
         let client = build_client()?;
 
         println!("fetching latest release from github.com/{} ...", UPGRADE_REPO);
-        let (latest_ver, release) = fetch_latest_release(&client).await?;
+        let (latest_ver, release) = fetch_latest_release(&client, self.pre).await?;
         println!("latest version:  {latest_ver}");
 
         if !self.force && latest_ver <= current_ver {
@@ -95,7 +99,7 @@ fn build_client() -> MgitResult<reqwest::Client> {
         .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })
 }
 
-async fn fetch_latest_release(client: &reqwest::Client) -> MgitResult<(Version, Release)> {
+async fn fetch_latest_release(client: &reqwest::Client, allow_pre: bool) -> MgitResult<(Version, Release)> {
     let url = format!("https://api.github.com/repos/{}/releases?per_page=100", UPGRADE_REPO);
     let resp = client
         .get(&url)
@@ -125,7 +129,7 @@ async fn fetch_latest_release(client: &reqwest::Client) -> MgitResult<(Version, 
         .into_iter()
         .filter_map(|r| {
             let v = Version::parse(&r.tag_name).ok()?;
-            if !v.pre.is_empty() || !v.build.is_empty() {
+            if !allow_pre && (!v.pre.is_empty() || !v.build.is_empty()) {
                 None
             } else {
                 Some((v, r))
