@@ -56,6 +56,7 @@ pub fn open_repo_in_fork(repo_path: &str) {
 #[derive(Debug)]
 pub struct GitVersionInfo {
     pub version_desc: String,
+    #[allow(dead_code)]
     pub version: Option<String>,
 }
 
