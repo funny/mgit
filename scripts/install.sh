@@ -5,19 +5,19 @@ REPO="yhx0516/mgit"
 UNAME_S=$(uname -s | tr '[:upper:]' '[:lower:]')
 UNAME_M=$(uname -m)
 
-# Pick the platform-specific installer asset pattern
+# --- platform detection + asset name template ---
 case "${UNAME_S}-${UNAME_M}" in
     darwin-*)
-        PATTERN="universal.dmg"
+        ASSET_NAME="mgit-__TAG__-universal.dmg"
         OPEN_CMD="open"
         ;;
     linux-x86_64|linux-aarch64)
-        PATTERN="_amd64.deb"
+        ASSET_NAME="mgit___TAG___amd64.deb"
         OPEN_CMD="xdg-open"
         ;;
     mingw*-x86_64|msys*-x86_64|cygwin*-x86_64)
-        PATTERN="setup.exe"
-        OPEN_CMD="start"
+        ASSET_NAME="mgit-__TAG__-setup.exe"
+        OPEN_CMD="cmd /c start"
         ;;
     *)
         echo "unsupported platform: ${UNAME_S}-${UNAME_M}" >&2
@@ -25,28 +25,20 @@ case "${UNAME_S}-${UNAME_M}" in
         ;;
 esac
 
-# Fetch the latest release and find a matching asset
+# --- fetch latest version (no API, follows web redirect to avoid rate limits) ---
 echo "checking latest release ..."
-RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")
+LATEST=$(curl -Ls -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest")
+LATEST=$(basename "${LATEST}")
 
-# Extract asset info with a lightweight grep+sed approach (no jq dependency)
-ASSET_NAME=$(echo "${RELEASE_JSON}" \
-    | grep -o '"name": *"[^"]*"' \
-    | sed -E 's/.*"([^"]+)".*/\1/' \
-    | grep "${PATTERN}" \
-    | head -1 || true)
-
-if [ -z "${ASSET_NAME}" ]; then
-    echo "no GUI installer found for ${PATTERN}" >&2
+if [ -z "${LATEST}" ] || [ "${LATEST}" = "releases" ]; then
+    echo "failed to determine latest version" >&2
     exit 1
 fi
 
-DOWNLOAD_URL=$(echo "${RELEASE_JSON}" \
-    | grep -o '"browser_download_url": *"[^"]*"' \
-    | grep "${ASSET_NAME}" \
-    | sed -E 's/.*"(https:[^"]+)".*/\1/' \
-    | head -1 || true)
+ASSET_NAME="${ASSET_NAME//__TAG__/${LATEST}}"
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${LATEST}/${ASSET_NAME}"
 
+# --- download ---
 DEST_DIR="${HOME}/.mgit/updates"
 mkdir -p "${DEST_DIR}"
 DEST_FILE="${DEST_DIR}/${ASSET_NAME}"
@@ -54,11 +46,8 @@ DEST_FILE="${DEST_DIR}/${ASSET_NAME}"
 echo "downloading ${ASSET_NAME} ..."
 curl -fSL -o "${DEST_FILE}" "${DOWNLOAD_URL}"
 
+# --- open installer ---
 echo "opening installer ..."
-case "${OPEN_CMD}" in
-    open)   open "${DEST_FILE}" ;;
-    xdg-open) xdg-open "${DEST_FILE}" ;;
-    start)  cmd /c start "" "${DEST_FILE}" ;;
-esac
+${OPEN_CMD} "${DEST_FILE}"
 
 echo "done. follow the installer prompts to complete installation."

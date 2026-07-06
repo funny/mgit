@@ -32,12 +32,12 @@ case "${OS}" in
         echo "unsupported platform: ${OS}-${ARCH}" >&2; exit 1 ;;
 esac
 
-# --- fetch latest version ---
-LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/' || true)
+# --- fetch latest version (no API, follows web redirect to avoid rate limits) ---
+LATEST=$(curl -Ls -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest")
+LATEST=$(basename "${LATEST}")
 
-if [ -z "${LATEST}" ]; then
-    echo "failed to determine latest version (rate limited or network error)" >&2
+if [ -z "${LATEST}" ] || [ "${LATEST}" = "releases" ]; then
+    echo "failed to determine latest version" >&2
     exit 1
 fi
 ASSET="mgit-cli-${LATEST}-${TARGET}.${EXT}"
