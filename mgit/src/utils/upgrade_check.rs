@@ -100,6 +100,48 @@ pub async fn check_latest_release(repo: &str, allow_pre: bool) -> MgitResult<Lat
         .ok_or(MgitError::UpgradeNoRelease)
 }
 
+/// Fetch a specific release by its tag name (e.g. "2.1.0" or "2.1.0-beta.1").
+/// Returns `UpgradeNoRelease` if the tag does not exist (GitHub 404).
+pub async fn fetch_release_by_tag(repo: &str, tag: &str) -> MgitResult<LatestRelease> {
+    let client = build_client()?;
+    let url = format!("https://api.github.com/repos/{repo}/releases/tags/{tag}");
+
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| MgitError::UpgradeNetworkError { message: e.to_string() })?;
+
+    if resp.status().as_u16() == 404 {
+        return Err(MgitError::UpgradeNoRelease);
+    }
+    if !resp.status().is_success() {
+        let status = resp.status().as_u16();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(MgitError::UpgradeHttpStatus { status, body });
+    }
+
+    let r: GhRelease = resp
+        .json()
+        .await
+        .map_err(|e| MgitError::UpgradeNetworkError { message: format!("decode: {e}") })?;
+
+    Ok(LatestRelease {
+        version: Version::parse(&r.tag_name).map_err(|e| {
+            MgitError::UpgradeInvalidTag { tag: format!("{} ({e})", r.tag_name) }
+        })?,
+        tag_name: r.tag_name,
+        assets: r
+            .assets
+            .into_iter()
+            .map(|a| ReleaseAsset {
+                name: a.name,
+                download_url: a.browser_download_url,
+            })
+            .collect(),
+    })
+}
+
 fn build_client() -> MgitResult<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent(concat!("mgit-upgrade/", env!("CARGO_PKG_VERSION")))

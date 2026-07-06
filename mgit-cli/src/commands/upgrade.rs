@@ -19,33 +19,51 @@ const UPGRADE_REPO: &str = "yhx0516/mgit";
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Default, Args)]
-/// Upgrade mgit CLI to the latest release
+/// Upgrade mgit CLI to the latest release, or to a specific version.
+///
+/// Examples:
+///   mgit upgrade             # latest stable
+///   mgit upgrade --pre       # latest including pre-release
+///   mgit upgrade 2.1.0       # specific version
+///   mgit upgrade 2.1.0-beta.1 --force
 pub(crate) struct UpgradeCommand {
-    /// Force re-installation even if already on the latest version
+    /// Target version (e.g. "2.1.0"). If omitted, the latest stable release is used.
+    #[arg(value_name = "VERSION")]
+    pub target_version: Option<String>,
+
+    /// Force re-installation even if already on the same version
     #[arg(long)]
     pub force: bool,
 
-    /// Include pre-release versions (beta, rc, etc.)
+    /// Include pre-release versions (beta, rc, etc.) when no version is specified
     #[arg(long)]
     pub pre: bool,
 }
 
 impl CliCommand for UpgradeCommand {
     async fn exec(self) -> MgitResult<()> {
-        let current_ver = Version::parse(CURRENT_VERSION)
-            .map_err(|e| MgitError::UpgradeInvalidTag { tag: format!("{CURRENT_VERSION} ({e})") })?;
-        println!("current version: {current_ver}");
-
         let target = pick_target()?;
 
-        println!("fetching latest release from github.com/{} ...", UPGRADE_REPO);
-        let latest = upgrade_check::check_latest_release(UPGRADE_REPO, self.pre).await?;
-        println!("latest version:  {}", latest.version);
+        let latest = if let Some(ref requested) = self.target_version {
+            // Specific version requested — fetch exact tag.
+            println!("fetching release tag {requested} from github.com/{} ...", UPGRADE_REPO);
+            upgrade_check::fetch_release_by_tag(UPGRADE_REPO, requested).await?
+        } else {
+            // No version specified — find the latest.
+            let current_ver = Version::parse(CURRENT_VERSION)
+                .map_err(|e| MgitError::UpgradeInvalidTag { tag: format!("{CURRENT_VERSION} ({e})") })?;
+            println!("current version: {current_ver}");
 
-        if !self.force && latest.version <= current_ver {
-            println!("already up to date.");
-            return Ok(());
-        }
+            println!("fetching latest release from github.com/{} ...", UPGRADE_REPO);
+            let latest = upgrade_check::check_latest_release(UPGRADE_REPO, self.pre).await?;
+            println!("latest version:  {}", latest.version);
+
+            if !self.force && latest.version <= current_ver {
+                println!("already up to date.");
+                return Ok(());
+            }
+            latest
+        };
 
         let asset = pick_asset(&latest.assets, &latest.version, target)?;
         println!("downloading {} ...", asset.name);
