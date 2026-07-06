@@ -17,7 +17,7 @@ case "${UNAME_S}-${UNAME_M}" in
         ;;
     mingw*-x86_64|msys*-x86_64|cygwin*-x86_64)
         ASSET_NAME="mgit-__TAG__-setup.exe"
-        OPEN_CMD="cmd /c start"
+        OPEN_CMD="cmd //c start \"\""
         ;;
     *)
         echo "unsupported platform: ${UNAME_S}-${UNAME_M}" >&2
