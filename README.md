@@ -242,16 +242,38 @@ Options
 ```bash
 sudo apt update
 sudo apt-get install -y \
-    gcc g++ \
-    cmake pkg-config \
-    fontconfig \
+    build-essential \
     libgtk-3-dev
 ```
 
 2. ##### 使用 cargo 构建
 
 ```bash
+# 构建 CLI
+cargo build -p mgit-cli [--release]
+
+# 构建 GUI
+cargo build -p mgit-gui [--release]
+
+# 构建全部
 cargo build [--release]
+```
+
+#### macOS
+
+1. ##### 安装依赖
+
+需安装 Xcode Command Line Tools（提供 C 编译器和系统头文件）：
+
+```bash
+xcode-select --install
+```
+
+2. ##### 使用 cargo 构建
+
+```bash
+cargo build -p mgit-cli [--release]
+cargo build -p mgit-gui [--release]
 ```
 
 ## 测试
@@ -276,31 +298,16 @@ tests/gitea-env/start_gitea.sh
 cargo test --features=use_gitea
 ```
 
-#### 3. 基准
-
-```bash
-time cargo test --features=use_gitea
-
-# cargo test  5.83s user 1.99s system 188% cpu 4.136 total
-```
-
 ### 使用常规测试
 
 #### 1. 环境准备
 
-`#` do nothing
+无需额外准备。
 
 #### 2. 运行测试
 
 ```bash
 cargo test
-```
-#### 3. 基准
-
-```bash
-time cargo test
-
-# cargo test  12.66s user 4.37s system 60% cpu 28.380 total
 ```
 
 ## 参考
