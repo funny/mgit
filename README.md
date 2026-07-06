@@ -15,6 +15,34 @@ mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能
 - 根据配置文件内容，清理文件夹下的无用仓库
 - 提供 cli 工具和 gui 工具
 
+## 安装
+
+### CLI
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/yhx0516/mgit/main/scripts/install-cli.sh | bash
+```
+
+脚本会自动检测平台、下载最新版 `mgit` CLI 并安装到 PATH（macOS/Linux → `/usr/local/bin`，Windows → `~/.mgit/bin`）。
+
+手动安装：从 [GitHub Releases](https://github.com/yhx0516/mgit/releases) 下载对应平台的 `mgit-cli-<ver>-<target>.{tar.gz,zip}`，解压后将 `mgit` 放入 `$PATH`。
+
+### 完整安装（CLI + GUI）
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/yhx0516/mgit/main/scripts/install.sh | bash
+```
+
+脚本自动检测平台、下载最新版安装器并启动（macOS 挂载 DMG，Linux 打开 deb，Windows 运行 setup.exe）。安装器会同时部署 CLI（`mgit`）和 GUI（`mgit-gui`），并自动注册 PATH。按安装器提示完成即可。
+
+手动安装：从 [GitHub Releases](https://github.com/yhx0516/mgit/releases) 下载对应平台的安装器：
+
+| 平台 | 资产 |
+|---|---|
+| macOS | `mgit-<ver>-unified.dmg` |
+| Linux | `mgit_<ver>_amd64.deb` |
+| Windows | `mgit-<ver>-setup.exe` |
+
 ## 命令行工具 (CLI)
 
 ```shell
