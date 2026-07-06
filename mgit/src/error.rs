@@ -76,4 +76,35 @@ pub enum MgitError {
 
     #[snafu(display("Untracked branch"))]
     Untracked,
+
+    // === Upgrade / self-update ===
+    #[snafu(display("Network error: {}", message))]
+    UpgradeNetworkError { message: String },
+
+    #[snafu(display("HTTP {}: {}", status, body))]
+    UpgradeHttpStatus { status: u16, body: String },
+
+    #[snafu(display("GitHub API rate limited, try again later"))]
+    UpgradeRateLimited,
+
+    #[snafu(display("Release asset not found for target {}", target))]
+    UpgradeAssetNotFound { target: String },
+
+    #[snafu(display("Invalid release tag format: {}", tag))]
+    UpgradeInvalidTag { tag: String },
+
+    #[snafu(display("No usable release found"))]
+    UpgradeNoRelease,
+
+    #[snafu(display("Archive extract failed: {}", message))]
+    UpgradeArchiveFailed { message: String },
+
+    #[snafu(display("Binary {} not found in archive", name))]
+    UpgradeBinaryNotFound { name: String },
+
+    #[snafu(display("Self-replace failed: {}", message))]
+    UpgradeSelfReplaceFailed { message: String },
+
+    #[snafu(display("Unsupported platform: {}-{}", os, arch))]
+    UpgradeUnsupportedPlatform { os: String, arch: String },
 }

@@ -49,6 +49,14 @@ poll-promise = "0.3.0"                                               # Keep for 
 strip-ansi-escapes = "0.2.1"
 filetime = "0.2.26"
 
+# Upgrade / self-update
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "json"] }
+flate2 = "1.0"
+tar = "0.4"
+zip = { version = "2.0", default-features = false, features = ["deflate"] }
+futures-util = "0.3"
+tempfile = "3.10"
+
 # Internal Crates
 mgit = { path = "./mgit" }
 

@@ -11,6 +11,7 @@ pub(crate) use new_tag::NewTagCommand;
 pub(crate) use snapshot::SnapshotCommand;
 pub(crate) use sync::SyncCommand;
 pub(crate) use track::TrackCommand;
+pub(crate) use upgrade::UpgradeCommand;
 
 mod clean;
 mod del_branch;
@@ -23,6 +24,7 @@ mod new_tag;
 mod snapshot;
 mod sync;
 mod track;
+mod upgrade;
 
 pub trait CliCommand {
     async fn exec(self) -> MgitResult<()>;
