@@ -34,7 +34,12 @@ esac
 
 # --- fetch latest version ---
 LATEST=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/' || true)
+
+if [ -z "${LATEST}" ]; then
+    echo "failed to determine latest version (rate limited or network error)" >&2
+    exit 1
+fi
 ASSET="mgit-cli-${LATEST}-${TARGET}.${EXT}"
 
 # --- download & install ---
@@ -42,17 +47,23 @@ echo "installing mgit CLI ${LATEST} for ${TARGET} ..."
 
 case "${EXT}" in
     tar.gz)
-        DEST="/usr/local/bin"
-        curl -fSL --progress-bar "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}" \
-            | sudo tar xz -C "${DEST}"
-        sudo chmod +x "${DEST}/mgit"
-        echo "done.  run 'mgit --version' to verify."
+        DEST="${HOME}/.local/bin"
+        mkdir -p "${DEST}"
+        curl -fSL "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}" \
+            | tar xz --strip-components=1 -C "${DEST}"
+        chmod +x "${DEST}/mgit"
+        echo "done.  installed to ${DEST}/mgit"
+        if ! echo "${PATH}" | grep -q "${DEST}"; then
+            echo ""
+            echo "add ${DEST} to your PATH:"
+            echo "  echo 'export PATH=\"\${HOME}/.local/bin:\${PATH}\"' >> ~/.zshrc"
+        fi
         ;;
     zip)
         DEST="${HOME}/.mgit/bin"
         mkdir -p "${DEST}"
         TMP_ZIP="${DEST}/${ASSET}"
-        curl -fSL --progress-bar -o "${TMP_ZIP}" "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
+        curl -fSL -o "${TMP_ZIP}" "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
         unzip -o -d "${DEST}" "${TMP_ZIP}"
         rm -f "${TMP_ZIP}"
         echo "done.  installed to ${DEST}/mgit.exe"
@@ -68,3 +79,4 @@ case "${EXT}" in
             echo "  [Environment]::SetEnvironmentVariable('PATH', \$env:PATH + ';${WIN_DEST}', 'User')"
         fi
         ;;
+esac

@@ -8,7 +8,7 @@ UNAME_M=$(uname -m)
 # Pick the platform-specific installer asset pattern
 case "${UNAME_S}-${UNAME_M}" in
     darwin-*)
-        PATTERN="unified.dmg"
+        PATTERN="universal.dmg"
         OPEN_CMD="open"
         ;;
     linux-x86_64|linux-aarch64)
@@ -34,7 +34,7 @@ ASSET_NAME=$(echo "${RELEASE_JSON}" \
     | grep -o '"name": *"[^"]*"' \
     | sed -E 's/.*"([^"]+)".*/\1/' \
     | grep "${PATTERN}" \
-    | head -1)
+    | head -1 || true)
 
 if [ -z "${ASSET_NAME}" ]; then
     echo "no GUI installer found for ${PATTERN}" >&2
@@ -45,14 +45,14 @@ DOWNLOAD_URL=$(echo "${RELEASE_JSON}" \
     | grep -o '"browser_download_url": *"[^"]*"' \
     | grep "${ASSET_NAME}" \
     | sed -E 's/.*"(https:[^"]+)".*/\1/' \
-    | head -1)
+    | head -1 || true)
 
 DEST_DIR="${HOME}/.mgit/updates"
 mkdir -p "${DEST_DIR}"
 DEST_FILE="${DEST_DIR}/${ASSET_NAME}"
 
 echo "downloading ${ASSET_NAME} ..."
-curl -fSL --progress-bar -o "${DEST_FILE}" "${DOWNLOAD_URL}"
+curl -fSL -o "${DEST_FILE}" "${DOWNLOAD_URL}"
 
 echo "opening installer ..."
 case "${OPEN_CMD}" in

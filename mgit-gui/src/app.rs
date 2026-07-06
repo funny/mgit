@@ -615,7 +615,7 @@ fn find_gui_installer(assets: &[upgrade_check::ReleaseAsset]) -> Option<&upgrade
     if cfg!(target_os = "macos") {
         assets
             .iter()
-            .find(|a| a.name.ends_with("-unified.dmg"))
+            .find(|a| a.name.ends_with("-universal.dmg"))
     } else if cfg!(target_os = "windows") {
         assets.iter().find(|a| a.name.ends_with("-setup.exe"))
     } else if cfg!(target_os = "linux") {
