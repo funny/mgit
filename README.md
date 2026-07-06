@@ -18,21 +18,28 @@ mgit 是一个用 rust 编写的 git 多仓库管理工具。 他的主要功能
 ## 命令行工具 (CLI)
 
 ```shell
-Usage: mgit.exe <COMMAND>
+Usage: mgit <COMMAND>
 
 Commands:
-  init      Init git repos
-  snapshot  Snapshot git repos
-  sync      Sync git repos
-  fetch     Fetch git repos
-  clean     Clean unused git repos
-  track     Track remote branch
-  ls-files  List files
-  help      Print this message or the help of the given subcommand(s)
+  init               Init git repos
+  fetch              Fetch git repos
+  snapshot           Snapshot git repos
+  sync               Sync git repos
+  clean              Clean unused git repos
+  ls-files           List tree files
+  track              Track remote branch
+  log-repos          Log git repos
+  new-remote-branch  New Remote Branch
+  del-remote-branch  Delete remote branch
+  new-tag            New tag
+  upgrade            Upgrade mgit CLI to the latest release
+  help               Print this message or the help of the given subcommand(s)
 
 Options:
-  -h, --help     Print help information
-  -V, --version  Print version information
+      --no-color    Disable ANSI color output
+      --verbose...  Increase log verbosity
+  -h, --help        Print help
+  -V, --version     Print version
 ```
 
 ### init
@@ -142,6 +149,80 @@ mgit ls-files [OPTIONS] [PATH]
 Options
 
 - **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+
+### log-repos
+
+```shell
+mgit log-repos [OPTIONS] [PATH]
+```
+
+显示指定目录下配置的仓库的 git 历史记录。
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **-t, --thread `<NUMBER>`** 设置线程数量，默认是 4
+- **--labels `<LABELS>`** 按标签过滤显示的仓库
+
+### new-remote-branch
+
+```shell
+mgit new-remote-branch [OPTIONS] --branch <BRANCH> [PATH]
+```
+
+在指定仓库中创建新的远端分支。
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--branch `<BRANCH>`** 新分支名称（必填）
+- **--new-config `<FILE>`** 新的 git repos 配置文件
+- **--force** 强制创建，跳过确认提示
+- **--ignore `<IGNORE>`** 忽略指定仓库，可多次使用
+
+### del-remote-branch
+
+```shell
+mgit del-remote-branch [OPTIONS] --branch <BRANCH> [PATH]
+```
+
+删除指定仓库中的远端分支。
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--branch `<BRANCH>`** 要删除的远端分支名称（必填）
+- **--force** 强制删除，跳过确认提示
+- **--ignore `<IGNORE>`** 忽略指定仓库，可多次使用
+
+### new-tag
+
+```shell
+mgit new-tag [OPTIONS] --tag <TAG> [PATH]
+```
+
+在指定仓库中创建新 tag，可选择推送到远端。
+
+Options
+
+- **--config `<FILE>`** 指定配置文件，默认找当前目录下的 `.gitrepos`
+- **--tag `<TAG>`** 新 tag 名称（必填）
+- **--push** 将 tag 推送到远端
+- **--ignore `<IGNORE>`** 忽略指定仓库，可多次使用
+
+### upgrade
+
+```shell
+mgit upgrade [OPTIONS] [VERSION]
+```
+
+将 mgit CLI 升级到最新（或指定）的 release 版本。从 GitHub Releases 自动下载匹配当前平台的二进制并原地替换。
+
+Options
+
+- **--force** 同版本也强制重新安装
+- **--pre** 包含预发布版本（beta、rc 等）
+- `[VERSION]` 指定目标版本（如 `2.1.0`），不指定则取最新稳定版
 
 ## 图形界面工具 (GUI)
 
