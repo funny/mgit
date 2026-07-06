@@ -8,6 +8,7 @@ mod new_branch;
 mod new_tag;
 mod options;
 mod repo_selection;
+mod upgrade;
 
 pub(crate) use about::AboutWindow;
 pub(crate) use base::{View, WindowBase};
@@ -17,3 +18,4 @@ pub(crate) use manager::WindowManager;
 pub(crate) use new_branch::NewBranchWindow;
 pub(crate) use new_tag::NewTagWindow;
 pub(crate) use options::OptionsWindow;
+pub(crate) use upgrade::{UpgradeAction, UpgradeState, UpgradeWindow};

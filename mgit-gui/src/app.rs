@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
+use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::AtomicUsize;
 use std::sync::mpsc::{channel, Receiver};
@@ -8,11 +10,13 @@ use std::time::Instant;
 
 use eframe::egui;
 use egui::Visuals;
+use semver::Version;
 use tracing::{debug, info, warn};
 
 use crate::app::context::{AppContext, PendingConfigSave, RepoState};
 use crate::app::events::{Action, BackendEvent, CommandType, Event, InputEvent};
-use crate::ui::windows::{ErrorWindow, OptionsWindow, WindowManager};
+use crate::ui::windows::{ErrorWindow, OptionsWindow, UpgradeState, WindowManager};
+use mgit::utils::upgrade_check;
 
 pub mod context;
 pub mod events;
@@ -281,6 +285,128 @@ impl GuiApp {
                 }
                 self.enqueue_event(Event::Action(Action::Refresh));
             }
+
+            // --- Upgrade / Check for Updates ---
+
+            InputEvent::CheckForUpdates => {
+                self.windows.upgrade.state = UpgradeState::Checking;
+                let tx = self.app_context.event_tx.clone();
+                std::thread::spawn(move || {
+                    let result =
+                        crate::utils::runtime::block_on(upgrade_check::check_latest_release(
+                            "yhx0516/mgit",
+                            false,
+                        ));
+                    match result {
+                        Ok(latest) => {
+                            let current =
+                                Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+                            if latest.version > current {
+                                let asset = find_gui_installer(&latest.assets);
+                                tx.send(Event::Input(InputEvent::CheckUpdateResult {
+                                    latest_version: latest.version.to_string(),
+                                    asset_url: asset
+                                        .as_ref()
+                                        .map(|a| a.download_url.clone()),
+                                    asset_name: asset.map(|a| a.name.clone()),
+                                }))
+                                .ok();
+                            } else {
+                                tx.send(Event::Input(InputEvent::CheckUpdateResult {
+                                    latest_version: latest.version.to_string(),
+                                    asset_url: None,
+                                    asset_name: None,
+                                }))
+                                .ok();
+                            }
+                        }
+                        Err(e) => {
+                            tx.send(Event::Input(InputEvent::UpgradeError {
+                                message: e.to_string(),
+                            }))
+                            .ok();
+                        }
+                    }
+                });
+            }
+
+            InputEvent::CheckUpdateResult {
+                latest_version,
+                asset_url,
+                asset_name,
+            } => {
+                let current = env!("CARGO_PKG_VERSION").to_string();
+                match (asset_url, asset_name) {
+                    (Some(url), Some(name)) => {
+                        self.windows.upgrade.state = UpgradeState::UpdateAvailable {
+                            current,
+                            latest: latest_version,
+                            asset_url: url,
+                            asset_name: name,
+                        };
+                    }
+                    _ => {
+                        self.windows.upgrade.state =
+                            UpgradeState::UpToDate { current };
+                    }
+                }
+            }
+
+            InputEvent::StartDownload { url, file_name } => {
+                self.windows.upgrade.state =
+                    UpgradeState::Downloading {
+                        file_name: file_name.clone(),
+                    };
+                let tx = self.app_context.event_tx.clone();
+                std::thread::spawn(move || {
+                    let result = crate::utils::runtime::block_on(async {
+                        let home = home::home_dir()
+                            .ok_or_else(|| "no home dir".to_string())?;
+                        let dir = home.join(".mgit").join("updates");
+                        fs::create_dir_all(&dir)
+                            .map_err(|e| e.to_string())?;
+                        let resp = reqwest::get(&url)
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        let bytes = resp
+                            .bytes()
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        let path = dir.join(&file_name);
+                        fs::write(&path, &bytes)
+                            .map_err(|e| e.to_string())?;
+                        Ok::<PathBuf, String>(path)
+                    });
+                    match result {
+                        Ok(path) => {
+                            tx.send(Event::Input(InputEvent::DownloadComplete { path }))
+                                .ok();
+                        }
+                        Err(e) => {
+                            tx.send(Event::Input(InputEvent::UpgradeError { message: e }))
+                                .ok();
+                        }
+                    }
+                });
+            }
+
+            InputEvent::DownloadComplete { path } => {
+                self.windows.upgrade.state =
+                    UpgradeState::ReadyToInstall { path };
+            }
+
+            InputEvent::InstallDownload { path } => {
+                let _ = open_file(&path);
+                self.windows.upgrade_open = false;
+            }
+
+            InputEvent::DismissUpgrade => {
+                self.windows.upgrade_open = false;
+            }
+
+            InputEvent::UpgradeError { message } => {
+                self.windows.upgrade.state = UpgradeState::Error { message };
+            }
         }
     }
 
@@ -480,4 +606,40 @@ impl GuiApp {
         }
         self.context.request_repaint();
     }
+}
+
+// --- Upgrade helpers ---
+
+/// Find the GUI installer asset matching the current platform.
+fn find_gui_installer(assets: &[upgrade_check::ReleaseAsset]) -> Option<&upgrade_check::ReleaseAsset> {
+    if cfg!(target_os = "macos") {
+        assets
+            .iter()
+            .find(|a| a.name.ends_with("-unified.dmg"))
+    } else if cfg!(target_os = "windows") {
+        assets.iter().find(|a| a.name.ends_with("-setup.exe"))
+    } else if cfg!(target_os = "linux") {
+        assets.iter().find(|a| a.name.ends_with(".deb"))
+    } else {
+        None
+    }
+}
+
+/// Open a file with the system default handler (installer / DMG / etc.).
+fn open_file(path: &Path) -> std::io::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(path).spawn()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &path.to_string_lossy()])
+            .spawn()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(path).spawn()?;
+    }
+    Ok(())
 }

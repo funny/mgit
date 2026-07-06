@@ -33,6 +33,7 @@ sha256.workspace = true
 filetime.workspace = true
 semver.workspace = true
 regex.workspace = true
+reqwest.workspace = true
 
 # Internal
 mgit.workspace = true

@@ -23,6 +23,14 @@ clap.workspace = true
 indicatif.workspace = true
 console.workspace = true
 home = "0.5"
+semver.workspace = true
+serde.workspace = true
+reqwest.workspace = true
+flate2.workspace = true
+tar.workspace = true
+zip.workspace = true
+futures-util.workspace = true
+tempfile.workspace = true
 
 # Internal
 mgit.workspace = true

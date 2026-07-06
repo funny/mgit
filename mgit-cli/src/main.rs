@@ -12,6 +12,10 @@ mod term;
 
 #[tokio::main]
 async fn main() {
+    // Clean up any stale .old binary left by a previous `upgrade` on Windows.
+    #[cfg(target_os = "windows")]
+    clean_old_binary();
+
     let cli = Cli::parse();
     configure_color(!cli.no_color);
     init_log(cli.verbose);
@@ -28,6 +32,7 @@ async fn main() {
         Commands::NewRemoteBranch(cmd) => cmd.exec().await,
         Commands::DelRemoteBranch(cmd) => cmd.exec().await,
         Commands::NewTag(cmd) => cmd.exec().await,
+        Commands::Upgrade(cmd) => cmd.exec().await,
     };
 
     match result {
@@ -58,4 +63,12 @@ fn init_log(verbose: u8) {
         )
         .with(env_filter)
         .init();
+}
+
+#[cfg(target_os = "windows")]
+fn clean_old_binary() {
+    if let Ok(exe) = std::env::current_exe() {
+        let old = exe.with_extension("old");
+        let _ = std::fs::remove_file(old);
+    }
 }

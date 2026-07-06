@@ -64,4 +64,7 @@ pub(crate) enum Commands {
     /// New tag
     #[command(name = "new-tag")]
     NewTag(NewTagCommand),
+
+    /// Upgrade mgit CLI to the latest release
+    Upgrade(UpgradeCommand),
 }
