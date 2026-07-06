@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：2.0.3-beta.2 · 分支：issues/116-self-update
+## 当前版本：2.0.3 · 分支：master
 
 ---
 
@@ -25,22 +25,11 @@
 
 | 完成时间 | 任务 |
 |----------|------|
-| 2026-07-06 | mgit upgrade 新增 --pre 支持预发布版本、--target-version 指定目标版本 |
+| 2026-07-06 | 安装脚本 install.sh / install-cli.sh + README 安装章节 + 302 重定向防限流 |
+| 2026-07-06 | upgrade_check 默认路径改用 302 重定向替代 GitHub API，零限流 |
+| 2026-07-06 | mgit upgrade 新增 --pre 支持预发布版本、target-version 指定目标版本 |
 | 2026-07-06 | 提取 upgrade 公共逻辑到 mgit 库，GUI Help 菜单新增 Check for Updates |
-| 2026-07-06 | 实现 mgit upgrade 自升级命令（87aa764）：从 GitHub Releases 下载匹配本机 target 的资产并原地替换，支持 --force |
-| 2026-03-17 | v2 重构完成（7015e15）：workspace 重组、async tokio、egui 0.33 |
-| 2026-03-17 | 全局 Tokio Runtime 单例（fc18a0a） |
-| 2026-03-17 | GUI 新增 Unignore All / Ignore All（444aa3e） |
-| 2026-03-17 | 支持拖拽配置文件（1f8148b） |
-| 2026-03-17 | 修复 track 命令错误被吞（326b5c7） |
-| 2026-03-17 | 修复 new-tag 推送错误仓库路径（07b769f） |
-| 2026-03-17 | 修复 GUI 默认分支字段传递错误（7e4ccba） |
-| 2026-03-17 | 初始化 AI 工程规范（AGENT.md、CONTRIBUTING.md、.ai/） |
-| 2026-03-17 | 修复 TD-001：GUI 启动未响应（a4cb8d0） |
-| 2026-03-17 | 修复 TD-002：worker 数量上限为 8（b611a5c） |
-| 2026-03-17 | 修复 CLI 错误输出 Debug 格式，fetch/sync/track/clean 改为可读文本 |
-| 2026-05-27 | 修复 new-remote-branch / del-remote-branch / new-tag 错误消息仍用 `{:?}` 的遗漏 |
-| 2026-03-17 | 修复 GUI 白屏未响应：check_git_valid 移至后台线程，不再阻塞 new() |
+| 2026-07-06 | 实现 mgit upgrade 自升级命令：从 GitHub Releases 下载匹配本机 target 的资产并原地替换，支持 --force |
 | 2026-03-17 | 增加启动链路结构化日志：new/first_frame/git_check/load_setting/refresh/worker 全链路计时 |
 | 2026-03-17 | 增强调试日志：runtime_init/eframe_run_native_start 时间戳、update() 帧间隔+耗时阻塞检测、每条 git 命令计时 |
 | 2026-03-17 | 修复 TD-004：WGL SwapBuffers 首帧冻结 — check_git_valid 回归 new() 同步执行，为 GPU 驱动预热 |
