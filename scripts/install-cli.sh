@@ -64,7 +64,7 @@ case "${EXT}" in
         mkdir -p "${DEST}"
         TMP_ZIP="${DEST}/${ASSET}"
         curl -fSL -o "${TMP_ZIP}" "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
-        unzip -o -d "${DEST}" "${TMP_ZIP}"
+        unzip -o -j -d "${DEST}" "${TMP_ZIP}"
         rm -f "${TMP_ZIP}"
         echo "done.  installed to ${DEST}/mgit.exe"
 
