@@ -92,8 +92,8 @@ impl super::View for UpgradeWindow {
             match &self.state {
                 UpgradeState::Checking => {
                     ui.label("");
-                    egui::widgets::Spinner::new().ui(ui);
                     ui.label("Checking for updates...");
+                    egui::widgets::Spinner::new().ui(ui);
                 }
 
                 UpgradeState::UpToDate { current } => {
@@ -113,14 +113,16 @@ impl super::View for UpgradeWindow {
                 } => {
                     ui.label("");
                     ui.heading("New version available!");
-                    ui.label(format!("v{latest}  →  current: v{current}"));
+                    ui.label(format!("current: v{current}"));
+                    ui.label(format!("        → latest: v{latest}"));
                     ui.label("");
-                    ui.horizontal(|ui| {
-                        if ui.button("  Download  ").clicked() {
-                            self.action = Some(UpgradeAction::Download);
-                        }
-                        if ui.button("  Later  ").clicked() {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::BOTTOM), |ui| {
+                        ui.spacing_mut().item_spacing = egui::vec2(8.0, 0.0);
+                        if ui.button("Later").clicked() {
                             self.action = Some(UpgradeAction::Close);
+                        }
+                        if ui.button("Download").clicked() {
+                            self.action = Some(UpgradeAction::Download);
                         }
                     });
                 }
